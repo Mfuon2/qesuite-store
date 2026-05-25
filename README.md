@@ -4,33 +4,30 @@ A multi-tenant SaaS commerce platform for grocery shops, mini-marts, kiosks, pha
 
 Built on Cloudflare's infrastructure — Workers, D1, R2, and Queues — with Vue 3 frontends.
 
+---
+
 ## Apps
 
-| App | URL | Port | Purpose |
-|-----|-----|------|---------|
-| `apps/storefront` | `store.qesuite.com/:slug` | 3000 | Customer-facing store |
-| `apps/dashboard` | `dashboard.qesuite.com` | 3001 | Shop owner management |
-| `apps/delivery` | `go.qesuite.com` | 3002 | Rider mobile view |
-| `apps/admin` | `admin.qesuite.com` | 3003 | Platform superadmin |
-| `apps/worker-api` | `api.qesuite.com` | 8787 | Hono backend on CF Workers |
+| App | Path | Purpose |
+|-----|------|---------|
+| `apps/app` | `localhost:3000` | Unified Vue app: owner dashboard + rider app + superadmin panel (role-based routing) |
+| `apps/storefront` | `localhost:3001` | Customer-facing store (`/:slug`) |
+| `apps/worker-api` | `localhost:8787` | Hono backend on Cloudflare Workers |
+
+---
 
 ## Quick Start
 
 ### 1. Prerequisites
 
-- Node.js 18+
+- Node.js 18+ / Bun
 - [Wrangler CLI](https://developers.cloudflare.com/workers/wrangler/install-and-update/) (`npm i -g wrangler`)
 - A Cloudflare account
 
 ### 2. Install dependencies
 
 ```bash
-npm install
-cd apps/storefront && npm install
-cd apps/dashboard && npm install
-cd apps/delivery && npm install
-cd apps/admin && npm install
-cd apps/worker-api && npm install
+bun install
 ```
 
 ### 3. Set up Cloudflare resources
@@ -71,17 +68,13 @@ wrangler secret put SUPABASE_URL
 wrangler secret put SUPABASE_ANON_KEY
 ```
 
-Update `.env.local` in each frontend app with your API URL.
-
 ### 6. Start development
 
 ```bash
 # In separate terminals:
-npm run dev:api        # Worker API on :8787
-npm run dev:storefront # Storefront on :3000
-npm run dev:dashboard  # Dashboard on :3001
-npm run dev:delivery   # Rider app on :3002
-npm run dev:admin      # Admin panel on :3003
+cd apps/worker-api && wrangler dev   # API on :8787
+cd apps/app && bun run dev           # Dashboard/rider/admin on :3000
+cd apps/storefront && bun run dev    # Storefront on :3001
 ```
 
 ### 7. Deploy
@@ -90,48 +83,173 @@ npm run dev:admin      # Admin panel on :3003
 # Deploy backend
 wrangler deploy
 
-# Deploy frontends (each to Cloudflare Pages)
-cd apps/storefront && npm run build
+# Deploy frontends to Cloudflare Pages
+cd apps/app && bun run build
+wrangler pages deploy dist --project-name qesuite-app
+
+cd apps/storefront && bun run build
 wrangler pages deploy dist --project-name qesuite-storefront
-
-cd apps/dashboard && npm run build
-wrangler pages deploy dist --project-name qesuite-dashboard
-
-cd apps/delivery && npm run build
-wrangler pages deploy dist --project-name qesuite-delivery
-
-cd apps/admin && npm run build
-wrangler pages deploy dist --project-name qesuite-admin
 ```
+
+---
+
+## Progress
+
+### Backend — Hono API (`apps/worker-api`)
+
+22 route modules fully implemented:
+
+| Module | Endpoints |
+|--------|-----------|
+| **auth** | Register, login, OTP send/verify, token refresh, logout, rider magic-link, `GET /me`, `PATCH /me` |
+| **onboarding** | Status check, step 1 (branding), step 2 (products), step 3 (delivery config) |
+| **store** | Public store by slug, slug availability check, store update |
+| **products** | List, create, update, delete, image upload, bulk import |
+| **categories** | List, create, update, delete |
+| **orders** | Create, list, detail, status transition, public tracking by code, packing slip |
+| **delivery** | Rider staff CRUD, magic-link generation, order assignment, GPS location update, status transitions |
+| **payments** | M-Pesa STK Push + callback, Stripe PaymentIntent + webhook, subscription update |
+| **analytics** | Summary KPIs, revenue trend, top products, peak hours, payment method breakdown |
+| **billing** | Subscription details, billing history, M-Pesa subscription payment |
+| **settings** | Tenant config read/write, store settings read |
+| **admin** | Stores list/detail, suspend/unsuspend, extend trial, impersonate, platform GMV + store growth metrics |
+| **upload** | R2 presigned URL generation (type + size validated, 10-min expiry) |
+
+**Background workers:**
+- Cron job (daily midnight) → analytics snapshot
+- Queue consumer → SMS (Africa's Talking) + WhatsApp (Business Cloud API) notification dispatch
+
+---
+
+### Owner Dashboard (`apps/app` — role: `owner`)
+
+| Feature | Status |
+|---------|--------|
+| Login / register | ✅ |
+| 3-step onboarding wizard (branding → products → delivery) | ✅ |
+| Real-time order feed (Supabase Realtime + fallback polling) | ✅ |
+| Kanban & list order views | ✅ |
+| Order detail + packing slip modal | ✅ |
+| Rider assignment modal | ✅ |
+| Products — list, create, edit, delete, image upload | ✅ |
+| Bulk product import | ✅ |
+| Categories management | ✅ |
+| Delivery team management (add/remove riders, magic-link) | ✅ |
+| Analytics — revenue chart, top products, peak hours, payment split | ✅ |
+| Store settings — branding (logo, banner, colors, font), delivery fees/radius/ETA | ✅ |
+| Trial banner + subscription billing | ✅ |
+| Dark mode | ✅ |
+
+---
+
+### Rider App (`apps/app` — role: `rider`)
+
+| Feature | Status |
+|---------|--------|
+| SMS magic-link login | ✅ |
+| Assigned orders list (proximity-sorted) | ✅ |
+| Order detail + customer contact | ✅ |
+| GPS location polling (30s interval) | ✅ |
+| Navigation deeplink (Mapbox / Google Maps) | ✅ |
+| Status transitions: ASSIGNED → PICKED_UP → ON_THE_WAY → DELIVERED | ✅ |
+| Failure reason capture | ✅ |
+
+---
+
+### Superadmin Panel (`apps/app` — role: `superadmin`)
+
+| Feature | Status |
+|---------|--------|
+| All-stores datatable (sortable, filterable, paginated — default 10/page) | ✅ |
+| Store detail — branding, settings, billing history | ✅ |
+| Suspend / unsuspend store | ✅ |
+| Extend trial | ✅ |
+| Impersonate store owner | ✅ |
+| Platform metrics — GMV trend, store growth, MRR, trial-to-paid conversion | ✅ |
+| Platform billing history | ✅ |
+| Admin profile management + password change | ✅ |
+
+---
+
+### Customer Storefront (`apps/storefront`)
+
+| Feature | Status |
+|---------|--------|
+| Dynamic branding injection (CSS custom properties per tenant) | ✅ |
+| Product browsing with category tabs | ✅ |
+| Featured product strip | ✅ |
+| Cart (localStorage persisted) | ✅ |
+| Sticky cart bar | ✅ |
+| 4-step checkout: Contact → Delivery → Payment → Confirmation | ✅ |
+| Pay on Delivery | ✅ |
+| M-Pesa STK Push with polling | ✅ |
+| Stripe Checkout | ✅ |
+| Order tracking (no auth) — status stepper + ETA | ✅ |
+| Live rider location on tracking map | ✅ |
+| Skeleton loaders, lazy images | ✅ |
+| PWA + offline fallback page | ✅ |
+
+---
+
+### Database (`migrations/`)
+
+| File | Tables |
+|------|--------|
+| `0001_tenants_users.sql` | `tenants`, `users` |
+| `0002_store_branding.sql` | `store_settings` |
+| `0003_categories_products.sql` | `categories`, `products` |
+| `0004_orders_order_items.sql` | `orders`, `order_items` |
+| `0005_delivery_staff_assignments.sql` | `delivery_staff`, `delivery_assignments` |
+| `0006_subscriptions_billing.sql` | `subscriptions`, `billing_history` |
+| `0007_notifications_log.sql` | `notifications_log` |
+| `0008_analytics_snapshots.sql` | `analytics_daily`, `audit_log` |
+
+---
+
+### Shared Packages (`packages/`)
+
+| Package | Contents |
+|---------|----------|
+| `@qesuite/types` | 39+ TypeScript interfaces — Tenant, User, JWT, Product, Order, Delivery, Cart, Analytics, M-Pesa, Stripe, Storefront |
+| `@qesuite/styles` | TailwindCSS base stylesheet, design tokens, shared component classes (`.qs-input`, `.qs-btn`, `.qs-card`, etc.) |
+| `@qesuite/shared` | Shared constants and utility helpers |
+
+---
 
 ## Architecture
 
 ### Multi-tenancy
 
-Every database table carries a `tenant_id` (UUID). The `tenant_id` is resolved from the JWT claim on every authenticated request — never from the request body — preventing cross-tenant access.
+Every database table carries a `tenant_id` (UUID). The `tenant_id` is resolved from the JWT claim on every authenticated request — never from the request body — preventing cross-tenant data access.
 
-### Auth Flow
+### Auth
 
-- **Store owners**: Email/phone + password → JWT (15m access + 7d refresh as httpOnly cookie)
-- **Riders**: Phone → magic link SMS → JWT
-- **Customers**: No auth — phone number + tracking code only
-- **Superadmin**: Separate login route with elevated claims
+| Role | Method |
+|------|--------|
+| Store owner | Email/phone + password → JWT (15m access + 7d refresh httpOnly cookie) |
+| Rider | Phone → magic-link SMS → JWT |
+| Customer | No auth — phone number + tracking code only |
+| Superadmin | Separate login route with elevated claims |
 
 ### Order State Machine
 
 ```
 NEW → CONFIRMED → PREPARING → READY → OUT_FOR_DELIVERY → DELIVERED
-                                  ↘ CANCELLED (from any state)
+                                   ↘ CANCELLED (from any state)
 ```
 
-### Notifications (via Cloudflare Queue)
+### Notifications (Cloudflare Queue)
 
-All customer/owner notifications are async. Order events enqueue messages; the consumer handler sends SMS (Africa's Talking) and/or WhatsApp (Business Cloud API).
+Order events enqueue messages asynchronously. The queue consumer dispatches:
+- **SMS** via Africa's Talking (order confirmed, out for delivery, delivered, new order alert)
+- **WhatsApp** via WhatsApp Business Cloud API
+
+---
 
 ## Tech Stack
 
 | Layer | Technology |
-|-------|-----------|
+|-------|------------|
 | Frontend | Vue 3 + Vite + Pinia + TailwindCSS |
 | API | Hono.js on Cloudflare Workers |
 | Database | Cloudflare D1 (SQLite) |
@@ -142,6 +260,9 @@ All customer/owner notifications are async. Order events enqueue messages; the c
 | SMS | Africa's Talking |
 | WhatsApp | WhatsApp Business Cloud API |
 | Maps | Mapbox GL JS |
+| Package manager | Bun |
+
+---
 
 ## Security
 
@@ -154,16 +275,3 @@ All customer/owner notifications are async. Order events enqueue messages; the c
 - M-Pesa callbacks: IP whitelist to Safaricom IPs
 - CORS: locked to `*.qesuite.com`
 - All secrets in Cloudflare Worker secrets — never in `wrangler.toml`
-
-## Database Migrations
-
-Located in `migrations/`. Applied in order:
-
-1. `0001_tenants_users` — Tenants and user accounts
-2. `0002_store_branding` — Store settings
-3. `0003_categories_products` — Product catalog
-4. `0004_orders_order_items` — Orders
-5. `0005_delivery_staff_assignments` — Delivery team
-6. `0006_subscriptions_billing` — Billing
-7. `0007_notifications_log` — Notification logs
-8. `0008_analytics_snapshots` — Analytics + audit log

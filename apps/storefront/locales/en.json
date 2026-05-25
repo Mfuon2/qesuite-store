@@ -1,0 +1,174 @@
+{
+  "nav": {
+    "home": "Home",
+    "cart": "Cart",
+    "track": "Track Order",
+    "language": "Language"
+  },
+  "cart": {
+    "title": "Your Cart",
+    "empty": "Your cart is empty",
+    "empty_hint": "Add some products to get started",
+    "continue_shopping": "Continue Shopping",
+    "checkout": "Checkout",
+    "items": "{count} item | {count} items",
+    "subtotal": "Subtotal",
+    "delivery_fee": "Delivery Fee",
+    "free": "Free",
+    "total": "Total",
+    "remove": "Remove",
+    "view_cart": "View Cart",
+    "clear": "Clear Cart",
+    "minimum_order": "Minimum order is {amount}"
+  },
+  "product": {
+    "add_to_cart": "Add to Cart",
+    "out_of_stock": "Out of Stock",
+    "sale": "SALE",
+    "featured": "Featured",
+    "no_products": "No products available",
+    "no_products_hint": "Check back later for new arrivals",
+    "all_categories": "All"
+  },
+  "checkout": {
+    "title": "Checkout",
+    "back": "Back",
+    "next": "Next",
+    "place_order": "Place Order",
+    "steps": {
+      "contact": "Contact",
+      "delivery": "Delivery",
+      "payment": "Payment",
+      "confirm": "Confirm"
+    },
+    "contact": {
+      "title": "Contact Details",
+      "phone": "Phone Number",
+      "phone_placeholder": "e.g. 0712 345 678",
+      "name": "Full Name",
+      "name_placeholder": "e.g. Jane Doe",
+      "phone_required": "Phone number is required",
+      "phone_invalid": "Enter a valid Kenyan phone number",
+      "name_required": "Name is required"
+    },
+    "delivery": {
+      "title": "Delivery Details",
+      "type": "How would you like to receive your order?",
+      "delivery": "Home Delivery",
+      "pickup": "Pickup",
+      "address": "Delivery Address",
+      "address_placeholder": "e.g. 123 Moi Avenue, Nairobi",
+      "address_required": "Address is required for delivery",
+      "notes": "Order Notes (Optional)",
+      "notes_placeholder": "Any special instructions...",
+      "delivery_fee": "Delivery Fee",
+      "estimated_time": "Estimated delivery: {minutes} mins",
+      "map_placeholder": "Map coming soon"
+    },
+    "payment": {
+      "title": "Payment Method",
+      "pay_on_delivery": "Pay on Delivery",
+      "pay_on_delivery_desc": "Pay cash when your order arrives",
+      "mpesa": "M-Pesa",
+      "mpesa_desc": "Pay via M-Pesa STK push",
+      "stripe": "Card Payment",
+      "stripe_desc": "Pay with Visa, Mastercard or American Express",
+      "mpesa_phone": "M-Pesa Phone Number",
+      "mpesa_phone_hint": "We'll send an STK push to this number",
+      "mpesa_phone_same": "Same as contact number",
+      "order_summary": "Order Summary"
+    },
+    "confirmation": {
+      "title": "Order Placed!",
+      "subtitle": "Your order has been received",
+      "order_id": "Order ID",
+      "tracking_code": "Tracking Code",
+      "track_order": "Track Order",
+      "continue_shopping": "Continue Shopping",
+      "payment_pending": "Complete M-Pesa payment on your phone",
+      "payment_paid": "Payment confirmed!",
+      "payment_failed": "Payment failed — please contact support"
+    }
+  },
+  "tracking": {
+    "title": "Track Order",
+    "code_placeholder": "Enter tracking code",
+    "not_found": "Order not found",
+    "not_found_hint": "Check your tracking code and try again",
+    "statuses": {
+      "NEW": "Order Placed",
+      "CONFIRMED": "Confirmed",
+      "PREPARING": "Preparing",
+      "READY": "Ready for Pickup",
+      "OUT_FOR_DELIVERY": "Out for Delivery",
+      "DELIVERED": "Delivered",
+      "CANCELLED": "Cancelled"
+    },
+    "status_desc": {
+      "NEW": "We've received your order",
+      "CONFIRMED": "Your order has been confirmed",
+      "PREPARING": "We're preparing your order",
+      "READY": "Your order is ready",
+      "OUT_FOR_DELIVERY": "Your order is on the way",
+      "DELIVERED": "Your order has been delivered",
+      "CANCELLED": "Your order was cancelled"
+    },
+    "rider_info": "Rider",
+    "eta": "Estimated arrival",
+    "whatsapp_support": "WhatsApp Support",
+    "refresh": "Refresh",
+    "auto_refresh": "Auto-refreshing every 30s",
+    "order_items": "Order Items",
+    "order_total": "Order Total"
+  },
+  "payment": {
+    "mpesa_prompt": "Check your phone",
+    "mpesa_instructions": "A payment prompt has been sent to {phone}. Enter your M-Pesa PIN to complete the payment.",
+    "mpesa_waiting": "Waiting for payment...",
+    "mpesa_success": "Payment received!",
+    "mpesa_failed": "Payment failed or cancelled",
+    "mpesa_timeout": "Payment timed out",
+    "retry": "Retry"
+  },
+  "errors": {
+    "generic": "Something went wrong. Please try again.",
+    "network": "Network error. Check your connection.",
+    "store_not_found": "Store not found",
+    "store_not_found_hint": "This store doesn't exist or may have been removed.",
+    "store_suspended": "Store Temporarily Unavailable",
+    "store_suspended_hint": "This store is temporarily unavailable. Please check back later.",
+    "out_of_stock": "This product is out of stock",
+    "min_order": "Minimum order amount is {amount}",
+    "session_expired": "Session expired. Please refresh."
+  },
+  "offline": {
+    "title": "You're Offline",
+    "subtitle": "No internet connection",
+    "message": "Please check your connection and try again.",
+    "cached_products": "Cached Products",
+    "retry": "Try Again"
+  },
+  "footer": {
+    "powered_by": "Powered by",
+    "whatsapp": "Chat on WhatsApp",
+    "call": "Call Us",
+    "address": "Address"
+  },
+  "common": {
+    "loading": "Loading...",
+    "error": "Error",
+    "retry": "Retry",
+    "close": "Close",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "save": "Save",
+    "back": "Back",
+    "next": "Next",
+    "done": "Done",
+    "yes": "Yes",
+    "no": "No",
+    "or": "or",
+    "and": "and",
+    "free": "Free"
+  }
+}

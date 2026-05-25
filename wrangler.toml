@@ -1,0 +1,24 @@
+name = "qesuite-worker-api"
+main = "apps/worker-api/src/index.ts"
+compatibility_date = "2024-12-01"
+
+[[d1_databases]]
+binding = "qesuite_db"
+database_name = "qesuite_db"
+database_id = "b2477efb-7c49-401b-b788-85120115feaf"
+
+[[r2_buckets]]
+binding = "IMAGES"
+bucket_name = "qesuite-images"
+
+[[queues.producers]]
+binding = "NOTIFICATION_QUEUE"
+queue = "qesuite-notifications"
+
+[[queues.consumers]]
+queue = "qesuite-notifications"
+max_batch_size = 10
+max_batch_timeout = 5
+
+[triggers]
+crons = ["0 0 * * *"]

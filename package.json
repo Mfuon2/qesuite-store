@@ -1,0 +1,19 @@
+{
+  "name": "qesuite-store",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "bun run --cwd apps/worker-api dev & bun run --cwd apps/app dev",
+    "dev:app": "bun run --cwd apps/app dev",
+    "dev:storefront": "bun run --cwd apps/storefront dev",
+    "dev:api": "bun run --cwd apps/worker-api dev",
+    "build": "bun run --filter '*' build",
+    "type-check": "bun run --filter '*' type-check"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0"
+  }
+}

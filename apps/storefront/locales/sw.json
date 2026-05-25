@@ -1,0 +1,174 @@
+{
+  "nav": {
+    "home": "Nyumbani",
+    "cart": "Kikapu",
+    "track": "Fuatilia Agizo",
+    "language": "Lugha"
+  },
+  "cart": {
+    "title": "Kikapu Chako",
+    "empty": "Kikapu chako kiko tupu",
+    "empty_hint": "Ongeza bidhaa kuanza",
+    "continue_shopping": "Endelea Kununua",
+    "checkout": "Maliza Ununuzi",
+    "items": "bidhaa {count}",
+    "subtotal": "Jumla Ndogo",
+    "delivery_fee": "Ada ya Usafirishaji",
+    "free": "Bure",
+    "total": "Jumla",
+    "remove": "Ondoa",
+    "view_cart": "Angalia Kikapu",
+    "clear": "Futa Kikapu",
+    "minimum_order": "Agizo la chini ni {amount}"
+  },
+  "product": {
+    "add_to_cart": "Ongeza Kikapuni",
+    "out_of_stock": "Haipatikani",
+    "sale": "PUNGUZO",
+    "featured": "Maarufu",
+    "no_products": "Hakuna bidhaa zinazopatikana",
+    "no_products_hint": "Angalia baadaye kwa bidhaa mpya",
+    "all_categories": "Zote"
+  },
+  "checkout": {
+    "title": "Maliza Ununuzi",
+    "back": "Rudi",
+    "next": "Mbele",
+    "place_order": "Weka Agizo",
+    "steps": {
+      "contact": "Mawasiliano",
+      "delivery": "Usafirishaji",
+      "payment": "Malipo",
+      "confirm": "Thibitisha"
+    },
+    "contact": {
+      "title": "Maelezo ya Mawasiliano",
+      "phone": "Nambari ya Simu",
+      "phone_placeholder": "mfano: 0712 345 678",
+      "name": "Jina Kamili",
+      "name_placeholder": "mfano: Jane Doe",
+      "phone_required": "Nambari ya simu inahitajika",
+      "phone_invalid": "Ingiza nambari sahihi ya simu ya Kenya",
+      "name_required": "Jina linahitajika"
+    },
+    "delivery": {
+      "title": "Maelezo ya Usafirishaji",
+      "type": "Ungependa kupokea agizo lako vipi?",
+      "delivery": "Usafirishaji Nyumbani",
+      "pickup": "Kuchukua",
+      "address": "Anwani ya Usafirishaji",
+      "address_placeholder": "mfano: 123 Barabara ya Moi, Nairobi",
+      "address_required": "Anwani inahitajika kwa usafirishaji",
+      "notes": "Maelezo ya Agizo (Hiari)",
+      "notes_placeholder": "Maelekezo maalum...",
+      "delivery_fee": "Ada ya Usafirishaji",
+      "estimated_time": "Muda wa usafirishaji: dakika {minutes}",
+      "map_placeholder": "Ramani inakuja hivi karibuni"
+    },
+    "payment": {
+      "title": "Njia ya Malipo",
+      "pay_on_delivery": "Lipa Ukipokea",
+      "pay_on_delivery_desc": "Lipa pesa taslimu agizo linapofika",
+      "mpesa": "M-Pesa",
+      "mpesa_desc": "Lipa kupitia M-Pesa STK push",
+      "stripe": "Kadi ya Benki",
+      "stripe_desc": "Lipa na Visa, Mastercard au American Express",
+      "mpesa_phone": "Nambari ya M-Pesa",
+      "mpesa_phone_hint": "Tutakutumia ombi la STK kwenye nambari hii",
+      "mpesa_phone_same": "Sawa na nambari ya mawasiliano",
+      "order_summary": "Muhtasari wa Agizo"
+    },
+    "confirmation": {
+      "title": "Agizo Limewekwa!",
+      "subtitle": "Agizo lako limepokelewa",
+      "order_id": "Nambari ya Agizo",
+      "tracking_code": "Msimbo wa Ufuatiliaji",
+      "track_order": "Fuatilia Agizo",
+      "continue_shopping": "Endelea Kununua",
+      "payment_pending": "Kamilisha malipo ya M-Pesa kwenye simu yako",
+      "payment_paid": "Malipo yamethibitishwa!",
+      "payment_failed": "Malipo yameshindwa — tafadhali wasiliana na msaada"
+    }
+  },
+  "tracking": {
+    "title": "Fuatilia Agizo",
+    "code_placeholder": "Ingiza msimbo wa ufuatiliaji",
+    "not_found": "Agizo halijapatikana",
+    "not_found_hint": "Angalia msimbo wako na ujaribu tena",
+    "statuses": {
+      "NEW": "Agizo Limewekwa",
+      "CONFIRMED": "Imethibitishwa",
+      "PREPARING": "Inaandaliwa",
+      "READY": "Iko Tayari",
+      "OUT_FOR_DELIVERY": "Ipo Njiani",
+      "DELIVERED": "Imetolewa",
+      "CANCELLED": "Imefutwa"
+    },
+    "status_desc": {
+      "NEW": "Tumeipokea agizo lako",
+      "CONFIRMED": "Agizo lako limethibitishwa",
+      "PREPARING": "Tunaandaa agizo lako",
+      "READY": "Agizo lako liko tayari",
+      "OUT_FOR_DELIVERY": "Agizo lako liko njiani",
+      "DELIVERED": "Agizo lako limetolewa",
+      "CANCELLED": "Agizo lako lilifutwa"
+    },
+    "rider_info": "Dereva",
+    "eta": "Wakati wa kukaribishwa",
+    "whatsapp_support": "Msaada wa WhatsApp",
+    "refresh": "Onyesha Upya",
+    "auto_refresh": "Inasasisha kila sekunde 30",
+    "order_items": "Bidhaa za Agizo",
+    "order_total": "Jumla ya Agizo"
+  },
+  "payment": {
+    "mpesa_prompt": "Angalia simu yako",
+    "mpesa_instructions": "Ombi la malipo limetumwa kwa {phone}. Ingiza PIN yako ya M-Pesa kukamilisha malipo.",
+    "mpesa_waiting": "Inasubiri malipo...",
+    "mpesa_success": "Malipo yamepokelewa!",
+    "mpesa_failed": "Malipo yameshindwa au kufutwa",
+    "mpesa_timeout": "Malipo yamekwisha muda",
+    "retry": "Jaribu Tena"
+  },
+  "errors": {
+    "generic": "Kuna tatizo. Tafadhali jaribu tena.",
+    "network": "Hitilafu ya mtandao. Angalia muunganisho wako.",
+    "store_not_found": "Duka halijapatikana",
+    "store_not_found_hint": "Duka hili halikuwepo au linaweza kuwa limeondolewa.",
+    "store_suspended": "Duka Halifanyi Kazi Kwa Sasa",
+    "store_suspended_hint": "Duka hili halifanyi kazi kwa sasa. Tafadhali angalia baadaye.",
+    "out_of_stock": "Bidhaa hii haipatikani",
+    "min_order": "Agizo la chini ni {amount}",
+    "session_expired": "Kikao kimekwisha. Tafadhali onyesha upya."
+  },
+  "offline": {
+    "title": "Huna Mtandao",
+    "subtitle": "Hakuna muunganisho wa intaneti",
+    "message": "Tafadhali angalia muunganisho wako na ujaribu tena.",
+    "cached_products": "Bidhaa Zilizohifadhiwa",
+    "retry": "Jaribu Tena"
+  },
+  "footer": {
+    "powered_by": "Inayoendeshwa na",
+    "whatsapp": "Piga Gumzo WhatsApp",
+    "call": "Tupigie Simu",
+    "address": "Anwani"
+  },
+  "common": {
+    "loading": "Inapakia...",
+    "error": "Hitilafu",
+    "retry": "Jaribu Tena",
+    "close": "Funga",
+    "cancel": "Ghairi",
+    "confirm": "Thibitisha",
+    "save": "Hifadhi",
+    "back": "Rudi",
+    "next": "Mbele",
+    "done": "Imekamilika",
+    "yes": "Ndio",
+    "no": "Hapana",
+    "or": "au",
+    "and": "na",
+    "free": "Bure"
+  }
+}

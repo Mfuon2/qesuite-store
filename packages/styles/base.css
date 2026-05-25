@@ -1,0 +1,262 @@
+/* ============================================================
+   QeSuite Design System — Base Stylesheet
+   Imported by every app. Defines tokens, utilities, components.
+   ============================================================ */
+
+/* ── Google Fonts ─────────────────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&family=Nunito:wght@400;500;600;700&display=swap');
+
+/* ── Design Tokens ────────────────────────────────────────── */
+:root {
+  /* Brand – overridden per-tenant via JS for storefront */
+  --color-primary:  #10b981;
+  --color-accent:   #0d9488;
+  --font-family:    'Inter', sans-serif;
+
+  /* Spacing scale (compact-first) */
+  --space-xs:  0.25rem;   /* 4px  */
+  --space-sm:  0.5rem;    /* 8px  */
+  --space-md:  0.75rem;   /* 12px */
+  --space-lg:  1rem;      /* 16px */
+  --space-xl:  1.5rem;    /* 24px */
+
+  /* Radius */
+  --radius-sm:  0.5rem;   /* 8px  */
+  --radius-md:  0.75rem;  /* 12px */
+  --radius-lg:  1rem;     /* 16px */
+  --radius-xl:  1.25rem;  /* 20px */
+
+  /* Shadow */
+  --shadow-sm: 0 1px 3px 0 rgba(0,0,0,.08), 0 1px 2px -1px rgba(0,0,0,.06);
+  --shadow-md: 0 4px 6px -1px rgba(0,0,0,.08), 0 2px 4px -2px rgba(0,0,0,.06);
+
+  /* Transition */
+  --transition-fast:  150ms ease;
+  --transition-base:  200ms ease;
+  --transition-slow:  300ms ease;
+}
+
+/* ── Reset & Base ─────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  font-family: var(--font-family);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── Scrollbar ────────────────────────────────────────────── */
+::-webkit-scrollbar           { width: 5px; height: 5px; }
+::-webkit-scrollbar-track     { background: transparent; }
+::-webkit-scrollbar-thumb     { background: #d1d5db; border-radius: 99px; }
+.dark ::-webkit-scrollbar-thumb { background: #4b5563; }
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-hide               { scrollbar-width: none; }
+
+/* ── Skeleton shimmer ─────────────────────────────────────── */
+@keyframes shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.skeleton {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+.dark .skeleton {
+  background: linear-gradient(90deg, #374151 25%, #4b5563 50%, #374151 75%);
+  background-size: 200% 100%;
+}
+
+/* ── Animations ───────────────────────────────────────────── */
+@keyframes spin     { to { transform: rotate(360deg); } }
+@keyframes bounce-in {
+  0%   { transform: scale(0); opacity: 0; }
+  60%  { transform: scale(1.2); }
+  100% { transform: scale(1); opacity: 1; }
+}
+@keyframes slide-up {
+  from { transform: translateY(16px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+.spinning               { animation: spin 0.8s linear infinite; }
+.animate-bounce-in      { animation: bounce-in 0.3s ease-out; }
+.animate-slide-up       { animation: slide-up 0.25s ease-out; }
+
+/* ── Vue Transitions ──────────────────────────────────────── */
+.fade-enter-active, .fade-leave-active { transition: opacity var(--transition-base); }
+.fade-enter-from, .fade-leave-to       { opacity: 0; }
+
+.slide-enter-active, .slide-leave-active {
+  transition: transform var(--transition-slow), opacity var(--transition-slow);
+}
+.slide-enter-from  { transform: translateX(16px); opacity: 0; }
+.slide-leave-to    { transform: translateX(-16px); opacity: 0; }
+
+/* ── Safe area helpers ────────────────────────────────────── */
+.safe-top    { padding-top:    env(safe-area-inset-top,    0px); }
+.safe-bottom { padding-bottom: env(safe-area-inset-bottom, 0px); }
+.pb-safe     { padding-bottom: env(safe-area-inset-bottom, 0px); }
+.pt-safe     { padding-top:    env(safe-area-inset-top,    0px); }
+
+/* ── Shared Component Classes ─────────────────────────────── */
+
+/* Form inputs — used across dashboard, admin, delivery */
+.qs-input {
+  display: block;
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  border-radius: var(--radius-md);
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+  color: #111827;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+.qs-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 20%, transparent);
+}
+.dark .qs-input {
+  background: #374151;
+  border-color: #4b5563;
+  color: #f9fafb;
+}
+.dark .qs-input:focus {
+  border-color: var(--color-primary);
+}
+.qs-input::placeholder { color: #9ca3af; }
+
+/* Form labels */
+.qs-label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #4b5563;
+  margin-bottom: 0.25rem;
+}
+.dark .qs-label { color: #9ca3af; }
+
+/* Toggle (on/off switch) */
+.qs-toggle {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  width: 2.5rem;
+  height: 1.375rem;
+  border-radius: 99px;
+  transition: background-color var(--transition-base);
+  flex-shrink: 0;
+}
+.qs-toggle-thumb {
+  display: inline-block;
+  width: 1rem;
+  height: 1rem;
+  background: white;
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(0,0,0,.25);
+  transition: transform var(--transition-base);
+}
+
+/* Primary button */
+.qs-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  border-radius: var(--radius-md);
+  transition: opacity var(--transition-fast), transform var(--transition-fast);
+  cursor: pointer;
+}
+.qs-btn:active { transform: scale(0.97); }
+.qs-btn-primary {
+  background: var(--color-primary);
+  color: white;
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--color-primary) 30%, transparent);
+}
+.qs-btn-primary:hover { opacity: 0.9; }
+.qs-btn-primary:disabled { opacity: 0.55; cursor: not-allowed; }
+
+/* Card */
+.qs-card {
+  background: white;
+  border: 1px solid #f3f4f6;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+.dark .qs-card {
+  background: #1f2937;
+  border-color: #374151;
+}
+
+/* Badge */
+.qs-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.125rem 0.5rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  border-radius: 99px;
+  white-space: nowrap;
+}
+
+/* Page header pattern */
+.qs-page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+.qs-page-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #111827;
+  line-height: 1.25;
+}
+.dark .qs-page-title { color: #f9fafb; }
+
+/* Section divider */
+.qs-divider {
+  border: none;
+  border-top: 1px solid #f3f4f6;
+  margin: 0.75rem 0;
+}
+.dark .qs-divider { border-color: #374151; }
+
+/* Delivery app action buttons */
+.btn-action {
+  width: 100%;
+  padding: 1.125rem;
+  font-size: 1.0625rem;
+  font-weight: 700;
+  border-radius: var(--radius-lg);
+  color: white;
+  transition: opacity var(--transition-fast), transform var(--transition-fast);
+  box-shadow: var(--shadow-md);
+}
+.btn-action:active { transform: scale(0.97); }
+.btn-action-green { background: #10b981; }
+.btn-action-green:active { background: #059669; }
+.btn-action-red   { background: #ef4444; }
+.btn-action-red:active { background: #dc2626; }
+
+/* Minimum tap target for mobile */
+.tap-target { min-height: 44px; min-width: 44px; }

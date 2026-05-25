@@ -1,0 +1,13 @@
+/* Import shared design system first */
+@import '@qesuite/styles/base.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Storefront: primary & accent overridden at runtime via JS (per-tenant branding) */
+:root {
+  --color-primary: #10b981;
+  --color-accent:  #0d9488;
+  --font-family:   'Inter', sans-serif;
+}

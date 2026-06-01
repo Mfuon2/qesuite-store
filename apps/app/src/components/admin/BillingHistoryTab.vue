@@ -60,8 +60,6 @@ const props = defineProps<{ storeId: string }>()
 
 const records = ref<StoreBillingHistory[]>([])
 const loading = ref(false)
-)
-}
 
 onMounted(async () => {
   loading.value = true

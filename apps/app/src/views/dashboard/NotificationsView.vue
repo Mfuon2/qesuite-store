@@ -317,6 +317,7 @@ async function sendNotification(n: NotifRow) {
     const res = await apiFetch<{ success: boolean; data: { status: string }; message?: string; error?: string }>(
       `/api/notifications/${n.id}/send`,
       { method: 'POST' }
+    )
     if (res.success) {
       n.status = res.data.status
       showToast(res.message ?? 'SMS sent successfully')

@@ -470,8 +470,6 @@ const tabs = [
   { id: 'orders', label: 'Orders' },
   { id: 'settings', label: 'Settings' },
 ]
-)
-}
 
 function formatMoney(n: number) {
   if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + 'M'

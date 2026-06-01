@@ -34,7 +34,7 @@ app.use(
       return null
     },
     credentials: true,
-    allowHeaders: ['Authorization', 'Content-Type'],
+    allowHeaders: ['Authorization', 'Content-Type', 'X-Admin-Request'],
     allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     exposeHeaders: ['Set-Cookie'],
   })

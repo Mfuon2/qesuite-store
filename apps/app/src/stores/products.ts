@@ -14,14 +14,20 @@ export const useProductsStore = defineStore('products', () => {
   const loading = ref(false)
   const saving = ref(false)
   const total = ref(0)
+  const lastFetchedAt = ref(0)
   const { showToast } = useToast()
 
-  async function fetchProducts(params?: { category_id?: string; search?: string; page?: number }) {
+  async function fetchProducts(params?: { category_id?: string; search?: string; page?: number }, { force = false } = {}) {
+    // Skip re-fetch if called within 30s without changed params (navigating back to products page)
+    const isDefaultFetch = !params?.category_id && !params?.search && !params?.page
+    if (!force && isDefaultFetch && products.value.length > 0 && Date.now() - lastFetchedAt.value < 30_000) return
+
     loading.value = true
     try {
-      const res = await apiGetProducts({ ...params, limit: 50 })
-      products.value = res.data || []
-      total.value = res.meta?.total || 0
+      const res = (await apiGetProducts({ ...params, limit: 50 })) as unknown as { data: { items: Product[]; total: number } | null }
+      products.value = res.data?.items || []
+      total.value = res.data?.total || 0
+      if (isDefaultFetch) lastFetchedAt.value = Date.now()
     } catch (err: unknown) {
       showToast(err instanceof Error ? err.message : 'Failed to load products', 'error')
     } finally {
@@ -42,8 +48,11 @@ export const useProductsStore = defineStore('products', () => {
     saving.value = true
     try {
       const res = await apiCreateProduct(payload)
-      if (res.success && res.data) {
+      // Backend returns { data: product, error, message } — no `success` field.
+      // apiFetch throws on non-2xx so reaching here means the request succeeded.
+      if (res.data) {
         products.value.unshift(res.data)
+        lastFetchedAt.value = Date.now()
         showToast('Product created', 'success')
         return res.data
       }
@@ -60,7 +69,7 @@ export const useProductsStore = defineStore('products', () => {
     saving.value = true
     try {
       const res = await apiUpdateProduct(id, payload)
-      if (res.success && res.data) {
+      if (res.data) {
         const idx = products.value.findIndex(p => p.id === id)
         if (idx !== -1) products.value[idx] = res.data
         if (currentProduct.value?.id === id) currentProduct.value = res.data
@@ -92,7 +101,7 @@ export const useProductsStore = defineStore('products', () => {
     saving.value = true
     try {
       const res = await apiBulkImportProducts(rows)
-      if (res.success && res.data) {
+      if (res.data) {
         await fetchProducts()
         showToast(`Imported ${res.data.imported} products`, 'success')
         return res.data
@@ -109,7 +118,7 @@ export const useProductsStore = defineStore('products', () => {
   async function uploadImage(file: File, onProgress?: (pct: number) => void): Promise<string | null> {
     try {
       const presignRes = await apiGetUploadUrl(file.name, file.type)
-      if (!presignRes.success || !presignRes.data) throw new Error('Failed to get upload URL')
+      if (!presignRes.data) throw new Error('Failed to get upload URL')
       const { upload_url, public_url } = presignRes.data
 
       await new Promise<void>((resolve, reject) => {

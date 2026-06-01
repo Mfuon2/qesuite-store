@@ -56,13 +56,38 @@ export async function getStore(id: string): Promise<AdminStoreDetail> {
   if (!res.success || !res.data) throw new Error(res.error || 'Store not found')
   const { tenant, settings, order_stats } = res.data
   return {
-    ...(tenant as AdminStoreDetail),
+    ...(tenant as unknown as AdminStoreDetail),
     delivery_enabled: Boolean(settings?.delivery_enabled ?? false),
     pickup_enabled: Boolean(settings?.pickup_enabled ?? false),
     currency: (settings?.currency as string) ?? 'KES',
     total_orders: order_stats?.total_orders ?? 0,
     total_gmv: order_stats?.total_revenue ?? 0,
   }
+}
+
+export interface StoreProfileUpdate {
+  name?: string
+  slug?: string
+  address?: string | null
+  phone?: string | null
+  whatsapp_number?: string | null
+  store_category?: string
+  primary_color?: string
+  accent_color?: string
+  font_family?: string
+  owner_name?: string
+  owner_email?: string
+  owner_phone?: string
+}
+
+export async function updateStoreProfile(id: string, payload: StoreProfileUpdate): Promise<void> {
+  const res = await api.put<ApiResponse<null>>(`/api/admin/stores/${id}/profile`, payload)
+  if (!res.success) throw new Error((res as ApiResponse<null>).error ?? 'Failed to update profile')
+}
+
+export async function deleteStore(id: string): Promise<void> {
+  const res = await api.delete<ApiResponse<null>>(`/api/admin/stores/${id}`)
+  if (res && !res.success) throw new Error((res as ApiResponse<null>).error ?? 'Failed to delete store')
 }
 
 export async function suspendStore(id: string, reason: string): Promise<void> {
@@ -80,6 +105,22 @@ export async function extendTrial(id: string, days: number): Promise<void> {
 export interface ImpersonationTokenResponse {
   token: string
   expires_at: string
+}
+
+export interface ResetPasswordResponse {
+  new_password: string
+}
+
+export async function resetStoreUserPassword(
+  id: string,
+  password?: string
+): Promise<ResetPasswordResponse> {
+  const res = await api.post<ApiResponse<ResetPasswordResponse>>(
+    `/api/admin/stores/${id}/reset-password`,
+    password ? { password } : {}
+  )
+  if (!res.success || !res.data) throw new Error(res.error || 'Failed to reset password')
+  return res.data
 }
 
 export async function getImpersonationToken(id: string): Promise<ImpersonationTokenResponse> {
@@ -160,4 +201,79 @@ export async function getStoreBillingHistory(storeId: string): Promise<StoreBill
   )
   if (!res.success || !res.data) return []
   return res.data
+}
+
+// ─── Per-store subscription management ───────────────────────
+
+export interface StoreSubscription {
+  id: string
+  tenant_id: string
+  plan: string
+  amount: number
+  currency: string
+  status: string
+  current_period_start: string | null
+  current_period_end: string | null
+  payment_method: string | null
+  created_at: string
+}
+
+export interface StoreSubscriptionOverview {
+  tenant: {
+    id: string; name: string; plan: string
+    subscription_status: string; trial_ends_at: string | null; is_suspended: number
+  }
+  subscription: StoreSubscription | null
+  billing_history: StoreBillingHistory[]
+}
+
+export async function getStoreSubscription(storeId: string): Promise<StoreSubscriptionOverview> {
+  const res = await api.get<ApiResponse<StoreSubscriptionOverview>>(`/api/admin/stores/${storeId}/subscription`)
+  if (!res.success || !res.data) throw new Error(res.error || 'Failed to load subscription')
+  return res.data
+}
+
+export async function updateStoreSubscription(storeId: string, payload: {
+  plan?: string; amount?: number; currency?: string
+  current_period_start?: string; current_period_end?: string; payment_method?: string
+}): Promise<void> {
+  const res = await api.put<ApiResponse<null>>(`/api/admin/stores/${storeId}/subscription`, payload)
+  if (!res.success) throw new Error((res as ApiResponse<null>).error ?? 'Failed to update subscription')
+}
+
+export async function activateStoreSubscription(storeId: string, payload: {
+  plan?: string; amount?: number; period_months?: number; payment_method?: string
+}): Promise<void> {
+  const res = await api.post<ApiResponse<null>>(`/api/admin/stores/${storeId}/subscription/activate`, payload)
+  if (!res.success) throw new Error((res as ApiResponse<null>).error ?? 'Failed to activate')
+}
+
+export async function cancelStoreSubscription(storeId: string): Promise<void> {
+  await api.post<ApiResponse<null>>(`/api/admin/stores/${storeId}/subscription/cancel`, {})
+}
+
+export async function reviveStoreSubscription(storeId: string, period_months = 1): Promise<void> {
+  await api.post<ApiResponse<null>>(`/api/admin/stores/${storeId}/subscription/revive`, { period_months })
+}
+
+export async function adjustSubscriptionDays(storeId: string, days: number): Promise<void> {
+  const res = await api.post<ApiResponse<null>>(`/api/admin/stores/${storeId}/subscription/adjust-days`, { days })
+  if (!res.success) throw new Error((res as ApiResponse<null>).error ?? 'Failed to adjust days')
+}
+
+export async function updateStoreTrial(storeId: string, payload: {
+  action: 'enable' | 'disable' | 'set_date' | 'add_days'
+  trial_end_date?: string
+  days?: number
+}): Promise<void> {
+  const res = await api.put<ApiResponse<null>>(`/api/admin/stores/${storeId}/trial`, payload)
+  if (!res.success) throw new Error((res as ApiResponse<null>).error ?? 'Failed to update trial')
+}
+
+export async function addStoreBillingRecord(storeId: string, payload: {
+  amount: number; currency?: string; status: string
+  payment_method: string; reference?: string
+}): Promise<void> {
+  const res = await api.post<ApiResponse<null>>(`/api/admin/stores/${storeId}/billing`, payload)
+  if (!res.success) throw new Error((res as ApiResponse<null>).error ?? 'Failed to add record')
 }

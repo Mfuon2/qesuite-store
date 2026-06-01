@@ -29,17 +29,17 @@ interface NotificationMessage {
 async function logNotification(
   env: Env,
   tenantId: string,
-  orderId: string,
+  orderId: string | null,
   channel: 'sms' | 'whatsapp',
   recipient: string,
   message: string,
-  status: 'sent' | 'failed'
+  status: 'queued' | 'sent' | 'failed'
 ): Promise<void> {
   try {
     await env.qesuite_db.prepare(
       `INSERT INTO notifications_log (id, tenant_id, order_id, channel, recipient, message, status, sent_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))`
-    ).bind(generateId(), tenantId, orderId, channel, recipient, message, status).run()
+    ).bind(generateId(), tenantId, orderId ?? null, channel, recipient, message, status).run()
   } catch (logErr) {
     console.error('Failed to log notification:', logErr)
   }
@@ -65,6 +65,17 @@ export async function handleQueue(
 async function processNotification(data: NotificationMessage, env: Env): Promise<void> {
   const baseUrl = env.APP_BASE_URL
   const dashboardUrl = baseUrl.replace('store.', 'dashboard.')
+
+  // Persist the queued notification intent before attempting delivery
+  await logNotification(
+    env,
+    data.tenant_id,
+    data.order_id,
+    'sms',
+    data.customer_phone ?? data.store_phone ?? '',
+    JSON.stringify({ type: data.type, tracking_code: data.tracking_code }),
+    'queued'
+  )
 
   switch (data.type) {
     case 'ORDER_CONFIRMED': {
@@ -151,15 +162,14 @@ async function processNotification(data: NotificationMessage, env: Env): Promise
     case 'ORDER_STATUS_PREPARING':
     case 'ORDER_STATUS_READY':
     case 'ORDER_STATUS_CANCELLED': {
-      // Status update — send a generic SMS to customer
-      const statusLabels: Record<string, string> = {
-        ORDER_STATUS_CONFIRMED: 'imethibitishwa',
-        ORDER_STATUS_PREPARING: 'inaandaliwa',
-        ORDER_STATUS_READY: 'iko tayari kwa ukusanyaji',
-        ORDER_STATUS_CANCELLED: 'imefutwa',
+      const storeName = data.store_name ?? 'the store'
+      const statusMessages: Record<string, string> = {
+        ORDER_STATUS_CONFIRMED: `Your order #${data.tracking_code} has been confirmed by ${storeName} and is being processed.`,
+        ORDER_STATUS_PREPARING: `Your order #${data.tracking_code} is now being prepared. We will notify you when it is ready.`,
+        ORDER_STATUS_READY:     `Your order #${data.tracking_code} is ready for collection. Please pick it up at ${storeName}.`,
+        ORDER_STATUS_CANCELLED: `We're sorry — your order #${data.tracking_code} has been cancelled by ${storeName}. Please contact us if you have any questions.`,
       }
-      const label = statusLabels[data.type] ?? data.type
-      const msg = `Agizo lako #${data.tracking_code} ${label}.\n- ${data.store_name ?? 'QeSuite Store'}`
+      const msg = statusMessages[data.type] ?? `Your order #${data.tracking_code} has been updated by ${storeName}.`
 
       if (data.customer_phone) {
         try {

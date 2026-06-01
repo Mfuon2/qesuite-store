@@ -29,6 +29,7 @@ export const useCartStore = defineStore('cart', () => {
   const storefrontStore = useStorefrontStore()
   const items = ref<CartItem[]>([])
   const isDrawerOpen = ref(false)
+  const deliveryType = ref<'delivery' | 'pickup'>('delivery')
 
   // Load cart for current slug
   function initCart(slug: string) {
@@ -57,7 +58,9 @@ export const useCartStore = defineStore('cart', () => {
     }, 0)
   )
 
-  const deliveryFee = computed(() => storefrontStore.deliveryFee)
+  const deliveryFee = computed(() =>
+    deliveryType.value === 'pickup' ? 0 : storefrontStore.deliveryFee
+  )
 
   const total = computed(() => subtotal.value + deliveryFee.value)
 
@@ -87,8 +90,13 @@ export const useCartStore = defineStore('cart', () => {
     }
   }
 
+  function setDeliveryType(type: 'delivery' | 'pickup') {
+    deliveryType.value = type
+  }
+
   function clearCart() {
     items.value = []
+    deliveryType.value = 'delivery'
   }
 
   function getItemQuantity(productId: string): number {
@@ -106,6 +114,7 @@ export const useCartStore = defineStore('cart', () => {
   return {
     items,
     isDrawerOpen,
+    deliveryType,
     itemCount,
     subtotal,
     deliveryFee,
@@ -115,6 +124,7 @@ export const useCartStore = defineStore('cart', () => {
     removeItem,
     updateQuantity,
     clearCart,
+    setDeliveryType,
     getItemQuantity,
     openDrawer,
     closeDrawer,

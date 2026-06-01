@@ -6,6 +6,17 @@ import { generateId } from '../lib/jwt'
 
 const products = new Hono<{ Bindings: Env; Variables: Variables }>()
 
+// Nest the flat category_name column into { category: { id, name } } matching the Product type
+function withCategory(p: Record<string, unknown>) {
+  const { category_name, ...rest } = p as { category_name: string | null } & Record<string, unknown>
+  return {
+    ...rest,
+    category: rest.category_id && category_name
+      ? { id: rest.category_id, name: category_name }
+      : null,
+  }
+}
+
 // GET /api/products — public list with filters
 products.get('/', async (c) => {
   try {
@@ -80,8 +91,9 @@ products.get('/', async (c) => {
     ).bind(...params, limit, offset).all()
 
     return c.json({
+      success: true,
       data: {
-        items: rows.results,
+        items: rows.results.map(p => withCategory(p as Record<string, unknown>)),
         total: countResult?.cnt ?? 0,
         page,
         limit,
@@ -94,80 +106,113 @@ products.get('/', async (c) => {
   }
 })
 
+// GET /api/products/:id
+products.get('/:id', authMiddleware, tenantGuard, async (c) => {
+  try {
+    const tenantId = c.get('user').tenant_id!
+    const id = c.req.param('id')
+    const product = await c.env.qesuite_db.prepare(
+      `SELECT p.*, c.name as category_name FROM products p
+       LEFT JOIN categories c ON c.id = p.category_id
+       WHERE p.id = ? AND p.tenant_id = ?`
+    ).bind(id, tenantId).first()
+    if (!product) return c.json({ error: 'Product not found', data: null }, 404)
+    return c.json({ success: true, data: product, error: null })
+  } catch (err) {
+    console.error('product get error', err)
+    return c.json({ error: 'Failed to fetch product', data: null }, 500)
+  }
+})
+
 // POST /api/products/bulk-import — before /:id routes
+// Accepts JSON: { products: [{name, price, description?, stock?}] }
+// or CSV text with header row: name,price,description,stock,category
 products.post('/bulk-import', authMiddleware, tenantGuard, async (c) => {
   try {
     const user = c.get('user')
     const tenantId = user.tenant_id!
-    const body = await c.req.text()
-
-    const lines = body.split('\n').filter((l) => l.trim())
-    if (lines.length < 2) {
-      return c.json({ error: 'CSV must have header and at least one data row', data: null }, 400)
-    }
-
-    const header = lines[0].split(',').map((h) => h.trim().toLowerCase())
-    const nameIdx = header.indexOf('name')
-    const priceIdx = header.indexOf('price')
-    const descIdx = header.indexOf('description')
-    const stockIdx = header.indexOf('stock')
-    const categoryIdx = header.indexOf('category')
-
-    if (nameIdx === -1 || priceIdx === -1) {
-      return c.json({ error: 'CSV must have at minimum name and price columns', data: null }, 400)
-    }
-
-    // Cache category lookup
-    const categoryCache: Record<string, string> = {}
-
-    const getCategoryId = async (name: string): Promise<string> => {
-      if (categoryCache[name]) return categoryCache[name]
-      const existing = await c.env.qesuite_db.prepare(
-        'SELECT id FROM categories WHERE tenant_id = ? AND name = ?'
-      ).bind(tenantId, name).first<{ id: string }>()
-      if (existing) {
-        categoryCache[name] = existing.id
-        return existing.id
-      }
-      const newId = generateId()
-      await c.env.qesuite_db.prepare(
-        "INSERT INTO categories (id, tenant_id, name, icon, sort_order, is_active) VALUES (?, ?, ?, '📦', 0, 1)"
-      ).bind(newId, tenantId, name).run()
-      categoryCache[name] = newId
-      return newId
-    }
+    const contentType = c.req.header('content-type') ?? ''
 
     let imported = 0
     const errors: string[] = []
 
-    for (let i = 1; i < lines.length; i++) {
-      const cols = lines[i].split(',').map((c) => c.trim())
-      const name = cols[nameIdx]
-      const price = parseInt(cols[priceIdx], 10)
+    if (contentType.includes('application/json')) {
+      // JSON format
+      const body = await c.req.json<{ products?: Array<{ name: string; price: number; description?: string; stock?: number }> }>()
+      const rows = body.products ?? []
+      if (!rows.length) return c.json({ error: 'No products provided', data: null }, 400)
 
-      if (!name || isNaN(price) || price < 0) {
-        errors.push(`Row ${i + 1}: invalid name or price`)
-        continue
+      const cat = await c.env.qesuite_db.prepare(
+        'SELECT id FROM categories WHERE tenant_id = ? ORDER BY sort_order ASC LIMIT 1'
+      ).bind(tenantId).first<{ id: string }>()
+      const defaultCategoryId = cat?.id ?? null
+
+      for (let i = 0; i < rows.length; i++) {
+        const p = rows[i]
+        if (!p.name || p.price === undefined || p.price < 0) {
+          errors.push(`Row ${i + 1}: invalid name or price`)
+          continue
+        }
+        await c.env.qesuite_db.prepare(
+          `INSERT INTO products (id, tenant_id, category_id, name, description, price, stock,
+            featured, on_sale, is_active, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, 0, 0, 1, datetime('now'), datetime('now'))`
+        ).bind(generateId(), tenantId, defaultCategoryId, p.name, p.description ?? null, p.price, p.stock ?? 0).run()
+        imported++
+      }
+    } else {
+      // CSV format
+      const body = await c.req.text()
+      const lines = body.split('\n').filter((l) => l.trim())
+      if (lines.length < 2) {
+        return c.json({ error: 'CSV must have header and at least one data row', data: null }, 400)
       }
 
-      const description = descIdx !== -1 ? cols[descIdx] ?? '' : ''
-      const stock = stockIdx !== -1 ? parseInt(cols[stockIdx], 10) || 0 : 0
-      const categoryName = categoryIdx !== -1 ? cols[categoryIdx] : ''
-      const categoryId = categoryName ? await getCategoryId(categoryName) : null
+      const header = lines[0].split(',').map((h) => h.trim().toLowerCase())
+      const nameIdx = header.indexOf('name')
+      const priceIdx = header.indexOf('price')
+      const descIdx = header.indexOf('description')
+      const stockIdx = header.indexOf('stock')
+      const categoryIdx = header.indexOf('category')
 
-      await c.env.qesuite_db.prepare(
-        `INSERT INTO products (id, tenant_id, category_id, name, description, price, stock, featured, on_sale, is_active, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, 0, 0, 1, datetime('now'), datetime('now'))`
-      ).bind(generateId(), tenantId, categoryId, name, description, price, stock).run()
+      if (nameIdx === -1 || priceIdx === -1) {
+        return c.json({ error: 'CSV must have at minimum name and price columns', data: null }, 400)
+      }
 
-      imported++
+      const categoryCache: Record<string, string> = {}
+      const getCategoryId = async (name: string): Promise<string> => {
+        if (categoryCache[name]) return categoryCache[name]
+        const existing = await c.env.qesuite_db.prepare(
+          'SELECT id FROM categories WHERE tenant_id = ? AND name = ?'
+        ).bind(tenantId, name).first<{ id: string }>()
+        if (existing) { categoryCache[name] = existing.id; return existing.id }
+        const newId = generateId()
+        await c.env.qesuite_db.prepare(
+          "INSERT INTO categories (id, tenant_id, name, icon, sort_order, is_active) VALUES (?, ?, ?, '📦', 0, 1)"
+        ).bind(newId, tenantId, name).run()
+        categoryCache[name] = newId
+        return newId
+      }
+
+      for (let i = 1; i < lines.length; i++) {
+        const cols = lines[i].split(',').map((col) => col.trim())
+        const name = cols[nameIdx]
+        const price = parseInt(cols[priceIdx], 10)
+        if (!name || isNaN(price) || price < 0) { errors.push(`Row ${i + 1}: invalid name or price`); continue }
+        const description = descIdx !== -1 ? cols[descIdx] ?? '' : ''
+        const stock = stockIdx !== -1 ? parseInt(cols[stockIdx], 10) || 0 : 0
+        const categoryName = categoryIdx !== -1 ? cols[categoryIdx] : ''
+        const categoryId = categoryName ? await getCategoryId(categoryName) : null
+        await c.env.qesuite_db.prepare(
+          `INSERT INTO products (id, tenant_id, category_id, name, description, price, stock,
+            featured, on_sale, is_active, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, 0, 0, 1, datetime('now'), datetime('now'))`
+        ).bind(generateId(), tenantId, categoryId, name, description, price, stock).run()
+        imported++
+      }
     }
 
-    return c.json({
-      data: { imported, errors },
-      error: null,
-      message: `Imported ${imported} products`,
-    })
+    return c.json({ success: true, data: { imported, errors }, error: null, message: `Imported ${imported} products` })
   } catch (err) {
     console.error('bulk-import error', err)
     return c.json({ error: 'Bulk import failed', data: null }, 500)
@@ -206,15 +251,18 @@ products.post('/:id/image', authMiddleware, tenantGuard, async (c) => {
     const url = await c.env.IMAGES.createMultipartUpload(key)
     // R2 direct upload — return the object key and a signed PUT URL
     // Cloudflare R2 presigned URLs require Workers signed URL pattern
-    const uploadUrl = `${c.env.APP_BASE_URL}/api/upload/r2?key=${encodeURIComponent(key)}`
+    const publicUrl = c.env.CDN_URL
+      ? `${c.env.CDN_URL}/${key}`
+      : `${c.env.APP_BASE_URL}/api/upload/img?key=${encodeURIComponent(key)}`
+    const uploadToken = btoa(JSON.stringify({ key, tenant_id: tenantId, exp: Date.now() + 600_000 }))
+    const uploadUrl = `${c.env.APP_BASE_URL}/api/upload/r2?token=${encodeURIComponent(uploadToken)}`
 
-    // Store the expected URL so the product can reference it
-    const publicUrl = `https://images.qesuite.com/${key}`
-    await c.env.qesuite_db.prepare('UPDATE products SET image_url = ?, updated_at = datetime(\'now\') WHERE id = ?')
+    await c.env.qesuite_db.prepare("UPDATE products SET image_url = ?, updated_at = datetime('now') WHERE id = ?")
       .bind(publicUrl, productId)
       .run()
 
     return c.json({
+      success: true,
       data: { upload_url: uploadUrl, public_url: publicUrl, key },
       error: null,
     })
@@ -267,10 +315,12 @@ products.post('/', authMiddleware, tenantGuard, async (c) => {
       body.featured ?? 0, body.on_sale ?? 0
     ).run()
 
-    const product = await c.env.qesuite_db.prepare('SELECT * FROM products WHERE id = ?')
-      .bind(id).first()
+    const product = await c.env.qesuite_db.prepare(
+      `SELECT p.*, c.name as category_name FROM products p
+       LEFT JOIN categories c ON c.id = p.category_id WHERE p.id = ?`
+    ).bind(id).first<Record<string, unknown>>()
 
-    return c.json({ data: product, error: null, message: 'Product created' }, 201)
+    return c.json({ success: true, data: product ? withCategory(product) : null, error: null, message: 'Product created' }, 201)
   } catch (err) {
     console.error('product create error', err)
     return c.json({ error: 'Failed to create product', data: null }, 500)
@@ -315,8 +365,9 @@ products.put('/:id', authMiddleware, tenantGuard, async (c) => {
       stock: body.stock,
       category_id: body.category_id,
       image_url: body.image_url,
-      featured: body.featured,
-      on_sale: body.on_sale,
+      // Convert booleans to SQLite integers (frontend may send true/false)
+      featured: body.featured !== undefined ? (body.featured ? 1 : 0) : undefined,
+      on_sale: body.on_sale !== undefined ? (body.on_sale ? 1 : 0) : undefined,
     }
 
     for (const [key, val] of Object.entries(mappings)) {
@@ -337,10 +388,12 @@ products.put('/:id', authMiddleware, tenantGuard, async (c) => {
       `UPDATE products SET ${fields.join(', ')} WHERE id = ?`
     ).bind(...values).run()
 
-    const product = await c.env.qesuite_db.prepare('SELECT * FROM products WHERE id = ?')
-      .bind(id).first()
+    const product = await c.env.qesuite_db.prepare(
+      `SELECT p.*, c.name as category_name FROM products p
+       LEFT JOIN categories c ON c.id = p.category_id WHERE p.id = ?`
+    ).bind(id).first<Record<string, unknown>>()
 
-    return c.json({ data: product, error: null, message: 'Product updated' })
+    return c.json({ success: true, data: product ? withCategory(product) : null, error: null, message: 'Product updated' })
   } catch (err) {
     console.error('product update error', err)
     return c.json({ error: 'Failed to update product', data: null }, 500)
@@ -366,7 +419,7 @@ products.delete('/:id', authMiddleware, tenantGuard, async (c) => {
       "UPDATE products SET is_active = 0, updated_at = datetime('now') WHERE id = ?"
     ).bind(id).run()
 
-    return c.json({ data: { deleted: true }, error: null, message: 'Product deactivated' })
+    return c.json({ success: true, data: { deleted: true }, error: null, message: 'Product deactivated' })
   } catch (err) {
     console.error('product delete error', err)
     return c.json({ error: 'Failed to delete product', data: null }, 500)

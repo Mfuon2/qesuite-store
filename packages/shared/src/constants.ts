@@ -6,53 +6,53 @@ import type { OrderStatus, Plan, PlanDetails, Currency } from '@qesuite/types';
 
 export const ORDER_STATUSES: Record<
   OrderStatus,
-  { label: string; label_sw: string; color: string; bg: string; next: OrderStatus[] }
+  { label: string; description: string; color: string; bg: string; next: OrderStatus[] }
 > = {
   NEW: {
     label: 'New',
-    label_sw: 'Mpya',
+    description: 'Order received and awaiting confirmation.',
     color: '#2563eb',
     bg: '#dbeafe',
     next: ['CONFIRMED', 'CANCELLED'],
   },
   CONFIRMED: {
     label: 'Confirmed',
-    label_sw: 'Imethibitishwa',
+    description: 'Order confirmed and being processed.',
     color: '#7c3aed',
     bg: '#ede9fe',
     next: ['PREPARING', 'CANCELLED'],
   },
   PREPARING: {
     label: 'Preparing',
-    label_sw: 'Inaandaliwa',
+    description: 'Order is being packed and prepared for dispatch.',
     color: '#d97706',
     bg: '#fef3c7',
     next: ['READY'],
   },
   READY: {
-    label: 'Ready',
-    label_sw: 'Iko tayari',
+    label: 'Ready for Pickup',
+    description: 'Order is packed and ready to be picked up by a rider.',
     color: '#0891b2',
     bg: '#cffafe',
     next: ['OUT_FOR_DELIVERY'],
   },
   OUT_FOR_DELIVERY: {
     label: 'Out for Delivery',
-    label_sw: 'Inawasilishwa',
+    description: 'Order is on its way to the customer.',
     color: '#f59e0b',
     bg: '#fffbeb',
     next: ['DELIVERED', 'CANCELLED'],
   },
   DELIVERED: {
     label: 'Delivered',
-    label_sw: 'Imewasilishwa',
+    description: 'Order has been successfully delivered.',
     color: '#059669',
     bg: '#d1fae5',
     next: [],
   },
   CANCELLED: {
     label: 'Cancelled',
-    label_sw: 'Imefutwa',
+    description: 'Order has been cancelled.',
     color: '#dc2626',
     bg: '#fee2e2',
     next: [],
@@ -72,7 +72,7 @@ export const PLANS: Record<Plan, PlanDetails> = {
     max_products: 20,
     max_staff: 2,
     features: [
-      '20 products',
+      'Up to 20 products',
       '2 staff accounts',
       'Basic storefront',
       'M-Pesa payments',
@@ -87,12 +87,12 @@ export const PLANS: Record<Plan, PlanDetails> = {
     max_products: 100,
     max_staff: 5,
     features: [
-      '100 products',
+      'Up to 100 products',
       '5 staff accounts',
       'Custom branding',
-      'M-Pesa + Stripe payments',
+      'M-Pesa & Stripe payments',
       'SMS & WhatsApp notifications',
-      'Delivery tracking',
+      'Live delivery tracking',
       'Analytics dashboard',
     ],
   },
@@ -104,9 +104,9 @@ export const PLANS: Record<Plan, PlanDetails> = {
     max_products: 500,
     max_staff: 15,
     features: [
-      '500 products',
+      'Up to 500 products',
       '15 staff accounts',
-      'All Starter features',
+      'Everything in Starter',
       'Priority support',
       'Advanced analytics',
       'Bulk product import',
@@ -123,7 +123,7 @@ export const PLANS: Record<Plan, PlanDetails> = {
     features: [
       'Unlimited products',
       'Unlimited staff',
-      'All Growth features',
+      'Everything in Growth',
       'Dedicated support',
       'Custom domain',
       'API access',
@@ -139,11 +139,11 @@ export const PLANS: Record<Plan, PlanDetails> = {
     max_staff: -1,
     features: [
       'Everything in Pro',
-      'Custom SLA',
-      'On-premise option',
+      'Custom service-level agreement',
+      'On-premise deployment option',
       'Dedicated infrastructure',
       'Custom integrations',
-      'Account manager',
+      'Dedicated account manager',
     ],
   },
 };
@@ -166,9 +166,9 @@ export const CURRENCY_SYMBOLS: Record<Currency, string> = {
 // ─────────────────────────────────────────────────────────────
 
 export const PAYMENT_METHODS = {
-  pay_on_delivery: { label: 'Pay on Delivery', label_sw: 'Lipa uwasilishwaji' },
-  mpesa: { label: 'M-Pesa', label_sw: 'M-Pesa' },
-  stripe: { label: 'Card', label_sw: 'Kadi' },
+  pay_on_delivery: { label: 'Pay on Delivery', description: 'Customer pays in cash upon receiving the order.' },
+  mpesa:           { label: 'M-Pesa',          description: 'Mobile money payment via Safaricom M-Pesa.' },
+  stripe:          { label: 'Card',            description: 'Credit or debit card payment via Stripe.' },
 } as const;
 
 // ─────────────────────────────────────────────────────────────
@@ -176,66 +176,53 @@ export const PAYMENT_METHODS = {
 // ─────────────────────────────────────────────────────────────
 
 export const VEHICLE_TYPES = {
-  bicycle: { label: 'Bicycle', icon: '🚲' },
+  bicycle:    { label: 'Bicycle',    icon: '🚲' },
   motorcycle: { label: 'Motorcycle', icon: '🏍️' },
-  car: { label: 'Car', icon: '🚗' },
-  on_foot: { label: 'On Foot', icon: '🚶' },
+  car:        { label: 'Car',        icon: '🚗' },
+  on_foot:    { label: 'On Foot',    icon: '🚶' },
 } as const;
 
 // ─────────────────────────────────────────────────────────────
-// SMS / WhatsApp message templates
+// SMS / WhatsApp message templates (English)
 // ─────────────────────────────────────────────────────────────
 
 export const SMS_TEMPLATES = {
-  en: {
-    order_received: (trackingCode: string, storeName: string) =>
-      `Your order #${trackingCode} has been received by ${storeName}. We'll confirm it shortly. Track: ${trackingCode}`,
+  order_received: (trackingCode: string, storeName: string) =>
+    `Hi! Your order #${trackingCode} has been received by ${storeName}. We will confirm it shortly.`,
 
-    order_confirmed: (trackingCode: string, storeName: string) =>
-      `Great news! Your order #${trackingCode} from ${storeName} has been confirmed and is being prepared.`,
+  order_confirmed: (trackingCode: string, storeName: string) =>
+    `Your order #${trackingCode} from ${storeName} has been confirmed and is now being prepared.`,
 
-    order_ready: (trackingCode: string) =>
-      `Your order #${trackingCode} is ready and will be picked up by a rider shortly.`,
+  order_ready: (trackingCode: string, storeName: string) =>
+    `Your order #${trackingCode} is packed and ready. A rider from ${storeName} will collect it shortly.`,
 
-    order_out_for_delivery: (trackingCode: string, riderName: string, riderPhone: string) =>
-      `Your order #${trackingCode} is on its way! Rider: ${riderName} (${riderPhone}). Track your order in real-time.`,
+  order_out_for_delivery: (trackingCode: string, riderName: string, riderPhone: string, trackUrl: string) =>
+    `Your order #${trackingCode} is on its way! Rider: ${riderName} — ${riderPhone}. Track: ${trackUrl}`,
 
-    order_delivered: (trackingCode: string, storeName: string) =>
-      `Your order #${trackingCode} has been delivered. Thank you for shopping with ${storeName}!`,
+  order_delivered: (trackingCode: string, storeName: string) =>
+    `Your order #${trackingCode} has been delivered. Thank you for shopping with ${storeName}! We hope to serve you again.`,
 
-    order_cancelled: (trackingCode: string, reason?: string) =>
-      `Your order #${trackingCode} has been cancelled.${reason ? ` Reason: ${reason}.` : ''} Contact us for assistance.`,
+  order_cancelled: (trackingCode: string, storeName: string, reason?: string) =>
+    `Your order #${trackingCode} from ${storeName} has been cancelled.${reason ? ` Reason: ${reason}.` : ''} Please contact us if you need assistance.`,
 
-    otp: (otp: string) =>
-      `Your QeSuite verification code is ${otp}. Valid for 10 minutes. Do not share this code.`,
-
-    magic_link: (link: string, storeName: string) =>
-      `${storeName}: Click to access your delivery dashboard: ${link} (expires in 24 hours)`,
+  new_order_owner: (trackingCode: string, customerName: string, total: number, paymentMethod: string, dashboardUrl: string) => {
+    const method = paymentMethod === 'mpesa' ? 'M-Pesa' : paymentMethod === 'pay_on_delivery' ? 'Pay on Delivery' : 'Card';
+    return `New order #${trackingCode}! Customer: ${customerName} | Total: KES ${total.toLocaleString()} | ${method}. Manage: ${dashboardUrl}`;
   },
-  sw: {
-    order_received: (trackingCode: string, storeName: string) =>
-      `Agizo lako #${trackingCode} limepokelewa na ${storeName}. Tutakuthibitishia hivi karibuni. Fuatilia: ${trackingCode}`,
 
-    order_confirmed: (trackingCode: string, storeName: string) =>
-      `Habari njema! Agizo lako #${trackingCode} kutoka ${storeName} limethibitishwa na linaandaliwa.`,
+  otp: (otp: string) =>
+    `Your QeSuite verification code is ${otp}. It is valid for 10 minutes. Do not share this code with anyone.`,
 
-    order_ready: (trackingCode: string) =>
-      `Agizo lako #${trackingCode} liko tayari na litachukuliwa na boda boda hivi karibuni.`,
+  magic_link: (link: string, storeName: string) =>
+    `${storeName}: Use this link to access your delivery dashboard — ${link}. It expires in 24 hours.`,
 
-    order_out_for_delivery: (trackingCode: string, riderName: string, riderPhone: string) =>
-      `Agizo lako #${trackingCode} linakuja! Boda: ${riderName} (${riderPhone}). Fuatilia agizo lako kwa wakati halisi.`,
-
-    order_delivered: (trackingCode: string, storeName: string) =>
-      `Agizo lako #${trackingCode} limewasilishwa. Asante kwa kununua kutoka ${storeName}!`,
-
-    order_cancelled: (trackingCode: string, reason?: string) =>
-      `Agizo lako #${trackingCode} limefutwa.${reason ? ` Sababu: ${reason}.` : ''} Wasiliana nasi kwa usaidizi.`,
-
-    otp: (otp: string) =>
-      `Nambari yako ya uthibitisho ya QeSuite ni ${otp}. Inafaa kwa dakika 10. Usishiriki nambari hii.`,
-
-    magic_link: (link: string, storeName: string) =>
-      `${storeName}: Bonyeza ili ufikiwe dashibodi yako ya uwasilishaji: ${link} (inaisha baada ya saa 24)`,
+  subscription_reminder: (storeName: string, ownerName: string, appUrl: string, reminderNumber: number) => {
+    const urgency = reminderNumber <= 2
+      ? 'Friendly reminder'
+      : reminderNumber <= 4
+        ? 'Action required'
+        : 'Urgent — immediate action needed';
+    return `${urgency}: Hi ${ownerName}, your store "${storeName}" does not have an active subscription. Your store is currently offline and not accepting orders. Visit ${appUrl} to choose a plan and reactivate it. (Reminder ${reminderNumber})`;
   },
 } as const;
 
@@ -254,7 +241,8 @@ export const APP_CONSTANTS = {
   DEFAULT_PAGE_SIZE: 20,
   MAX_PAGE_SIZE: 100,
   TRACKING_CODE_PREFIX: 'QS',
-  KENYA_PHONE_REGEX: /^(\+?254|0)[17]\d{8}$/,
+  // Accepts: +254724… | 254724… | 0724… | 724… (bare 9-digit) — all Kenyan prefixes (7xx, 1xx)
+  KENYA_PHONE_REGEX: /^(\+?254|0)?[17]\d{8}$/,
   SLUG_REGEX: /^[a-z0-9]+(?:-[a-z0-9]+)*$/,
 } as const;
 

@@ -1,6 +1,6 @@
 <template>
   <span
-    class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold"
+    class="admin-pill"
     :class="badgeClass"
   >
     {{ label }}
@@ -30,12 +30,12 @@ const label = computed(() => {
 
 const badgeClass = computed(() => {
   if (props.suspended || props.status === 'suspended') {
-    return 'bg-red-500/20 text-red-400'
+    return 'bg-red-50 text-red-700 ring-1 ring-red-100'
   }
-  if (props.status === 'active') return 'bg-emerald-500/20 text-emerald-400'
-  if (props.status === 'trialing') return 'bg-amber-500/20 text-amber-400'
-  if (props.status === 'past_due') return 'bg-orange-500/20 text-orange-400'
-  if (props.status === 'cancelled') return 'bg-slate-500/20 text-slate-400'
-  return 'bg-slate-700 text-slate-400'
+  if (props.status === 'active') return 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100'
+  if (props.status === 'trialing') return 'bg-amber-50 text-amber-700 ring-1 ring-amber-100'
+  if (props.status === 'past_due') return 'bg-orange-50 text-orange-700 ring-1 ring-orange-100'
+  if (props.status === 'cancelled') return 'bg-slate-100 text-slate-600 ring-1 ring-slate-200'
+  return 'bg-slate-100 text-slate-600 ring-1 ring-slate-200'
 })
 </script>

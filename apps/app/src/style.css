@@ -5,33 +5,345 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Admin section dark-slate overrides */
 @layer components {
-  .admin-card {
-    @apply bg-slate-800 border border-slate-700 rounded-xl;
+  .owner-page {
+    @apply mx-auto max-w-[1500px] px-4 py-5 sm:px-6 lg:px-8;
+  }
+
+  .owner-page-hero {
+    @apply overflow-hidden rounded-[28px] border border-slate-100/80 bg-white/95 p-5 shadow-[0_10px_32px_rgba(15,23,42,0.035)] backdrop-blur sm:p-6;
+    border-color: color-mix(in srgb, var(--color-primary) 14%, rgba(226, 232, 240, 0.85));
+  }
+
+  .owner-page-header {
+    @apply flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between;
+  }
+
+  .owner-eyebrow {
+    @apply inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold text-primary ring-1;
+    background: color-mix(in srgb, var(--color-primary) 8%, white);
+    --tw-ring-color: color-mix(in srgb, var(--color-primary) 18%, transparent);
+  }
+
+  .owner-title {
+    @apply mt-3 text-2xl font-bold tracking-tight text-slate-950 sm:text-3xl;
+  }
+
+  .owner-subtitle {
+    @apply mt-1 max-w-2xl text-sm leading-6 text-slate-500;
+  }
+
+  .owner-primary-action {
+    @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-primary px-4 py-2.5 text-sm font-bold text-white transition hover:-translate-y-0.5 disabled:translate-y-0 disabled:opacity-60;
+    box-shadow: 0 16px 35px color-mix(in srgb, var(--color-primary) 24%, transparent);
+  }
+
+  .owner-primary-action:hover {
+    box-shadow: 0 20px 45px color-mix(in srgb, var(--color-primary) 30%, transparent);
+  }
+
+  .owner-secondary-action {
+    @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 shadow-sm transition hover:text-primary disabled:opacity-60;
+  }
+
+  .owner-secondary-action:hover {
+    background: color-mix(in srgb, var(--color-primary) 7%, white);
+    border-color: color-mix(in srgb, var(--color-primary) 24%, transparent);
+  }
+
+  .owner-icon-button {
+    @apply inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-500 shadow-sm transition hover:text-primary;
+  }
+
+  .owner-icon-button:hover {
+    background: color-mix(in srgb, var(--color-primary) 7%, white);
+    border-color: color-mix(in srgb, var(--color-primary) 24%, transparent);
+  }
+
+  .owner-stat-grid {
+    @apply mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4;
+  }
+
+  .owner-stat-card {
+    @apply flex items-center gap-3 rounded-[22px] border border-slate-100/80 bg-white/95 p-4 shadow-[0_10px_30px_rgba(15,23,42,0.035)] backdrop-blur;
+  }
+
+  .owner-stat-icon {
+    @apply flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-primary ring-1;
+    background: color-mix(in srgb, var(--color-primary) 9%, white);
+    --tw-ring-color: color-mix(in srgb, var(--color-primary) 18%, transparent);
+  }
+
+  .owner-toolbar {
+    @apply mt-5 flex flex-col gap-3 rounded-[24px] border border-slate-100/80 bg-white/95 p-3 shadow-[0_10px_30px_rgba(15,23,42,0.035)] backdrop-blur lg:flex-row lg:items-center lg:justify-between;
+  }
+
+  .owner-search-wrap {
+    @apply relative min-w-0 flex-1;
+  }
+
+  .owner-search-icon {
+    @apply pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400;
+  }
+
+  .owner-input {
+    @apply w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-900 placeholder-slate-400 shadow-sm outline-none transition focus:border-primary;
+  }
+
+  .owner-input:focus {
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-primary) 14%, transparent);
+  }
+
+  .owner-search-input {
+    @apply owner-input pl-9;
+  }
+
+  .owner-select {
+    @apply rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 shadow-sm outline-none transition focus:border-primary;
+  }
+
+  .owner-select:focus {
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-primary) 14%, transparent);
+  }
+
+  .owner-segmented {
+    @apply inline-flex overflow-hidden rounded-2xl border border-slate-200 bg-white p-1 shadow-sm;
+  }
+
+  .owner-segment-button {
+    @apply inline-flex h-9 min-w-9 items-center justify-center gap-2 rounded-xl px-3 text-sm font-bold text-slate-500 transition hover:text-primary;
+  }
+
+  .owner-segment-button:hover {
+    background: color-mix(in srgb, var(--color-primary) 7%, white);
+  }
+
+  .owner-segment-button-active {
+    @apply bg-primary text-white hover:bg-primary hover:text-white;
+    box-shadow: 0 10px 20px color-mix(in srgb, var(--color-primary) 20%, transparent);
+  }
+
+  .owner-filter-bar {
+    @apply mt-4 flex gap-2 overflow-x-auto pb-1 scrollbar-hide;
+  }
+
+  .owner-filter-pill {
+    @apply inline-flex shrink-0 items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-600 shadow-sm transition hover:text-primary;
+  }
+
+  .owner-filter-pill:hover {
+    background: color-mix(in srgb, var(--color-primary) 7%, white);
+    border-color: color-mix(in srgb, var(--color-primary) 24%, transparent);
+  }
+
+  .owner-filter-pill-active {
+    @apply border-primary bg-primary text-white hover:bg-primary hover:text-white;
+    box-shadow: 0 14px 28px color-mix(in srgb, var(--color-primary) 20%, transparent);
+  }
+
+  .owner-panel {
+    @apply rounded-[28px] border border-slate-100/80 bg-white/95 p-4 shadow-[0_10px_32px_rgba(15,23,42,0.035)] backdrop-blur sm:p-5;
+  }
+
+  .owner-panel-header {
+    @apply mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between;
+  }
+
+  .owner-section-title {
+    @apply text-lg font-bold text-slate-950;
+  }
+
+  .owner-section-copy {
+    @apply text-sm font-medium text-slate-500;
+  }
+
+  .owner-card {
+    @apply rounded-[24px] border border-slate-100/80 bg-white/95 shadow-[0_10px_30px_rgba(15,23,42,0.035)] backdrop-blur transition hover:-translate-y-0.5 hover:shadow-[0_18px_42px_rgba(15,23,42,0.06)];
+  }
+
+  .owner-card:hover {
+    border-color: color-mix(in srgb, var(--color-primary) 22%, transparent);
+  }
+
+  .owner-list-row {
+    @apply rounded-[22px] border border-slate-100/80 bg-white/95 p-3 shadow-[0_10px_28px_rgba(15,23,42,0.03)] transition hover:shadow-[0_18px_38px_rgba(15,23,42,0.05)];
+  }
+
+  .owner-list-row:hover {
+    background: color-mix(in srgb, var(--color-primary) 4%, white);
+    border-color: color-mix(in srgb, var(--color-primary) 22%, transparent);
+  }
+
+  .owner-action-icon {
+    @apply inline-flex h-9 w-9 items-center justify-center rounded-xl text-slate-400 transition hover:text-primary;
+  }
+
+  .owner-action-icon:hover {
+    background: color-mix(in srgb, var(--color-primary) 8%, white);
+  }
+
+  .owner-empty {
+    @apply rounded-[28px] border border-dashed border-slate-200 bg-white/80 px-6 py-14 text-center shadow-[0_10px_30px_rgba(15,23,42,0.025)];
+  }
+
+  .owner-soft-form {
+    @apply rounded-[26px] border p-4;
+    background: color-mix(in srgb, var(--color-primary) 6%, white);
+    border-color: color-mix(in srgb, var(--color-primary) 18%, transparent);
+    box-shadow: 0 12px 32px color-mix(in srgb, var(--color-primary) 7%, transparent);
+  }
+
+  .owner-brand-surface {
+    background: color-mix(in srgb, var(--color-primary) 7%, white);
+    border-color: color-mix(in srgb, var(--color-primary) 18%, transparent);
+    --tw-ring-color: color-mix(in srgb, var(--color-primary) 18%, transparent);
+  }
+
+  .owner-brand-hover:hover {
+    background: color-mix(in srgb, var(--color-primary) 7%, white);
+    border-color: color-mix(in srgb, var(--color-primary) 22%, transparent);
+  }
+
+  .owner-brand-selected {
+    background: color-mix(in srgb, var(--color-primary) 8%, white);
+    border-color: color-mix(in srgb, var(--color-primary) 24%, transparent);
+    box-shadow: 0 16px 40px color-mix(in srgb, var(--color-primary) 10%, transparent);
+  }
+
+  .owner-brand-active {
+    box-shadow: 0 16px 32px color-mix(in srgb, var(--color-primary) 22%, transparent);
+  }
+
+  .admin-page {
+    @apply mx-auto max-w-[1500px] px-4 py-5 sm:px-6 lg:px-8;
+  }
+
+  .admin-page-narrow {
+    @apply mx-auto max-w-5xl px-4 py-5 sm:px-6 lg:px-8;
+  }
+
+  .admin-page-hero {
+    @apply overflow-hidden rounded-[28px] border border-slate-100/80 bg-white/95 p-5 shadow-[0_10px_32px_rgba(15,23,42,0.035)] backdrop-blur sm:p-6;
+    border-color: color-mix(in srgb, var(--color-primary) 14%, rgba(226, 232, 240, 0.85));
+  }
+
+  .admin-page-header {
+    @apply flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between;
+  }
+
+  .admin-card,
+  .admin-table-card {
+    @apply rounded-[26px] border border-slate-100/80 bg-white/95 shadow-[0_10px_32px_rgba(15,23,42,0.035)] backdrop-blur;
+    border-color: color-mix(in srgb, var(--color-primary) 12%, rgba(226, 232, 240, 0.85));
+  }
+
+  .admin-card-hover {
+    @apply transition hover:-translate-y-0.5 hover:shadow-[0_18px_42px_rgba(15,23,42,0.06)];
+  }
+
+  .admin-card-hover:hover {
+    border-color: color-mix(in srgb, var(--color-primary) 22%, transparent);
+  }
+
+  .admin-toolbar {
+    @apply flex flex-col gap-3 rounded-[24px] border border-slate-100/80 bg-white/95 p-3 shadow-[0_10px_30px_rgba(15,23,42,0.035)] backdrop-blur lg:flex-row lg:items-center lg:justify-between;
+    border-color: color-mix(in srgb, var(--color-primary) 12%, rgba(226, 232, 240, 0.85));
   }
 
   .admin-btn {
-    @apply inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg font-semibold text-sm
-           transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-900;
+    @apply inline-flex min-h-10 items-center justify-center gap-2 rounded-2xl px-3.5 py-2 text-sm font-bold
+           transition hover:-translate-y-0.5 disabled:translate-y-0 disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white;
   }
 
-  .admin-btn-primary   { @apply admin-btn bg-indigo-600 hover:bg-indigo-500 text-white focus:ring-indigo-500; }
-  .admin-btn-secondary { @apply admin-btn bg-slate-700 hover:bg-slate-600 text-slate-200 focus:ring-slate-500; }
+  .admin-btn-primary   { @apply admin-btn bg-primary text-white; box-shadow: 0 14px 28px color-mix(in srgb, var(--color-primary) 20%, transparent); }
+  .admin-btn-secondary { @apply admin-btn bg-white text-slate-700 border border-slate-200 shadow-sm; }
   .admin-btn-danger    { @apply admin-btn bg-red-600 hover:bg-red-500 text-white focus:ring-red-500; }
-  .admin-btn-ghost     { @apply admin-btn bg-transparent hover:bg-slate-700 text-slate-400 hover:text-slate-200; }
+  .admin-btn-ghost     { @apply admin-btn bg-transparent text-slate-500 hover:text-primary; }
+
+  .admin-btn-primary,
+  .admin-btn-secondary,
+  .admin-btn-ghost {
+    --tw-ring-color: color-mix(in srgb, var(--color-primary) 32%, transparent);
+  }
+
+  .admin-btn-primary:hover {
+    box-shadow: 0 18px 38px color-mix(in srgb, var(--color-primary) 26%, transparent);
+  }
+
+  .admin-btn-secondary:hover,
+  .admin-btn-ghost:hover {
+    background: color-mix(in srgb, var(--color-primary) 7%, white);
+  }
 
   .admin-input {
-    @apply w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-slate-100
-           placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500
-           focus:border-transparent text-sm transition-colors;
+    @apply w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-900
+           placeholder-slate-400 shadow-sm outline-none transition focus:border-primary;
   }
 
-  .admin-label { @apply block text-xs font-medium text-slate-400 mb-1; }
+  .admin-input:focus {
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-primary) 14%, transparent);
+  }
+
+  .admin-label { @apply block text-xs font-medium text-slate-500 mb-1; }
+
+  .admin-filter-bar {
+    @apply flex gap-2 overflow-x-auto pb-1 scrollbar-hide;
+  }
+
+  .admin-filter-pill {
+    @apply inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-3.5 py-2 text-sm font-bold text-slate-600 shadow-sm transition hover:text-primary;
+  }
+
+  .admin-filter-pill:hover {
+    background: color-mix(in srgb, var(--color-primary) 7%, white);
+    border-color: color-mix(in srgb, var(--color-primary) 24%, transparent);
+  }
+
+  .admin-filter-pill-active {
+    @apply border-primary bg-primary text-white hover:bg-primary hover:text-white;
+    box-shadow: 0 14px 28px color-mix(in srgb, var(--color-primary) 20%, transparent);
+  }
+
+  .admin-search-wrap {
+    @apply relative min-w-0 flex-1;
+  }
+
+  .admin-search-icon {
+    @apply pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400;
+  }
+
+  .admin-select {
+    @apply rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-700 shadow-sm outline-none transition focus:border-primary;
+  }
+
+  .admin-select:focus {
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-primary) 14%, transparent);
+  }
+
+  .admin-section-title {
+    @apply text-lg font-bold text-slate-950;
+  }
+
+  .admin-section-copy {
+    @apply text-sm font-medium text-slate-500;
+  }
+
+  .admin-pill {
+    @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold;
+  }
+
+  .admin-action-icon {
+    @apply inline-flex h-9 w-9 items-center justify-center rounded-xl text-slate-400 transition hover:text-primary;
+  }
+
+  .admin-action-icon:hover {
+    background: color-mix(in srgb, var(--color-primary) 8%, white);
+  }
 
   .table-th {
-    @apply px-3 py-2.5 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider whitespace-nowrap;
+    @apply px-4 py-3 text-left text-[11px] font-black uppercase tracking-wider text-slate-500 whitespace-nowrap;
   }
-  .table-td { @apply px-3 py-2.5 text-sm text-slate-300; }
-  .table-tr { @apply border-b border-slate-700 hover:bg-slate-750 transition-colors; }
+  .table-td { @apply px-4 py-3 text-sm text-slate-700; }
+  .table-tr { @apply border-b border-slate-100/80 transition-colors; }
+  .table-tr:hover { background: color-mix(in srgb, var(--color-primary) 6%, white); }
 }

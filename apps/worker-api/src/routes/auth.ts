@@ -30,6 +30,17 @@ function slugify(name: string): string {
     .substring(0, 30)
 }
 
+// GET /api/auth/check-store-name?name=... — public, no auth required
+auth.get('/check-store-name', async (c) => {
+  const name = c.req.query('name')?.trim()
+  if (!name) return c.json({ success: false, error: 'name is required', data: null }, 400)
+  const slug = slugify(name)
+  const existing = await c.env.qesuite_db.prepare(
+    'SELECT id FROM tenants WHERE slug = ? OR LOWER(name) = LOWER(?)'
+  ).bind(slug, name).first()
+  return c.json({ success: true, data: { available: !existing, slug }, error: null })
+})
+
 // POST /api/auth/register
 auth.post('/register', async (c) => {
   try {
@@ -443,7 +454,7 @@ auth.post('/rider/magic-link', async (c) => {
     ).bind(token, expiresAt, staff.id).run()
 
     const link = `${c.env.APP_BASE_URL.replace('store.', 'go.')}/verify?token=${token}`
-    await sendSMS(c.env, phone, `Ingia QeSuite kama dereva: ${link}\nKiungo kinaisha dakika 30.`)
+    await sendSMS(c.env, phone, `Sign in to your QeSuite delivery dashboard: ${link}\nThis link expires in 30 minutes.`)
 
     return c.json({ data: { sent: true }, error: null, message: 'Magic link sent' })
   } catch (err) {
@@ -552,7 +563,7 @@ auth.post('/rider/request', async (c) => {
     ).bind(token, expiresAt, staff.id).run()
 
     const link = `${c.env.APP_BASE_URL.replace('store.', 'go.')}/auth/verify?token=${token}`
-    await sendSMS(c.env, staff.phone, `Karibu QeSuite! Ingia hapa: ${link}\nMuda: dakika 30.`)
+    await sendSMS(c.env, staff.phone, `Welcome to QeSuite! Access your delivery dashboard here: ${link}\nThis link expires in 30 minutes.`)
 
     return c.json({ data: { sent: true }, error: null, message: 'Magic link sent' })
   } catch (err) {

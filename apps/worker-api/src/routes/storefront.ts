@@ -1,9 +1,69 @@
 import { Hono } from 'hono'
 import { Env, Variables } from '../types'
 import { generateId, generateTrackingCode } from '../lib/jwt'
-import { sendSMS, sendWhatsApp, getOrderConfirmedSMS, getNewOrderSMS } from '../lib/notifications'
+import { sendSMS, sendWhatsApp, normalizeKenyaPhone, getOrderConfirmedSMS, getNewOrderSMS } from '../lib/notifications'
 
 const storefront = new Hono<{ Bindings: Env; Variables: Variables }>()
+
+// GET /api/storefront — list all active stores for the marketplace directory
+storefront.get('/', async (c) => {
+  try {
+    const category = c.req.query('category')
+    const search = c.req.query('search')?.trim()
+
+    // Only surface stores with a valid subscription (active or within trial window)
+    let query = `SELECT id, name, slug, logo_url, banner_url, primary_color, accent_color,
+                        address, store_category
+                 FROM tenants
+                 WHERE is_suspended = 0
+                   AND (
+                     subscription_status = 'active'
+                     OR (subscription_status = 'trialing' AND trial_ends_at > datetime('now'))
+                   )`
+    const params: (string | number)[] = []
+
+    if (category && category !== 'all') {
+      query += ' AND store_category = ?'
+      params.push(category)
+    }
+    if (search) {
+      query += ' AND (name LIKE ? OR address LIKE ?)'
+      params.push(`%${search}%`, `%${search}%`)
+    }
+    query += ' ORDER BY created_at DESC'
+
+    const { results } = await c.env.qesuite_db.prepare(query).bind(...params).all<{
+      id: string; name: string; slug: string; logo_url: string | null
+      banner_url: string | null; primary_color: string; accent_color: string
+      address: string | null; store_category: string
+    }>()
+
+    // Batch-fetch up to 4 featured products per store for the preview grid
+    let productPreviews: Record<string, Array<{ name: string; image_url: string | null }>> = {}
+    if (results.length > 0) {
+      const ids = results.map(s => s.id)
+      const placeholders = ids.map(() => '?').join(', ')
+      const { results: pRows } = await c.env.qesuite_db.prepare(
+        `SELECT tenant_id, name, image_url FROM products
+         WHERE tenant_id IN (${placeholders}) AND is_active = 1
+         ORDER BY RANDOM()`
+      ).bind(...ids).all<{ tenant_id: string; name: string; image_url: string | null }>()
+
+      for (const p of pRows) {
+        if (!productPreviews[p.tenant_id]) productPreviews[p.tenant_id] = []
+        if (productPreviews[p.tenant_id].length < 4) {
+          productPreviews[p.tenant_id].push({ name: p.name, image_url: p.image_url })
+        }
+      }
+    }
+
+    const data = results.map(s => ({ ...s, product_previews: productPreviews[s.id] ?? [] }))
+    return c.json({ success: true, data, error: null })
+  } catch (err) {
+    console.error('storefront list error', err)
+    return c.json({ success: false, error: 'Failed to load stores', data: [] }, 500)
+  }
+})
 
 // GET /api/storefront/:slug — public storefront config
 storefront.get('/:slug', async (c) => {
@@ -11,13 +71,15 @@ storefront.get('/:slug', async (c) => {
     const slug = c.req.param('slug')
     const tenant = await c.env.qesuite_db.prepare(
       `SELECT id, name, slug, logo_url, banner_url, primary_color, accent_color,
-              font_family, phone, address, whatsapp_number, is_suspended
+              font_family, phone, address, whatsapp_number, is_suspended,
+              subscription_status, trial_ends_at
        FROM tenants WHERE slug = ?`
     ).bind(slug).first<{
       id: string; name: string; slug: string; logo_url: string | null
       banner_url: string | null; primary_color: string; accent_color: string
       font_family: string; phone: string | null; address: string | null
       whatsapp_number: string | null; is_suspended: number
+      subscription_status: string; trial_ends_at: string | null
     }>()
 
     if (!tenant) {
@@ -46,6 +108,8 @@ storefront.get('/:slug', async (c) => {
           address: tenant.address,
           whatsapp_number: tenant.whatsapp_number,
           is_suspended: Boolean(tenant.is_suspended),
+          subscription_status: tenant.subscription_status,
+          trial_ends_at: tenant.trial_ends_at,
         },
         settings: settings ?? {
           delivery_enabled: true,
@@ -322,7 +386,7 @@ storefront.post('/:slug/mpesa/initiate', async (c) => {
     if (!order) return c.json({ success: false, error: 'Order not found', data: null }, 404)
 
     // M-Pesa STK Push
-    const phone = body.phone.replace(/[^0-9]/g, '').replace(/^0/, '254').replace(/^254/, '254')
+    const phone = normalizeKenyaPhone(body.phone)
     const timestamp = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 14)
     const password = btoa(`${c.env.MPESA_SHORTCODE}${c.env.MPESA_PASSKEY}${timestamp}`)
 

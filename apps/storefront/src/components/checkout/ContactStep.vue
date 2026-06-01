@@ -1,34 +1,34 @@
 <template>
   <div class="space-y-5 animate-fade-in">
     <div>
-      <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-1">
+      <h2 class="text-xl font-bold text-slate-950 mb-1">
         {{ $t('checkout.contact.title') }}
       </h2>
-      <p class="text-sm text-gray-500 dark:text-gray-400">
+      <p class="text-sm text-slate-500">
         {{ $t('checkout.steps.contact') }} · Step 1 of 4
       </p>
     </div>
 
     <!-- Phone -->
     <div class="space-y-1.5">
-      <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300">
+      <label class="block text-sm font-semibold text-slate-700">
         {{ $t('checkout.contact.phone') }} <span class="text-red-500">*</span>
       </label>
       <div class="relative">
-        <div class="absolute left-3.5 top-1/2 -translate-y-1/2 flex items-center gap-1 text-gray-500 dark:text-gray-400 text-sm font-medium">
+        <div class="absolute left-3.5 top-1/2 -translate-y-1/2 flex items-center gap-1 text-slate-500 text-sm font-medium">
           <span>🇰🇪</span>
           <span>+254</span>
-          <span class="text-gray-300 dark:text-gray-700">|</span>
+          <span class="text-slate-300">|</span>
         </div>
         <input
           v-model="form.phone"
           type="tel"
           inputmode="tel"
           :placeholder="$t('checkout.contact.phone_placeholder')"
-          class="w-full pl-[80px] pr-4 py-3.5 rounded-xl border transition-colors text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400"
+          class="w-full pl-[80px] pr-4 py-3.5 rounded-xl border transition-colors outline-none text-sm bg-white text-slate-950 placeholder-slate-400"
           :class="errors.phone
             ? 'border-red-400 focus:ring-red-300 focus:border-red-400'
-            : 'border-gray-200 dark:border-gray-700 focus:border-emerald-500 focus:ring-emerald-200 dark:focus:border-emerald-500'"
+            : 'border-slate-200 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10'"
           @blur="validatePhone"
         />
       </div>
@@ -37,17 +37,17 @@
 
     <!-- Name -->
     <div class="space-y-1.5">
-      <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300">
+      <label class="block text-sm font-semibold text-slate-700">
         {{ $t('checkout.contact.name') }} <span class="text-red-500">*</span>
       </label>
       <input
         v-model="form.name"
         type="text"
         :placeholder="$t('checkout.contact.name_placeholder')"
-        class="w-full px-4 py-3.5 rounded-xl border transition-colors text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400"
+        class="w-full px-4 py-3.5 rounded-xl border transition-colors outline-none text-sm bg-white text-slate-950 placeholder-slate-400"
         :class="errors.name
           ? 'border-red-400 focus:ring-red-300 focus:border-red-400'
-          : 'border-gray-200 dark:border-gray-700 focus:border-emerald-500 focus:ring-emerald-200 dark:focus:border-emerald-500'"
+          : 'border-slate-200 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10'"
         @blur="validateName"
       />
       <p v-if="errors.name" class="text-xs text-red-500">{{ errors.name }}</p>
@@ -68,7 +68,7 @@
 import { ref, reactive } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useCheckoutStore } from '@/stores/checkout'
-import { validatePhone as validateKenyaPhone } from '@qesuite/shared'
+import { validatePhone as validateKenyaPhone, formatPhone } from '@qesuite/shared'
 
 const { t } = useI18n()
 const checkout = useCheckoutStore()
@@ -99,6 +99,9 @@ function handleNext() {
   validatePhone()
   validateName()
   if (!errors.phone && !errors.name) {
+    // Normalize to E.164 (+254XXXXXXXXX) before proceeding so backend always gets a clean number
+    const normalized = formatPhone(form.phone.trim())
+    if (normalized) form.phone = normalized
     checkout.nextStep()
   }
 }

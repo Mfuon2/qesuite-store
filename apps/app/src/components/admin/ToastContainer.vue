@@ -39,10 +39,10 @@ import { useToast } from '@/composables/useToast'
 const { toasts, remove } = useToast()
 
 function toastClass(type: string) {
-  if (type === 'success') return 'bg-emerald-900/80 border-emerald-700 text-emerald-200'
-  if (type === 'error') return 'bg-red-900/80 border-red-700 text-red-200'
-  if (type === 'warning') return 'bg-amber-900/80 border-amber-700 text-amber-200'
-  return 'bg-slate-700 border-slate-600 text-slate-200'
+  if (type === 'success') return 'bg-emerald-50 border-emerald-200 text-emerald-800'
+  if (type === 'error') return 'bg-red-50 border-red-200 text-red-800'
+  if (type === 'warning') return 'bg-amber-50 border-amber-200 text-amber-800'
+  return 'bg-white border-slate-200 text-slate-800'
 }
 </script>
 

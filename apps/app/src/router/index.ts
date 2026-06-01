@@ -35,7 +35,8 @@ const router = createRouter({
       component: () => import('@/layouts/DashboardLayout.vue'),
       meta: { requiresAuth: true, role: 'owner', requiresOnboardingComplete: true },
       children: [
-        { path: '', redirect: '/orders' },
+        { path: '', redirect: '/dashboard' },
+        { path: 'dashboard', name: 'dashboard', component: () => import('@/views/dashboard/DashboardView.vue') },
         { path: 'orders', name: 'orders', component: () => import('@/views/dashboard/OrdersView.vue') },
         { path: 'orders/:id', name: 'order-detail', component: () => import('@/views/dashboard/OrderDetailView.vue') },
         { path: 'products', name: 'products', component: () => import('@/views/dashboard/ProductsView.vue') },
@@ -44,6 +45,7 @@ const router = createRouter({
         { path: 'analytics', name: 'analytics', component: () => import('@/views/dashboard/AnalyticsView.vue') },
         { path: 'settings', name: 'settings', component: () => import('@/views/dashboard/SettingsView.vue') },
         { path: 'billing', name: 'billing', component: () => import('@/views/dashboard/BillingView.vue') },
+        { path: 'notifications', name: 'notifications', component: () => import('@/views/dashboard/NotificationsView.vue') },
       ]
     },
 
@@ -83,7 +85,7 @@ function getRoleFromToken(token: string): string | null {
 }
 
 function getHomeForRole(role: string): string {
-  if (role === 'owner') return '/orders'
+  if (role === 'owner') return '/dashboard'
   if (role === 'rider') return '/rider'
   if (role === 'superadmin') return '/admin/stores'
   return '/login'
@@ -97,7 +99,7 @@ router.beforeEach((to) => {
   // Already authenticated → redirect away from public routes
   if (to.meta.public && token && role) {
     if (to.name === 'rider-verify') return true // always allow verify
-    if (role === 'owner') return onboardingComplete ? '/orders' : '/onboarding'
+    if (role === 'owner') return onboardingComplete ? '/dashboard' : '/onboarding'
     return getHomeForRole(role)
   }
 
@@ -110,7 +112,7 @@ router.beforeEach((to) => {
 
     // Owner onboarding gate
     if (to.meta.requiresOnboardingComplete && !onboardingComplete) return '/onboarding'
-    if (to.name === 'onboarding' && onboardingComplete) return '/orders'
+    if (to.name === 'onboarding' && onboardingComplete) return '/dashboard'
   }
 
   return true

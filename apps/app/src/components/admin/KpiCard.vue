@@ -1,9 +1,9 @@
 <template>
-  <div class="admin-card p-3.5">
-    <div class="flex items-start justify-between mb-2">
-      <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">{{ label }}</p>
+  <div class="admin-card admin-card-hover p-4">
+    <div class="mb-3 flex items-start justify-between gap-3">
+      <p class="text-[11px] font-black uppercase tracking-wider text-slate-500">{{ label }}</p>
       <div
-        class="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+        class="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-2xl ring-1"
         :class="iconBgClass"
       >
         <!-- stores -->
@@ -34,12 +34,12 @@
     </div>
 
     <div v-if="loading" class="space-y-1.5">
-      <div class="h-6 w-24 bg-slate-700 rounded animate-pulse"></div>
-      <div class="h-2.5 w-16 bg-slate-700/60 rounded animate-pulse"></div>
+      <div class="h-6 w-24 animate-pulse rounded bg-slate-200"></div>
+      <div class="h-2.5 w-16 animate-pulse rounded bg-slate-100"></div>
     </div>
     <template v-else>
-      <p class="text-xl font-bold text-white mb-0.5">{{ value }}</p>
-      <p class="text-xs text-slate-500">{{ sub }}</p>
+      <p class="mb-0.5 text-2xl font-black tracking-tight text-slate-950">{{ value }}</p>
+      <p class="text-xs font-medium text-slate-500">{{ sub }}</p>
     </template>
   </div>
 </template>
@@ -58,25 +58,25 @@ const props = defineProps<{
 
 const iconBgClass = computed(() => {
   const map: Record<string, string> = {
-    indigo: 'bg-indigo-500/20',
-    amber: 'bg-amber-500/20',
-    red: 'bg-red-500/20',
-    emerald: 'bg-emerald-500/20',
-    blue: 'bg-blue-500/20',
-    violet: 'bg-violet-500/20',
+    indigo: 'bg-emerald-50 ring-emerald-100',
+    amber: 'bg-amber-50 ring-amber-100',
+    red: 'bg-red-50 ring-red-100',
+    emerald: 'bg-emerald-50 ring-emerald-100',
+    blue: 'bg-blue-50 ring-blue-100',
+    violet: 'bg-violet-50 ring-violet-100',
   }
-  return map[props.color ?? 'indigo'] ?? 'bg-indigo-500/20'
+  return map[props.color ?? 'indigo'] ?? 'bg-emerald-50 ring-emerald-100'
 })
 
 const iconColorClass = computed(() => {
   const map: Record<string, string> = {
-    indigo: 'text-indigo-400',
-    amber: 'text-amber-400',
-    red: 'text-red-400',
-    emerald: 'text-emerald-400',
-    blue: 'text-blue-400',
-    violet: 'text-violet-400',
+    indigo: 'text-emerald-700',
+    amber: 'text-amber-700',
+    red: 'text-red-700',
+    emerald: 'text-emerald-700',
+    blue: 'text-blue-700',
+    violet: 'text-violet-700',
   }
-  return map[props.color ?? 'indigo'] ?? 'text-indigo-400'
+  return map[props.color ?? 'indigo'] ?? 'text-emerald-700'
 })
 </script>

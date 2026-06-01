@@ -11,6 +11,17 @@ export type SubscriptionStatus =
 
 export type Plan = 'trial' | 'starter' | 'growth' | 'pro' | 'enterprise';
 
+export type StoreCategory =
+  | 'groceries'
+  | 'food'
+  | 'fashion'
+  | 'electronics'
+  | 'pharmacy'
+  | 'beauty'
+  | 'home'
+  | 'sports'
+  | 'other';
+
 export interface Tenant {
   id: string;
   name: string;
@@ -23,6 +34,7 @@ export interface Tenant {
   phone: string | null;
   address: string | null;
   whatsapp_number: string | null;
+  store_category: StoreCategory;
   plan: Plan;
   trial_ends_at: string | null;
   subscription_status: SubscriptionStatus;
@@ -622,7 +634,7 @@ export interface MpesaCallbackBody {
 // ─────────────────────────────────────────────────────────────
 
 export interface StorefrontConfig {
-  tenant: Pick<Tenant, 'id' | 'name' | 'slug' | 'logo_url' | 'banner_url' | 'primary_color' | 'accent_color' | 'font_family' | 'whatsapp_number' | 'phone' | 'address' | 'is_suspended'>;
+  tenant: Pick<Tenant, 'id' | 'name' | 'slug' | 'logo_url' | 'banner_url' | 'primary_color' | 'accent_color' | 'font_family' | 'whatsapp_number' | 'phone' | 'address' | 'is_suspended' | 'subscription_status' | 'trial_ends_at'>;
   settings: Pick<StoreSettings, 'delivery_enabled' | 'pickup_enabled' | 'delivery_fee' | 'estimated_delivery_minutes' | 'min_order_amount' | 'currency' | 'language'>;
 }
 

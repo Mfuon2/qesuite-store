@@ -36,7 +36,7 @@ export async function apiGetRevenueChart(params?: AnalyticsParams): Promise<ApiR
   return apiFetch(`/api/analytics/revenue${buildParams(params)}`)
 }
 
-export async function apiGetTopProducts(params?: AnalyticsParams): Promise<ApiResponse<TopProduct[]>> {
+export async function apiGetTopProducts(params?: AnalyticsParams): Promise<ApiResponse<{ by_revenue: TopProduct[]; by_volume: TopProduct[] }>> {
   return apiFetch(`/api/analytics/top-products${buildParams(params)}`)
 }
 

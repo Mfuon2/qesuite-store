@@ -1,6 +1,7 @@
 <template>
-  <div class="min-h-screen text-gray-900" :class="{ dark: isDark }">
+  <div class="min-h-screen bg-white text-gray-900">
     <router-view />
+    <GlobalNetworkLoader />
 
     <!-- Toast container -->
     <div class="fixed top-4 right-4 z-[9999] flex flex-col gap-2 max-w-sm w-full pointer-events-none">
@@ -10,10 +11,10 @@
           :key="toast.id"
           class="pointer-events-auto flex items-start gap-3 px-4 py-3 rounded-xl shadow-lg border text-sm font-medium"
           :class="{
-            'bg-emerald-50 border-emerald-200 text-emerald-800 dark:bg-emerald-900/30 dark:border-emerald-700 dark:text-emerald-300': toast.type === 'success',
-            'bg-red-50 border-red-200 text-red-800 dark:bg-red-900/30 dark:border-red-700 dark:text-red-300': toast.type === 'error',
-            'bg-yellow-50 border-yellow-200 text-yellow-800 dark:bg-yellow-900/30 dark:border-yellow-700 dark:text-yellow-300': toast.type === 'warning',
-            'bg-blue-50 border-blue-200 text-blue-800 dark:bg-blue-900/30 dark:border-blue-700 dark:text-blue-300': toast.type === 'info',
+            'bg-emerald-50 border-emerald-200 text-emerald-800': toast.type === 'success',
+            'bg-red-50 border-red-200 text-red-800': toast.type === 'error',
+            'bg-yellow-50 border-yellow-200 text-yellow-800': toast.type === 'warning',
+            'bg-blue-50 border-blue-200 text-blue-800': toast.type === 'info',
           }"
         >
           <span class="flex-1">{{ toast.message }}</span>
@@ -33,19 +34,18 @@
           v-if="confirm.visible"
           class="fixed inset-0 z-[9998] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
         >
-          <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-6 max-w-sm w-full animate-bounce-in">
-            <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">{{ confirm.title }}</h3>
-            <p class="text-gray-500 dark:text-gray-400 text-sm mb-6">{{ confirm.message }}</p>
+          <div class="admin-card max-w-sm w-full p-6 animate-bounce-in">
+            <h3 class="text-lg font-semibold text-gray-900 mb-2">{{ confirm.title }}</h3>
+            <p class="text-gray-500 text-sm mb-6">{{ confirm.message }}</p>
             <div class="flex gap-3 justify-end">
               <button
-                class="px-4 py-2 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                class="admin-btn-secondary"
                 @click="confirm.resolve(false)"
               >
                 {{ confirm.cancelLabel || 'Cancel' }}
               </button>
               <button
-                class="px-4 py-2 rounded-lg text-sm font-medium text-white transition-colors"
-                :class="confirm.danger ? 'bg-red-500 hover:bg-red-600' : 'bg-primary hover:opacity-90'"
+                :class="confirm.danger ? 'admin-btn-danger' : 'admin-btn-primary'"
                 @click="confirm.resolve(true)"
               >
                 {{ confirm.confirmLabel || 'Confirm' }}
@@ -59,15 +59,12 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
 import { useToast } from '@/composables/useToast'
 import { useConfirm } from '@/composables/useConfirm'
-import { useSettingsStore } from '@/stores/settings'
+import GlobalNetworkLoader from '@/components/common/GlobalNetworkLoader.vue'
 
 const { toasts, removeToast } = useToast()
 const { state: confirm } = useConfirm()
-const settingsStore = useSettingsStore()
-const isDark = computed(() => settingsStore.darkMode)
 </script>
 
 <style scoped>

@@ -10,12 +10,12 @@
       @update:active-category="handleCategoryChange"
     />
 
-    <!-- Featured strip (only when on 'all' tab) -->
-    <FeaturedStrip v-if="activeCategory === null" />
-
     <!-- Products grid -->
     <div ref="productsSection" id="products">
-      <ProductGrid :active-category="activeCategory" />
+      <ProductGrid
+        :active-category="activeCategory"
+        @update:active-category="handleCategoryChange"
+      />
     </div>
 
     <!-- Footer -->
@@ -24,20 +24,19 @@
 </template>
 
 <script setup lang="ts">
-import { ref, nextTick } from 'vue'
+import { computed, ref, nextTick } from 'vue'
 import { useStorefrontStore } from '@/stores/store'
 import HeroBanner from '@/components/HeroBanner.vue'
 import CategoryTabs from '@/components/CategoryTabs.vue'
-import FeaturedStrip from '@/components/FeaturedStrip.vue'
 import ProductGrid from '@/components/ProductGrid.vue'
 import StorefrontFooter from '@/components/StorefrontFooter.vue'
 
 const store = useStorefrontStore()
-const activeCategory = ref<string | null>(null)
+const activeCategory = computed(() => store.activeCategoryId)
 const productsSection = ref<HTMLElement | null>(null)
 
 function handleCategoryChange(id: string | null) {
-  activeCategory.value = id
+  store.setActiveCategory(id)
   store.fetchProducts(id ?? undefined)
 }
 

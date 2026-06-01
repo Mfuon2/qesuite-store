@@ -83,6 +83,7 @@ orders.get('/track/:code', async (c) => {
     }
 
     return c.json({
+      success: true,
       data: { order, items: items.results, rider_location: riderLocation },
       error: null,
     })
@@ -244,6 +245,7 @@ orders.post('/', async (c) => {
     }
 
     return c.json({
+      success: true,
       data: {
         order_id: orderId,
         tracking_code: trackingCode,
@@ -268,6 +270,9 @@ orders.get('/', authMiddleware, tenantGuard, async (c) => {
     const user = c.get('user')
     const tenantId = user.tenant_id!
     const status = c.req.query('status')
+    const periodParam = c.req.query('period')
+    const fromParam = c.req.query('from')
+    const toParam = c.req.query('to')
     const page = parseInt(c.req.query('page') ?? '1', 10)
     const limit = Math.min(parseInt(c.req.query('limit') ?? '20', 10), 100)
     const offset = (page - 1) * limit
@@ -278,6 +283,19 @@ orders.get('/', authMiddleware, tenantGuard, async (c) => {
     if (status) {
       conditions.push('o.status = ?')
       params.push(status.toUpperCase())
+    }
+
+    // Optional date filter (from dashboard period selector or custom range)
+    if (fromParam && toParam) {
+      conditions.push('date(o.created_at) >= ?')
+      conditions.push('date(o.created_at) <= ?')
+      params.push(fromParam, toParam)
+    } else if (periodParam) {
+      const days = periodParam === 'today' ? 0 : periodParam === 'week' ? 6 : 29
+      const since = new Date()
+      since.setUTCDate(since.getUTCDate() - days)
+      conditions.push('date(o.created_at) >= ?')
+      params.push(since.toISOString().substring(0, 10))
     }
 
     const whereClause = conditions.join(' AND ')
@@ -300,6 +318,7 @@ orders.get('/', authMiddleware, tenantGuard, async (c) => {
     ).bind(...params, limit, offset).all()
 
     return c.json({
+      success: true,
       data: {
         items: rows.results,
         total: countResult?.cnt ?? 0,
@@ -344,6 +363,7 @@ orders.get('/:id', authMiddleware, tenantGuard, async (c) => {
     ).bind(id).first()
 
     return c.json({
+      success: true,
       data: { order, items: items.results, assignment: assignment ?? null },
       error: null,
     })
@@ -417,6 +437,7 @@ orders.put('/:id/status', authMiddleware, tenantGuard, async (c) => {
     }
 
     return c.json({
+      success: true,
       data: { id, status, previous_status: order.status },
       error: null,
       message: `Order updated to ${status}`,
@@ -490,7 +511,7 @@ orders.get('/:id/packing-slip', authMiddleware, tenantGuard, async (c) => {
     slip += `Time:     ${timeStr} | ${dateStr}\n`
     slip += `${line}\n`
 
-    return c.json({ data: { packing_slip: slip }, error: null })
+    return c.json({ success: true, data: { packing_slip: slip }, error: null })
   } catch (err) {
     console.error('packing slip error', err)
     return c.json({ error: 'Failed to generate packing slip', data: null }, 500)

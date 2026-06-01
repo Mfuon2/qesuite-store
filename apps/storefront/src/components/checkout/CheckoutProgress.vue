@@ -1,23 +1,23 @@
 <template>
-  <div class="flex items-center justify-center px-4 py-4">
-    <div class="flex items-center gap-0">
+  <div class="px-1 py-1">
+    <div class="flex w-full items-start">
       <template v-for="(step, i) in steps" :key="step.key">
         <!-- Step circle -->
         <button
-          class="flex flex-col items-center gap-1 group"
+          class="group flex shrink-0 flex-col items-center gap-1"
           :disabled="i + 1 > currentStep"
           @click="i + 1 < currentStep && $emit('go-to-step', i + 1)"
         >
           <div
-            class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-200"
+            class="flex h-9 w-9 items-center justify-center rounded-full text-xs font-extrabold transition-all duration-200"
             :class="getStepClass(i + 1)"
           >
             <CheckIcon v-if="i + 1 < currentStep" class="w-4 h-4" />
             <span v-else>{{ i + 1 }}</span>
           </div>
           <span
-            class="text-xs font-medium hidden sm:block transition-colors"
-            :class="i + 1 <= currentStep ? 'text-gray-900 dark:text-white' : 'text-gray-400 dark:text-gray-600'"
+            class="hidden text-xs font-bold transition-colors sm:block"
+            :class="i + 1 <= currentStep ? 'text-slate-950' : 'text-slate-400'"
           >
             {{ step.label }}
           </span>
@@ -26,8 +26,8 @@
         <!-- Connector line -->
         <div
           v-if="i < steps.length - 1"
-          class="w-12 sm:w-16 h-0.5 mb-5 sm:mb-6 mx-1 transition-colors duration-300"
-          :class="i + 1 < currentStep ? 'bg-emerald-500' : 'bg-gray-200 dark:bg-gray-700'"
+          class="mx-2 mt-[1.125rem] h-0.5 min-w-8 flex-1 transition-colors duration-300 sm:mx-3"
+          :class="i + 1 < currentStep ? 'bg-emerald-500' : 'bg-slate-100'"
         />
       </template>
     </div>
@@ -55,21 +55,14 @@ function getStepClass(step: number) {
     return 'text-white'
   }
   if (step === props.currentStep) {
-    return 'text-white ring-2 ring-offset-2 ring-offset-white dark:ring-offset-gray-900'
+    return 'text-white ring-2 ring-emerald-200 ring-offset-2 ring-offset-white'
   }
-  return 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-600'
+  return 'bg-slate-100 text-slate-400'
 }
 </script>
 
 <style scoped>
 button:not([disabled]) div {
   background-color: var(--color-primary);
-}
-button[disabled] div:not(.completed) {
-  background-color: inherit;
-}
-/* Active step ring uses primary color */
-div[class*="ring-2"] {
-  ring-color: var(--color-primary);
 }
 </style>

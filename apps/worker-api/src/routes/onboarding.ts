@@ -277,7 +277,7 @@ onboarding.post('/step3', tenantGuard, async (c) => {
           ).bind(staffId, tenantId, phone, magicToken, expiresAt).run()
 
           const link = `${c.env.APP_BASE_URL.replace('store.', 'go.')}/verify?token=${magicToken}`
-          await sendSMS(c.env, phone, `Umealikwa kama dereva wa QeSuite. Ingia hapa: ${link}`)
+          await sendSMS(c.env, phone, `You have been invited as a delivery rider on QeSuite. Access your dashboard here: ${link}`)
           invitedRiders.push(phone)
         }
       }

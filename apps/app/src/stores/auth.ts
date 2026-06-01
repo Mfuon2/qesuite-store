@@ -1,9 +1,10 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { setTokens, clearTokens, getAccessToken } from '@/api/index'
+import { setTokens, clearTokens, getAccessToken, apiFetch } from '@/api/index'
 import { apiLogin, apiRegister, apiGetMe, apiLogout } from '@/api/auth'
 import { verifyMagicLinkApi, requestMagicLinkApi } from '@/api/delivery'
 import { adminLogin, type AdminUser } from '@/api/admin'
+import { beginNetworkActivity, endNetworkActivity } from '@/composables/useNetworkActivity'
 import type { PublicUser } from '@qesuite/types'
 import type { RegisterRequest } from '@/api/auth'
 
@@ -54,6 +55,7 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function refreshOwnerToken() {
+    const activity = beginNetworkActivity('Refreshing session')
     try {
       const base = import.meta.env.VITE_API_URL || ''
       const res = await fetch(`${base}/api/auth/refresh`, {
@@ -71,6 +73,9 @@ export const useAuthStore = defineStore('auth', () => {
         logout()
       }
     } catch { /* network error, keep existing token */ }
+    finally {
+      endNetworkActivity(activity)
+    }
   }
 
   // ─── Owner login ─────────────────────────────────────────────────
@@ -84,6 +89,18 @@ export const useAuthStore = defineStore('auth', () => {
       token.value = access_token
       setTokens(access_token)
       scheduleRefresh(access_token)
+
+      // Restore onboarding completion status from server so it persists across sessions
+      if (u.role === 'owner' && u.tenant_id) {
+        try {
+          const statusRes = await apiFetch<{ data: { complete: boolean } | null }>('/api/onboarding/status')
+          if (statusRes.data?.complete) {
+            onboardingComplete.value = true
+            sessionStorage.setItem('onboarding_complete', 'true')
+          }
+        } catch { /* ignore */ }
+      }
+
       return { success: true }
     } catch (err: unknown) {
       return { success: false, error: err instanceof Error ? err.message : 'Login failed' }

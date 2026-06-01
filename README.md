@@ -1,4 +1,4 @@
-# QeSuite Store
+# Stores
 
 A multi-tenant SaaS commerce platform for grocery shops, mini-marts, kiosks, pharmacies, and local retail stores across Kenya and East Africa.
 

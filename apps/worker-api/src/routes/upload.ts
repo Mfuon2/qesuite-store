@@ -9,7 +9,26 @@ const upload = new Hono<{ Bindings: Env; Variables: Variables }>()
 const MAX_SIZE_BYTES = 4 * 1024 * 1024 // 4 MB
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp']
 
-// POST /api/upload/image — generate presigned R2 URL
+function publicImageUrl(env: Env, key: string): string {
+  if (env.CDN_URL) return `${env.CDN_URL}/${key}`
+  return `${env.APP_BASE_URL}/api/upload/img?key=${encodeURIComponent(key)}`
+}
+
+// GET /api/upload/img?key=... — serve an image from R2 (dev + prod fallback)
+upload.get('/img', async (c) => {
+  const key = c.req.query('key')
+  if (!key) return c.json({ error: 'Missing key', data: null }, 400)
+
+  const object = await c.env.IMAGES.get(key)
+  if (!object) return c.json({ error: 'Not found', data: null }, 404)
+
+  const headers = new Headers()
+  headers.set('Content-Type', object.httpMetadata?.contentType ?? 'image/jpeg')
+  headers.set('Cache-Control', 'public, max-age=31536000, immutable')
+  return new Response(object.body, { headers })
+})
+
+// POST /api/upload/image — generate a token-gated upload URL + the future public URL
 upload.post('/image', authMiddleware, tenantGuard, async (c) => {
   try {
     const user = c.get('user')
@@ -27,6 +46,7 @@ upload.post('/image', authMiddleware, tenantGuard, async (c) => {
 
     if (!ALLOWED_TYPES.includes(contentType)) {
       return c.json({
+        success: false,
         error: `Unsupported file type. Allowed: ${ALLOWED_TYPES.join(', ')}`,
         data: null,
       }, 400)
@@ -36,18 +56,13 @@ upload.post('/image', authMiddleware, tenantGuard, async (c) => {
     const fileId = generateId()
     const key = `${purpose}/${tenantId}/${fileId}.${ext}`
 
-    // Cloudflare R2 presigned PUT URL — valid for 10 minutes
-    // Using R2's createPresignedUrl if available (bound R2 bucket)
-    // For Workers with R2 binding, we implement a proxy upload endpoint
-    // The client PUTs the image binary to /api/upload/r2/:key and this worker proxies to R2
-
-    const publicUrl = `https://images.qesuite.com/${key}`
     const uploadToken = btoa(JSON.stringify({ key, tenant_id: tenantId, exp: Date.now() + 600_000 }))
 
     return c.json({
+      success: true,
       data: {
         upload_url: `${c.env.APP_BASE_URL}/api/upload/r2?token=${encodeURIComponent(uploadToken)}`,
-        public_url: publicUrl,
+        public_url: publicImageUrl(c.env, key),
         key,
         content_type: contentType,
         expires_in: 600,
@@ -56,11 +71,11 @@ upload.post('/image', authMiddleware, tenantGuard, async (c) => {
     })
   } catch (err) {
     console.error('upload image error', err)
-    return c.json({ error: 'Failed to generate upload URL', data: null }, 500)
+    return c.json({ success: false, error: 'Failed to generate upload URL', data: null }, 500)
   }
 })
 
-// PUT /api/upload/r2 — proxy binary upload to R2 (used by presigned URL flow)
+// PUT /api/upload/r2 — proxy binary upload to R2 (token-gated)
 upload.put('/r2', async (c) => {
   try {
     const tokenParam = c.req.query('token')
@@ -99,13 +114,19 @@ upload.put('/r2', async (c) => {
     }
 
     await c.env.IMAGES.put(key, arrayBuffer, {
-      httpMetadata: { contentType },
+      httpMetadata: {
+        contentType,
+        cacheControl: 'public, max-age=31536000, immutable',
+      },
       customMetadata: { tenant_id: tenantId },
     })
 
-    const publicUrl = `https://images.qesuite.com/${key}`
-
-    return c.json({ data: { url: publicUrl, key }, error: null, message: 'Upload successful' })
+    return c.json({
+      success: true,
+      data: { url: publicImageUrl(c.env, key), key },
+      error: null,
+      message: 'Upload successful',
+    })
   } catch (err) {
     console.error('r2 upload error', err)
     return c.json({ error: 'Upload failed', data: null }, 500)

@@ -1,5 +1,5 @@
 <template>
-  <div class="mt-4 rounded-2xl overflow-hidden border border-gray-100 dark:border-gray-800">
+  <div class="mt-4 overflow-hidden rounded-2xl border border-slate-100 bg-white">
     <!-- Waiting state -->
     <div v-if="status === 'pending'" class="p-5 flex flex-col items-center gap-3 text-center">
       <div class="relative w-16 h-16">
@@ -22,7 +22,7 @@
         <p class="font-bold text-gray-900 dark:text-white text-base">
           {{ $t('payment.mpesa_prompt') }}
         </p>
-        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+        <p class="mt-1 text-sm text-slate-500">
           {{ $t('payment.mpesa_instructions', { phone: displayPhone }) }}
         </p>
       </div>
@@ -36,20 +36,20 @@
 
     <!-- Success state -->
     <div v-else-if="status === 'paid'" class="p-5 flex flex-col items-center gap-3 text-center">
-      <div class="w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center animate-bounce-in">
+      <div class="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 animate-bounce-in">
         <CheckCircleIcon class="w-10 h-10 text-emerald-600" />
       </div>
-      <p class="font-bold text-gray-900 dark:text-white">
+      <p class="font-bold text-slate-950">
         {{ $t('payment.mpesa_success') }}
       </p>
     </div>
 
     <!-- Failed state -->
     <div v-else-if="status === 'failed'" class="p-5 flex flex-col items-center gap-3 text-center">
-      <div class="w-16 h-16 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+      <div class="flex h-16 w-16 items-center justify-center rounded-full bg-red-100">
         <XCircleIcon class="w-10 h-10 text-red-500" />
       </div>
-      <p class="font-bold text-gray-900 dark:text-white">
+      <p class="font-bold text-slate-950">
         {{ $t('payment.mpesa_failed') }}
       </p>
       <button

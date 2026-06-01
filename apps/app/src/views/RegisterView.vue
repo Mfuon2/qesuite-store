@@ -1,40 +1,63 @@
 <template>
-  <div class="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-teal-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800 flex items-center justify-center p-4">
-    <div class="w-full max-w-md">
-      <div class="text-center mb-4">
-        <div class="inline-flex items-center justify-center w-10 h-10 bg-primary rounded-xl shadow-md mb-2">
-          <svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
-          </svg>
+  <div class="qs-auth-bg relative min-h-screen overflow-hidden px-4 py-8">
+    <div class="absolute inset-0 bg-gradient-to-b from-white/10 via-[#f7fbf4]/40 to-[#eef8ec]/80" />
+    <div class="relative mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-6xl flex-col items-center justify-center gap-8 pt-32 sm:pt-40">
+      <div class="w-full max-w-xl rounded-2xl border border-white/80 bg-white/95 p-6 shadow-2xl shadow-emerald-950/10 backdrop-blur-xl sm:p-8">
+        <div class="mb-5 text-center">
+          <h1 class="text-2xl font-extrabold text-emerald-800">Create your account</h1>
+          <p class="mt-2 text-sm text-slate-500">Join Stores and grow your business.</p>
         </div>
-        <h1 class="text-xl font-bold text-gray-900 dark:text-white">Create your store</h1>
-        <p class="text-gray-500 dark:text-gray-400 text-xs mt-0.5">Start your 14-day free trial</p>
-      </div>
-
-      <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 p-5">
         <form @submit.prevent="handleRegister" class="space-y-3">
-          <div class="grid grid-cols-2 gap-3">
-            <div>
-              <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Store Name *</label>
+          <!-- Store Name with live availability check -->
+          <div>
+            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Store Name *</label>
+            <div class="relative">
               <input
                 v-model="form.store_name"
                 type="text"
                 placeholder="Mama Mboga Shop"
                 required
-                class="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
+                :class="['w-full px-3 py-2 pr-8 rounded-lg border bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all',
+                  storeNameStatus === 'taken'      ? 'border-red-400 dark:border-red-500' :
+                  storeNameStatus === 'available'  ? 'border-emerald-400 dark:border-emerald-500' :
+                  'border-gray-200 dark:border-gray-600 focus:border-primary']"
+                @input="handleStoreNameInput"
               />
+              <div class="absolute right-2.5 top-1/2 -translate-y-1/2">
+                <svg v-if="storeNameChecking" class="w-4 h-4 animate-spin text-gray-400" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+                </svg>
+                <svg v-else-if="storeNameStatus === 'available'" class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
+                </svg>
+                <svg v-else-if="storeNameStatus === 'taken'" class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </div>
             </div>
-            <div>
-              <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Your Name *</label>
-              <input
-                v-model="form.name"
-                type="text"
-                placeholder="Jane Doe"
-                required
-                class="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
-              />
-            </div>
+            <!-- URL preview / status -->
+            <p v-if="storeNameStatus === 'available'" class="text-emerald-600 dark:text-emerald-400 text-xs mt-1 flex items-center gap-1">
+              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+              Available · Your URL: <span class="font-mono font-medium">{{ storefrontBase }}/{{ storeSlugPreview }}</span>
+            </p>
+            <p v-else-if="storeNameStatus === 'taken'" class="text-red-500 text-xs mt-1">
+              "{{ form.store_name }}" is already taken. Try a different name.
+            </p>
+            <p v-else-if="form.store_name.length > 0 && !storeNameChecking" class="text-gray-400 text-xs mt-1 font-mono">
+              {{ storefrontBase }}/{{ storeSlugPreview }}
+            </p>
           </div>
+
+          <div>
+            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Your Name *</label>
+            <input
+              v-model="form.name"
+              type="text"
+              placeholder="Jane Doe"
+              required
+              class="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
+            /></div>
 
           <div class="grid grid-cols-2 gap-3">
             <div>
@@ -117,8 +140,8 @@
 
           <button
             type="submit"
-            :disabled="loading || !acceptedTerms || (!!form.confirm && form.confirm !== form.password)"
-            class="w-full py-2 bg-primary hover:opacity-90 disabled:opacity-60 text-white text-sm font-semibold rounded-lg transition-all flex items-center justify-center gap-2 shadow-md shadow-primary/20"
+            :disabled="loading || !acceptedTerms || (!!form.confirm && form.confirm !== form.password) || storeNameStatus === 'taken'"
+            class="qs-btn qs-btn-primary flex w-full items-center justify-center gap-2 py-3 disabled:opacity-60"
           >
             <svg v-if="loading" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
@@ -130,7 +153,7 @@
 
         <p class="text-center text-xs text-gray-500 dark:text-gray-400 mt-4">
           Already have an account?
-          <router-link to="/login" class="text-primary hover:text-accent font-medium transition-colors">Sign in →</router-link>
+          <router-link to="/login" class="text-primary hover:text-accent font-medium transition-colors">Login</router-link>
         </p>
       </div>
     </div>
@@ -138,10 +161,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { ref, reactive, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { EyeIcon, EyeSlashIcon, ExclamationCircleIcon } from '@heroicons/vue/24/outline'
 import { useAuthStore } from '@/stores/auth'
+import { apiCheckStoreName } from '@/api/auth'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -152,8 +176,37 @@ const acceptedTerms = ref(false)
 const loading = ref(false)
 const error = ref('')
 
+const storeNameStatus = ref<'idle' | 'checking' | 'available' | 'taken'>('idle')
+const storeNameChecking = computed(() => storeNameStatus.value === 'checking')
+const storeSlugPreview = computed(() =>
+  form.store_name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').substring(0, 30)
+)
+
+const storefrontBase = computed(() =>
+  (import.meta.env.VITE_STOREFRONT_URL || window.location.origin).replace(/\/$/, '')
+)
+
+let storeNameTimer: ReturnType<typeof setTimeout>
+
+function handleStoreNameInput() {
+  storeNameStatus.value = 'idle'
+  const name = form.store_name.trim()
+  if (name.length < 2) return
+  clearTimeout(storeNameTimer)
+  storeNameStatus.value = 'checking'
+  storeNameTimer = setTimeout(async () => {
+    try {
+      const res = await apiCheckStoreName(name)
+      storeNameStatus.value = res.success && res.data?.available ? 'available' : 'taken'
+    } catch {
+      storeNameStatus.value = 'idle'
+    }
+  }, 500)
+}
+
 async function handleRegister() {
   if (form.password !== form.confirm) { error.value = 'Passwords do not match'; return }
+  if (storeNameStatus.value === 'taken') { error.value = 'That store name is already taken'; return }
   error.value = ''
   loading.value = true
   const result = await authStore.register({

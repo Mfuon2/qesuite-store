@@ -1,16 +1,19 @@
 <template>
-  <div class="min-h-screen bg-gray-50 flex flex-col safe-top">
+  <div class="min-h-screen flex flex-col safe-top">
     <!-- Header -->
-    <header class="bg-white shadow-sm px-4 pt-3 pb-2.5 sticky top-0 z-10">
+    <header class="sticky top-0 z-10 border-b border-[#d0daca]/70 bg-white/90 px-4 pt-3 pb-3 backdrop-blur-xl">
       <div class="flex items-center justify-between">
-        <div>
-          <p class="text-xs text-gray-500 font-medium">Good to go,</p>
-          <h1 class="text-lg font-black text-gray-900">{{ auth.user?.name ?? 'Rider' }}</h1>
+        <div class="flex items-center gap-3">
+          <div class="qs-brand-mark scale-90" />
+          <div>
+            <p class="text-xs text-slate-500 font-medium">Good to go,</p>
+            <h1 class="text-lg font-black text-slate-950">{{ auth.user?.name ?? 'Rider' }}</h1>
+          </div>
         </div>
         <div class="flex items-center gap-3">
           <GpsIndicator :is-active="geo.isActive.value" :last-update="geo.lastUpdate.value" />
           <button
-            class="tap-target flex items-center justify-center w-11 h-11 rounded-full bg-gray-100 text-gray-600 active:bg-gray-200 transition-colors"
+            class="tap-target flex items-center justify-center w-11 h-11 rounded-full bg-emerald-50 text-emerald-800 active:bg-emerald-100 transition-colors"
             @click="handleLogout"
           >
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -25,7 +28,7 @@
     <!-- Pull to refresh / Refresh button -->
     <div class="px-4 py-2">
       <button
-        class="w-full flex items-center justify-center gap-2 py-2 bg-white border border-gray-200 rounded-xl text-gray-600 font-semibold text-sm active:bg-gray-50 transition-colors tap-target"
+        class="tap-target flex w-full items-center justify-center gap-2 rounded-xl border border-[#d0daca] bg-white/90 py-2 text-sm font-semibold text-slate-700 shadow-sm transition-colors active:bg-emerald-50"
         :disabled="ordersStore.loading"
         @click="refresh"
       >

@@ -1,118 +1,211 @@
 <template>
-  <div class="p-3 sm:p-4 max-w-3xl mx-auto">
-    <h2 class="text-base font-bold text-gray-900 dark:text-white mb-3">Billing</h2>
+  <div class="owner-page">
+    <section class="owner-page-hero">
+      <div class="owner-page-header">
+        <div class="min-w-0">
+          <div class="owner-eyebrow">Subscription billing</div>
+          <h1 class="owner-title">Billing</h1>
+          <p class="owner-subtitle">
+            Manage your plan, make subscription payments, and review billing activity for your store.
+          </p>
+        </div>
 
-    <!-- Loading -->
-    <div v-if="loading" class="space-y-3">
-      <div class="skeleton h-28 rounded-xl" />
-      <div class="skeleton h-20 rounded-xl" />
-      <div class="skeleton h-36 rounded-xl" />
+        <div class="rounded-2xl border border-slate-200/80 bg-white px-4 py-3 shadow-[0_12px_35px_rgba(15,23,42,0.06)]">
+          <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Current status</p>
+          <p class="mt-1 text-sm font-bold capitalize text-slate-800">{{ subscription?.status || 'active' }}</p>
+        </div>
+      </div>
+    </section>
+
+    <div v-if="loading" class="mt-5 space-y-3">
+      <div class="skeleton h-28 rounded-[28px]" />
+      <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div v-for="i in 4" :key="i" class="skeleton h-20 rounded-[22px]" />
+      </div>
+      <div class="skeleton h-64 rounded-[28px]" />
     </div>
 
     <template v-else>
-      <!-- Current plan -->
-      <div class="bg-gradient-to-br from-primary to-accent rounded-xl p-4 text-white mb-3 shadow-lg shadow-primary/20">
-        <div class="flex items-start justify-between gap-3">
-          <div>
-            <p class="text-xs text-white/70 mb-0.5">Current Plan</p>
-            <h3 class="text-xl font-bold capitalize">{{ subscription?.plan || 'Starter' }}</h3>
-            <p class="text-white/80 text-xs mt-0.5">
-              KES {{ subscription?.amount?.toLocaleString() || '999' }} / month
-            </p>
+      <section class="owner-stat-grid">
+        <div class="owner-stat-card">
+          <div class="owner-stat-icon">
+            <CreditCardIcon class="h-5 w-5" />
           </div>
           <div>
-            <span :class="['px-3 py-1.5 rounded-full text-xs font-semibold', statusClass]">
-              {{ subscription?.status || 'active' }}
-            </span>
+            <p class="text-sm font-bold capitalize text-slate-950">{{ subscription?.plan || 'Starter' }}</p>
+            <p class="text-xs font-medium text-slate-500">Current plan</p>
           </div>
         </div>
-        <div v-if="subscription?.current_period_end" class="mt-4 pt-4 border-t border-white/20">
-          <p class="text-white/70 text-xs">Next billing date</p>
-          <p class="text-white font-semibold">{{ formatDate(subscription.current_period_end) }}</p>
-        </div>
-      </div>
 
-      <!-- Payment methods -->
-      <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5 mb-4">
-        <h3 class="font-semibold text-gray-900 dark:text-white mb-4">Pay for Subscription</h3>
-        <div class="space-y-3">
-          <!-- M-Pesa -->
-          <div class="border border-gray-100 dark:border-gray-700 rounded-xl p-4">
-            <div class="flex items-center gap-3 mb-3">
-              <div class="w-10 h-10 bg-green-50 dark:bg-green-900/20 rounded-xl flex items-center justify-center">
-                <span class="text-green-600 font-bold text-xs">M-PESA</span>
+        <div class="owner-stat-card">
+          <div class="owner-stat-icon">
+            <BanknotesIcon class="h-5 w-5" />
+          </div>
+          <div>
+            <p class="text-sm font-bold text-slate-950">KES {{ monthlyAmount }}</p>
+            <p class="text-xs font-medium text-slate-500">Monthly amount</p>
+          </div>
+        </div>
+
+        <div class="owner-stat-card">
+          <div class="owner-stat-icon bg-sky-50 text-sky-700 ring-sky-100">
+            <CalendarDaysIcon class="h-5 w-5" />
+          </div>
+          <div>
+            <p class="text-sm font-bold text-slate-950">{{ nextBillingDate }}</p>
+            <p class="text-xs font-medium text-slate-500">Next billing date</p>
+          </div>
+        </div>
+
+        <div class="owner-stat-card">
+          <div class="owner-stat-icon bg-violet-50 text-violet-700 ring-violet-100">
+            <DocumentTextIcon class="h-5 w-5" />
+          </div>
+          <div>
+            <p class="text-sm font-bold text-slate-950">{{ history.length }}</p>
+            <p class="text-xs font-medium text-slate-500">Billing records</p>
+          </div>
+        </div>
+      </section>
+
+      <div class="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">
+        <section class="space-y-5">
+          <div class="owner-panel overflow-hidden p-0">
+            <div class="relative overflow-hidden p-5 text-white sm:p-6" :style="{ background: 'linear-gradient(135deg, var(--color-primary), color-mix(in srgb, var(--color-primary) 65%, #000))' }">
+              <div class="absolute right-0 top-0 h-40 w-40 translate-x-12 -translate-y-14 rounded-full bg-white/10 blur-2xl" />
+              <div class="relative flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <p class="text-xs font-bold uppercase tracking-[0.2em] text-white/65">Current plan</p>
+                  <h2 class="mt-2 text-3xl font-black capitalize tracking-tight">{{ subscription?.plan || 'Starter' }}</h2>
+                  <p class="mt-1 text-sm font-semibold text-white/75">KES {{ monthlyAmount }} per month</p>
+                </div>
+                <span :class="['rounded-full px-3 py-1.5 text-xs font-black capitalize ring-1 ring-white/20', planStatusClass]">
+                  {{ subscription?.status || 'active' }}
+                </span>
               </div>
-              <div>
-                <p class="font-medium text-gray-900 dark:text-white text-sm">M-Pesa</p>
-                <p class="text-xs text-gray-400">STK Push to your phone</p>
+
+              <div class="relative mt-6 grid gap-3 sm:grid-cols-3">
+                <div class="rounded-2xl bg-white/12 p-3 ring-1 ring-white/10">
+                  <p class="text-xs font-semibold text-white/60">Currency</p>
+                  <p class="mt-1 text-sm font-bold">{{ subscription?.currency || 'KES' }}</p>
+                </div>
+                <div class="rounded-2xl bg-white/12 p-3 ring-1 ring-white/10">
+                  <p class="text-xs font-semibold text-white/60">Payment method</p>
+                  <p class="mt-1 text-sm font-bold">{{ paymentMethodLabel(subscription?.payment_method) }}</p>
+                </div>
+                <div class="rounded-2xl bg-white/12 p-3 ring-1 ring-white/10">
+                  <p class="text-xs font-semibold text-white/60">Renews</p>
+                  <p class="mt-1 text-sm font-bold">{{ nextBillingDate }}</p>
+                </div>
               </div>
             </div>
-            <div class="flex gap-2">
-              <input
-                v-model="mpesaPhone"
-                type="tel"
-                placeholder="+254700000000"
-                class="flex-1 px-3 py-2.5 text-sm rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
-              />
-              <button
-                @click="payWithMpesa"
-                :disabled="!mpesaPhone || payingMpesa"
-                class="px-4 py-2.5 bg-green-500 text-white text-sm font-semibold rounded-xl hover:bg-green-600 disabled:opacity-60 transition-colors flex items-center gap-2"
+          </div>
+
+          <div class="owner-panel">
+            <div class="owner-panel-header">
+              <div>
+                <h2 class="owner-section-title">Billing history</h2>
+                <p class="owner-section-copy">Recent subscription payments and references.</p>
+              </div>
+              <span class="owner-brand-surface rounded-full px-3 py-1 text-xs font-bold text-primary">{{ history.length }} records</span>
+            </div>
+
+            <div v-if="!history.length" class="owner-empty py-12">
+              <DocumentTextIcon class="mx-auto mb-4 h-12 w-12 text-slate-300" />
+              <p class="text-base font-bold text-slate-800">No billing history yet</p>
+              <p class="mt-1 text-sm text-slate-500">Successful subscription payments will appear here.</p>
+            </div>
+
+            <div v-else class="space-y-2">
+              <div
+                v-for="item in history"
+                :key="item.id"
+                class="owner-list-row flex items-center gap-4"
               >
-                <svg v-if="payingMpesa" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
-                </svg>
-                Pay
-              </button>
-            </div>
-            <p v-if="mpesaStatus" class="text-xs text-gray-500 dark:text-gray-400 mt-2">{{ mpesaStatus }}</p>
-          </div>
+                <div class="owner-brand-surface flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-primary ring-1">
+                  <DocumentTextIcon class="h-5 w-5" />
+                </div>
 
-          <!-- Stripe card -->
-          <div class="border border-gray-100 dark:border-gray-700 rounded-xl p-4 opacity-60">
-            <div class="flex items-center gap-3">
-              <div class="w-10 h-10 bg-blue-50 dark:bg-blue-900/20 rounded-xl flex items-center justify-center">
-                <CreditCardIcon class="w-5 h-5 text-blue-600" />
+                <div class="min-w-0 flex-1">
+                  <p class="text-sm font-bold text-slate-950">{{ item.currency || 'KES' }} {{ item.amount.toLocaleString() }}</p>
+                  <p class="truncate text-xs font-medium text-slate-500">
+                    {{ paymentMethodLabel(item.payment_method) }} - {{ item.reference || 'No reference' }}
+                  </p>
+                </div>
+
+                <div class="shrink-0 text-right">
+                  <span :class="['rounded-full px-2.5 py-1 text-xs font-bold capitalize', item.status === 'paid' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700']">
+                    {{ item.status }}
+                  </span>
+                  <p class="mt-1 text-xs font-medium text-slate-400">
+                    {{ item.paid_at ? formatDate(item.paid_at) : formatDate(item.created_at) }}
+                  </p>
+                </div>
               </div>
+            </div>
+          </div>
+        </section>
+
+        <aside class="xl:sticky xl:top-24 xl:self-start">
+          <div class="owner-panel">
+            <div class="owner-panel-header">
               <div>
-                <p class="font-medium text-gray-900 dark:text-white text-sm">Credit / Debit Card</p>
-                <p class="text-xs text-gray-400">Powered by Stripe — coming soon</p>
+                <h2 class="owner-section-title">Pay subscription</h2>
+                <p class="owner-section-copy">Use M-Pesa STK push for the current billing cycle.</p>
+              </div>
+            </div>
+
+            <div class="space-y-3">
+              <div class="owner-brand-surface rounded-[24px] border p-4">
+                <div class="flex items-center gap-3">
+                  <div class="flex h-12 w-12 overflow-hidden rounded-2xl shadow-sm">
+                    <img src="/mpesa.png" alt="M-Pesa" class="h-full w-full object-cover" />
+                  </div>
+                  <div>
+                    <p class="text-sm font-bold text-slate-950">M-Pesa</p>
+                    <p class="text-xs font-medium text-slate-500">STK push to your phone</p>
+                  </div>
+                </div>
+
+                <div class="mt-4 flex flex-col gap-2 sm:flex-row xl:flex-col 2xl:flex-row">
+                  <input
+                    v-model="mpesaPhone"
+                    type="tel"
+                    placeholder="+254700000000"
+                    class="owner-input"
+                  />
+                  <button
+                    @click="payWithMpesa"
+                    :disabled="!mpesaPhone || payingMpesa"
+                    class="owner-primary-action shrink-0"
+                  >
+                    <svg v-if="payingMpesa" class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+                      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                    </svg>
+                    Pay
+                  </button>
+                </div>
+
+                <p v-if="mpesaStatus" class="mt-3 rounded-2xl bg-white px-3 py-2 text-xs font-semibold leading-5 text-slate-600">
+                  {{ mpesaStatus }}
+                </p>
+              </div>
+
+              <div class="rounded-[24px] border border-slate-100 bg-white p-4 opacity-75">
+                <div class="flex items-center gap-3">
+                  <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-50 text-sky-700 ring-1 ring-sky-100">
+                    <CreditCardIcon class="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p class="text-sm font-bold text-slate-950">Credit / debit card</p>
+                    <p class="text-xs font-medium text-slate-500">Powered by Stripe, coming soon</p>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      </div>
-
-      <!-- Billing history -->
-      <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 overflow-hidden">
-        <div class="px-5 py-4 border-b border-gray-50 dark:border-gray-700">
-          <h3 class="font-semibold text-gray-900 dark:text-white">Billing History</h3>
-        </div>
-        <div v-if="!history.length" class="text-center py-12 text-gray-400 dark:text-gray-500">
-          <DocumentTextIcon class="w-12 h-12 mx-auto mb-3 opacity-30" />
-          <p class="text-sm">No billing history yet</p>
-        </div>
-        <div v-else class="divide-y divide-gray-50 dark:divide-gray-700">
-          <div
-            v-for="item in history"
-            :key="item.id"
-            class="flex items-center gap-4 px-5 py-3"
-          >
-            <div class="flex-1">
-              <p class="text-sm font-medium text-gray-900 dark:text-white">
-                KES {{ item.amount.toLocaleString() }}
-              </p>
-              <p class="text-xs text-gray-400">{{ item.payment_method === 'mpesa' ? 'M-Pesa' : 'Card' }} · {{ item.reference }}</p>
-            </div>
-            <div class="text-right">
-              <span :class="['px-2 py-0.5 rounded-full text-xs font-medium', item.status === 'paid' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400']">
-                {{ item.status }}
-              </span>
-              <p class="text-xs text-gray-400 mt-0.5">{{ item.paid_at ? formatDate(item.paid_at) : formatDate(item.created_at) }}</p>
-            </div>
-          </div>
-        </div>
+        </aside>
       </div>
     </template>
   </div>
@@ -120,10 +213,11 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { CreditCardIcon, DocumentTextIcon } from '@heroicons/vue/24/outline'
+import { formatDate } from '@/composables/useDateFormat'
+import { BanknotesIcon, CalendarDaysIcon, CreditCardIcon, DocumentTextIcon } from '@heroicons/vue/24/outline'
 import { apiGetSubscription, apiGetBillingHistory, apiInitiateMpesaPayment } from '@/api/settings'
 import { useToast } from '@/composables/useToast'
-import type { Subscription, BillingHistory } from '@qesuite/types'
+import type { PaymentMethod, Subscription, BillingHistory } from '@qesuite/types'
 
 const { showToast } = useToast()
 const loading = ref(true)
@@ -133,16 +227,25 @@ const mpesaPhone = ref('')
 const payingMpesa = ref(false)
 const mpesaStatus = ref('')
 
-const statusClass = computed(() => {
-  const s = subscription.value?.status
-  if (s === 'active') return 'bg-white/20 text-white'
-  if (s === 'trialing') return 'bg-yellow-400/30 text-white'
-  if (s === 'past_due') return 'bg-red-400/30 text-white'
-  return 'bg-white/20 text-white'
+const monthlyAmount = computed(() => (subscription.value?.amount || 999).toLocaleString())
+const nextBillingDate = computed(() => {
+  if (!subscription.value?.current_period_end) return 'Not set'
+  return formatDate(subscription.value.current_period_end)
 })
 
-function formatDate(d: string) {
-  return new Date(d).toLocaleDateString('en-KE', { dateStyle: 'medium' })
+const planStatusClass = computed(() => {
+  const status = subscription.value?.status
+  if (status === 'active') return 'bg-white/18 text-white'
+  if (status === 'trialing') return 'bg-amber-300/30 text-white'
+  if (status === 'past_due') return 'bg-red-400/30 text-white'
+  return 'bg-white/18 text-white'
+})
+
+function paymentMethodLabel(method?: PaymentMethod | null) {
+  if (method === 'mpesa') return 'M-Pesa'
+  if (method === 'stripe') return 'Card'
+  if (method === 'pay_on_delivery') return 'Pay on delivery'
+  return 'Not set'
 }
 
 async function payWithMpesa() {
@@ -152,7 +255,7 @@ async function payWithMpesa() {
   try {
     const res = await apiInitiateMpesaPayment(mpesaPhone.value)
     if (res.success) {
-      mpesaStatus.value = 'STK Push sent! Please check your phone and enter your M-Pesa PIN.'
+      mpesaStatus.value = 'STK push sent. Please check your phone and enter your M-Pesa PIN.'
       showToast('M-Pesa payment initiated', 'success')
     }
   } catch (err: unknown) {

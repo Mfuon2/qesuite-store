@@ -6,8 +6,12 @@ import {
   suspendStore,
   unsuspendStore,
   extendTrial,
+  deleteStore as apiDeleteStore,
+  updateStoreProfile as apiUpdateStoreProfile,
   getImpersonationToken,
+  resetStoreUserPassword,
 } from '@/api/admin'
+import type { StoreProfileUpdate } from '@/api/admin'
 import type { SubscriptionStatus, Plan } from '@qesuite/types'
 
 export interface AdminStore {
@@ -101,6 +105,30 @@ export const useStoresStore = defineStore('adminStores', () => {
     }
   }
 
+  async function updateProfile(id: string, payload: StoreProfileUpdate): Promise<void> {
+    await apiUpdateStoreProfile(id, payload)
+    await fetchStore(id)
+    // Also refresh the list row so the name/slug reflect immediately
+    const idx = stores.value.findIndex(s => s.id === id)
+    if (idx !== -1 && currentStore.value) {
+      stores.value[idx] = {
+        ...stores.value[idx],
+        name: currentStore.value.name,
+        slug: currentStore.value.slug,
+        owner_name: currentStore.value.owner_name,
+        owner_phone: currentStore.value.owner_phone,
+        owner_email: currentStore.value.owner_email,
+      }
+    }
+  }
+
+  async function deleteStore(id: string): Promise<void> {
+    await apiDeleteStore(id)
+    stores.value = stores.value.filter(s => s.id !== id)
+    total.value = Math.max(0, total.value - 1)
+    if (currentStore.value?.id === id) currentStore.value = null
+  }
+
   async function extend(id: string, days: number): Promise<void> {
     await extendTrial(id, days)
     await fetchStores()
@@ -112,6 +140,11 @@ export const useStoresStore = defineStore('adminStores', () => {
   async function impersonate(id: string): Promise<string> {
     const { token } = await getImpersonationToken(id)
     return token
+  }
+
+  async function resetPassword(id: string, password?: string): Promise<string> {
+    const { new_password } = await resetStoreUserPassword(id, password)
+    return new_password
   }
 
   function setPage(p: number) {
@@ -165,8 +198,11 @@ export const useStoresStore = defineStore('adminStores', () => {
     fetchStore,
     suspend,
     unsuspend,
+    deleteStore,
+    updateProfile,
     extend,
     impersonate,
+    resetPassword,
     setPage,
     setLimit,
     setSearch,

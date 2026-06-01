@@ -16,6 +16,7 @@ import uploadRoutes from './routes/upload'
 import storefrontRoutes from './routes/storefront'
 import settingsRoutes from './routes/settings'
 import billingRoutes from './routes/billing'
+import notificationsRoutes from './routes/notifications'
 import { handleQueue } from './handlers/notifications'
 import { handleCron } from './handlers/cron'
 
@@ -54,6 +55,7 @@ app.route('/api/upload', uploadRoutes)
 app.route('/api/storefront', storefrontRoutes)
 app.route('/api/settings', settingsRoutes)
 app.route('/api/billing', billingRoutes)
+app.route('/api/notifications', notificationsRoutes)
 
 // Health check
 app.get('/health', (c) =>

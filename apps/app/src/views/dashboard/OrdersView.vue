@@ -1,130 +1,174 @@
 <template>
-  <div class="p-3 sm:p-4">
-    <!-- Header -->
-    <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
-      <div class="flex items-center gap-2">
-        <h2 class="text-base font-bold text-gray-900 dark:text-white">Orders</h2>
-        <RealTimeIndicator :status="realtimeStatus" />
-      </div>
-      <div class="flex items-center gap-2">
-        <!-- Sound toggle -->
-        <button
-          @click="settingsStore.toggleSound()"
-          :class="['p-2 rounded-xl transition-colors', settingsStore.soundEnabled ? 'text-primary bg-primary/10' : 'text-gray-400 bg-gray-100 dark:bg-gray-700']"
-          :title="settingsStore.soundEnabled ? 'Mute order sounds' : 'Enable order sounds'"
-        >
-          <SpeakerWaveIcon v-if="settingsStore.soundEnabled" class="w-5 h-5" />
-          <SpeakerXMarkIcon v-else class="w-5 h-5" />
-        </button>
-        <!-- View toggle -->
-        <div class="flex rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+  <div class="owner-page">
+    <section class="owner-page-hero">
+      <div class="owner-page-header">
+        <div class="min-w-0">
+          <div class="owner-eyebrow">
+            Live orders
+            <RealTimeIndicator :status="realtimeStatus" />
+          </div>
+          <h1 class="owner-title">Orders</h1>
+          <p class="owner-subtitle">
+            Track every customer request from new order to delivery, with the fastest actions kept close to the workflow.
+          </p>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2">
           <button
-            @click="settingsStore.setOrderView('kanban')"
-            :class="['p-2 transition-colors', settingsStore.orderView === 'kanban' ? 'bg-primary text-white' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700']"
+            @click="settingsStore.toggleSound()"
+            :class="['owner-icon-button', settingsStore.soundEnabled ? 'owner-brand-selected text-primary' : '']"
+            :title="settingsStore.soundEnabled ? 'Mute order sounds' : 'Enable order sounds'"
           >
-            <ViewColumnsIcon class="w-5 h-5" />
+            <SpeakerWaveIcon v-if="settingsStore.soundEnabled" class="h-5 w-5" />
+            <SpeakerXMarkIcon v-else class="h-5 w-5" />
           </button>
-          <button
-            @click="settingsStore.setOrderView('list')"
-            :class="['p-2 transition-colors', settingsStore.orderView === 'list' ? 'bg-primary text-white' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700']"
-          >
-            <ListBulletIcon class="w-5 h-5" />
+          <div class="owner-segmented">
+            <button
+              @click="settingsStore.setOrderView('kanban')"
+              :class="['owner-segment-button', settingsStore.orderView === 'kanban' ? 'owner-segment-button-active' : '']"
+              title="Kanban view"
+            >
+              <ViewColumnsIcon class="h-4 w-4" />
+            </button>
+            <button
+              @click="settingsStore.setOrderView('list')"
+              :class="['owner-segment-button', settingsStore.orderView === 'list' ? 'owner-segment-button-active' : '']"
+              title="List view"
+            >
+              <ListBulletIcon class="h-4 w-4" />
+            </button>
+          </div>
+          <button @click="ordersStore.fetchOrders()" class="owner-icon-button" title="Refresh orders">
+            <ArrowPathIcon :class="['h-5 w-5', ordersStore.loading ? 'animate-spin' : '']" />
           </button>
         </div>
-        <button @click="ordersStore.fetchOrders()" class="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl transition-colors">
-          <ArrowPathIcon :class="['w-5 h-5', ordersStore.loading ? 'animate-spin' : '']" />
-        </button>
       </div>
-    </div>
+    </section>
 
-    <!-- Status filter tabs -->
-    <div class="flex gap-1 overflow-x-auto pb-1.5 mb-3 scrollbar-hide">
+    <section class="owner-stat-grid">
+      <div class="owner-stat-card">
+        <div class="owner-stat-icon">
+          <ShoppingCartIcon class="h-5 w-5" />
+        </div>
+        <div>
+          <p class="text-sm font-bold text-slate-950">{{ tabCounts.ALL || 0 }}</p>
+          <p class="text-xs font-medium text-slate-500">Total orders</p>
+        </div>
+      </div>
+      <div class="owner-stat-card">
+        <div class="owner-stat-icon bg-sky-50 text-sky-700 ring-sky-100">
+          <ViewColumnsIcon class="h-5 w-5" />
+        </div>
+        <div>
+          <p class="text-sm font-bold text-slate-950">{{ tabCounts.NEW || 0 }}</p>
+          <p class="text-xs font-medium text-slate-500">New</p>
+        </div>
+      </div>
+      <div class="owner-stat-card">
+        <div class="owner-stat-icon bg-amber-50 text-amber-700 ring-amber-100">
+          <ArrowPathIcon class="h-5 w-5" />
+        </div>
+        <div>
+          <p class="text-sm font-bold text-slate-950">{{ tabCounts.PREPARING || 0 }}</p>
+          <p class="text-xs font-medium text-slate-500">Preparing</p>
+        </div>
+      </div>
+      <div class="owner-stat-card">
+        <div class="owner-stat-icon">
+          <ListBulletIcon class="h-5 w-5" />
+        </div>
+        <div>
+          <p class="text-sm font-bold text-slate-950">{{ tabCounts.DELIVERED || 0 }}</p>
+          <p class="text-xs font-medium text-slate-500">Delivered</p>
+        </div>
+      </div>
+    </section>
+
+    <div class="owner-filter-bar">
       <button
         v-for="tab in statusTabs"
         :key="tab.value"
         @click="setFilter(tab.value)"
         :class="[
-          'flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all shrink-0',
-          activeFilter === tab.value
-            ? 'bg-primary text-white shadow-md shadow-primary/20'
-            : 'text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600'
+          'owner-filter-pill',
+          activeFilter === tab.value ? 'owner-filter-pill-active' : ''
         ]"
       >
         {{ tab.label }}
         <span
           v-if="tabCounts[tab.value] > 0"
-          :class="['text-xs font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center', activeFilter === tab.value ? 'bg-white/20 text-white' : 'bg-gray-200 dark:bg-gray-600 text-gray-600 dark:text-gray-300']"
+          :class="['rounded-full px-1.5 py-0.5 text-[10px] font-black', activeFilter === tab.value ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500']"
         >
           {{ tabCounts[tab.value] }}
         </span>
       </button>
     </div>
 
-    <!-- Loading state -->
-    <div v-if="ordersStore.loading" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-      <div v-for="i in 8" :key="i" class="skeleton h-36 rounded-xl" />
-    </div>
+    <div class="mt-5">
+      <div v-if="ordersStore.loading" class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div v-for="i in 8" :key="i" class="skeleton h-40 rounded-[24px]" />
+      </div>
 
-    <!-- Empty state -->
-    <div v-else-if="filteredOrders.length === 0" class="text-center py-10 text-gray-400 dark:text-gray-500">
-      <ShoppingCartIcon class="w-12 h-12 mx-auto mb-3 opacity-30" />
-      <p class="text-sm font-medium text-gray-500 dark:text-gray-400">No orders yet</p>
-      <p class="text-xs mt-0.5">Orders will appear here when customers place them</p>
-    </div>
+      <div v-else-if="filteredOrders.length === 0" class="owner-empty">
+        <ShoppingCartIcon class="mx-auto mb-4 h-12 w-12 text-slate-300" />
+        <p class="text-base font-bold text-slate-800">No orders yet</p>
+        <p class="mt-1 text-sm text-slate-500">Orders will appear here when customers place them.</p>
+      </div>
 
-    <!-- KANBAN VIEW -->
-    <template v-else-if="settingsStore.orderView === 'kanban'">
-      <div v-if="activeFilter === 'ALL'" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 overflow-x-auto">
-        <div
-          v-for="col in kanbanColumns"
-          :key="col.status"
-          class="min-w-0"
-        >
-          <div class="flex items-center gap-1.5 mb-2">
-            <span :class="['w-2 h-2 rounded-full shrink-0', col.dot]" />
-            <h3 class="text-xs font-semibold text-gray-700 dark:text-gray-300">{{ col.label }}</h3>
-            <span class="text-xs text-gray-400 bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded-full">{{ ordersByStatus[col.status]?.length || 0 }}</span>
-          </div>
-          <div class="space-y-2 min-h-[80px]">
-            <OrderCard
-              v-for="order in ordersByStatus[col.status] || []"
-              :key="order.id"
-              :order="order"
-              view-mode="kanban"
-              @status-changed="handleStatusChange"
-              @view-detail="goToDetail"
-            />
-            <div v-if="!ordersByStatus[col.status]?.length" class="border-2 border-dashed border-gray-100 dark:border-gray-700 rounded-xl h-16 flex items-center justify-center">
-              <p class="text-xs text-gray-300 dark:text-gray-600">No orders</p>
+      <template v-else-if="settingsStore.orderView === 'kanban'">
+        <div v-if="activeFilter === 'ALL'" class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <div
+            v-for="col in kanbanColumns"
+            :key="col.status"
+            class="owner-panel min-w-0 p-3 sm:p-3"
+          >
+            <div class="mb-3 flex items-center justify-between gap-2">
+              <div class="flex min-w-0 items-center gap-2">
+                <span :class="['h-2.5 w-2.5 shrink-0 rounded-full', col.dot]" />
+                <h3 class="truncate text-sm font-bold text-slate-800">{{ col.label }}</h3>
+              </div>
+              <span class="rounded-full bg-slate-50 px-2 py-1 text-xs font-bold text-slate-500">{{ ordersByStatus[col.status]?.length || 0 }}</span>
+            </div>
+            <div class="min-h-[90px] space-y-2">
+              <OrderCard
+                v-for="order in ordersByStatus[col.status] || []"
+                :key="order.id"
+                :order="order"
+                view-mode="kanban"
+                @status-changed="handleStatusChange"
+                @view-detail="goToDetail"
+              />
+              <div v-if="!ordersByStatus[col.status]?.length" class="flex h-20 items-center justify-center rounded-[18px] border border-dashed border-slate-200 bg-slate-50/60">
+                <p class="text-xs font-semibold text-slate-400">No orders</p>
+              </div>
             </div>
           </div>
         </div>
-      </div>
-      <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2.5">
-        <OrderCard
-          v-for="order in filteredOrders"
-          :key="order.id"
-          :order="order"
-          view-mode="kanban"
-          @status-changed="handleStatusChange"
-          @view-detail="goToDetail"
-        />
-      </div>
-    </template>
+        <div v-else class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <OrderCard
+            v-for="order in filteredOrders"
+            :key="order.id"
+            :order="order"
+            view-mode="kanban"
+            @status-changed="handleStatusChange"
+            @view-detail="goToDetail"
+          />
+        </div>
+      </template>
 
-    <!-- LIST VIEW -->
-    <template v-else>
-      <div class="space-y-1.5">
-        <OrderCard
-          v-for="order in filteredOrders"
-          :key="order.id"
-          :order="order"
-          view-mode="list"
-          @status-changed="handleStatusChange"
-          @view-detail="goToDetail"
-        />
-      </div>
-    </template>
+      <template v-else>
+        <div class="owner-panel space-y-2 p-2 sm:p-2">
+          <OrderCard
+            v-for="order in filteredOrders"
+            :key="order.id"
+            :order="order"
+            view-mode="list"
+            @status-changed="handleStatusChange"
+            @view-detail="goToDetail"
+          />
+        </div>
+      </template>
+    </div>
   </div>
 </template>
 

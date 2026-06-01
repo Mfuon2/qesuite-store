@@ -35,7 +35,7 @@
           <p class="text-sm font-medium text-gray-600 dark:text-gray-400">
             {{ isDragging ? 'Drop to upload' : 'Click or drag & drop' }}
           </p>
-          <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">JPEG, PNG, WebP — max 2MB</p>
+          <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">JPEG, PNG, WebP — max 10MB</p>
         </div>
       </template>
     </div>
@@ -57,7 +57,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { PhotoIcon } from '@heroicons/vue/24/outline'
 
 const props = withDefaults(defineProps<{
@@ -67,7 +67,7 @@ const props = withDefaults(defineProps<{
   disabled?: boolean
 }>(), {
   accept: 'image/jpeg,image/png,image/webp',
-  maxSize: 2 * 1024 * 1024,
+  maxSize: 10 * 1024 * 1024,
   disabled: false
 })
 
@@ -82,6 +82,11 @@ const isDragging = ref(false)
 const preview = ref<string | null>(props.modelValue || null)
 const progress = ref(0)
 const uploadError = ref('')
+
+// Update preview when the parent async-loads a saved URL (e.g. on Settings mount)
+watch(() => props.modelValue, (val) => {
+  if (val && progress.value === 0) preview.value = val
+})
 
 function handleDrop(e: DragEvent) {
   isDragging.value = false

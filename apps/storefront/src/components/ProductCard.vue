@@ -1,32 +1,34 @@
 <template>
   <article
-    class="bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-sm border border-gray-100 dark:border-gray-700 transition-all duration-200 hover:shadow-md hover:-translate-y-0.5"
+    class="qs-card qs-card-interactive overflow-hidden"
     :class="{ 'opacity-60': isOutOfStock }"
   >
     <!-- Image container -->
-    <div class="relative aspect-square overflow-hidden bg-gray-50 dark:bg-gray-900">
+    <div class="relative aspect-square overflow-hidden bg-gradient-to-br from-emerald-50 to-white sm:aspect-[4/3]">
       <img
         v-if="product.image_url"
         :src="product.image_url"
         :alt="product.name"
-        class="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
+        class="h-full w-full object-cover transition-transform duration-300 hover:scale-105"
         loading="lazy"
+        decoding="async"
         @error="imgError = true"
       />
       <div
         v-else
-        class="w-full h-full flex items-center justify-center"
+        class="flex h-full w-full items-center justify-center"
       >
-        <PhotoIcon class="w-12 h-12 text-gray-300 dark:text-gray-600" />
+        <PhotoIcon class="h-10 w-10 text-slate-300" />
       </div>
 
-      <!-- SALE badge -->
-      <span
-        v-if="product.on_sale && product.sale_price !== null"
-        class="absolute top-2 left-2 bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full"
+      <button
+        v-if="!isOutOfStock && quantity === 0"
+        class="absolute bottom-2 right-2 grid h-9 w-9 place-items-center rounded-full border border-slate-100 bg-white text-emerald-700 shadow-[0_8px_18px_rgba(15,23,42,0.10)] transition active:scale-95 sm:hidden"
+        @click.prevent="handleAdd"
+        aria-label="Add to cart"
       >
-        {{ $t('product.sale') }}
-      </span>
+        <PlusIcon class="h-5 w-5" />
+      </button>
 
       <!-- Out of stock overlay -->
       <div
@@ -40,24 +42,33 @@
     </div>
 
     <!-- Content -->
-    <div class="p-3">
-      <h3 class="text-sm font-semibold text-gray-900 dark:text-white line-clamp-2 leading-snug mb-1.5">
+    <div class="p-2.5 sm:p-3">
+      <h3 class="mb-1 text-xs font-extrabold leading-snug text-slate-950 line-clamp-2 sm:text-sm">
         {{ product.name }}
       </h3>
+      <p v-if="product.description" class="mb-2 truncate text-[11px] font-medium text-slate-500 sm:text-xs">
+        {{ product.description }}
+      </p>
 
       <!-- Price -->
-      <div class="flex items-center gap-1.5 mb-2">
+      <div class="mb-2 flex items-center gap-1.5 flex-wrap">
         <span
-          class="text-base font-bold"
+          class="text-sm font-extrabold sm:text-base"
           :style="{ color: 'var(--color-primary)' }"
         >
           {{ displayPrice }}
         </span>
         <span
           v-if="product.on_sale && product.sale_price !== null"
-          class="text-xs text-gray-400 dark:text-gray-500 line-through"
+          class="text-[11px] text-slate-400 line-through sm:text-xs"
         >
           {{ formatPrice(product.price) }}
+        </span>
+        <span
+          v-if="product.on_sale && product.sale_price !== null"
+          class="rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-black text-white"
+        >
+          -{{ discountPct }}%
         </span>
       </div>
 
@@ -67,19 +78,19 @@
       <!-- Quantity selector when in cart -->
       <div
         v-else-if="quantity > 0"
-        class="flex items-center justify-between bg-gray-50 dark:bg-gray-700 rounded-xl overflow-hidden h-9"
+        class="flex h-8 items-center justify-between overflow-hidden rounded-xl bg-slate-50 sm:h-9"
       >
         <button
-          class="w-9 h-9 flex items-center justify-center text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors active:scale-90"
+          class="flex h-8 w-8 items-center justify-center text-slate-600 transition-colors hover:bg-slate-100 active:scale-90 sm:h-9 sm:w-9"
           @click.prevent="decrement(product.id)"
         >
           <MinusIcon class="w-4 h-4" />
         </button>
-        <span class="font-semibold text-sm text-gray-900 dark:text-white min-w-[24px] text-center">
+        <span class="min-w-[24px] text-center text-xs font-bold text-slate-950 sm:text-sm">
           {{ quantity }}
         </span>
         <button
-          class="w-9 h-9 flex items-center justify-center text-white transition-colors active:scale-90 rounded-r-xl"
+          class="flex h-8 w-8 items-center justify-center rounded-r-xl text-white transition-colors active:scale-90 sm:h-9 sm:w-9"
           :style="{ backgroundColor: 'var(--color-primary)' }"
           :disabled="quantity >= product.stock"
           @click.prevent="increment(product.id)"
@@ -91,8 +102,7 @@
       <!-- Add to cart button -->
       <button
         v-else
-        class="w-full h-9 rounded-xl text-white text-sm font-semibold transition-all active:scale-95 flex items-center justify-center gap-1.5"
-        :style="{ backgroundColor: 'var(--color-primary)' }"
+        class="hidden h-9 w-full items-center justify-center gap-1.5 rounded-xl border border-emerald-600 bg-white text-sm font-bold text-emerald-700 transition-all hover:bg-emerald-50 active:scale-95 sm:flex"
         @click.prevent="handleAdd"
       >
         <PlusIcon class="w-4 h-4" />
@@ -119,6 +129,10 @@ const imgError = ref(false)
 
 const isOutOfStock = computed(() => !props.product.is_active || props.product.stock <= 0)
 const quantity = computed(() => getQuantity(props.product.id))
+const discountPct = computed(() => {
+  if (!props.product.on_sale || props.product.sale_price === null) return 0
+  return Math.round((1 - props.product.sale_price / props.product.price) * 100)
+})
 const displayPrice = computed(() => {
   if (props.product.on_sale && props.product.sale_price !== null) {
     return formatPrice(props.product.sale_price)

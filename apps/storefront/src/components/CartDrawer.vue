@@ -188,8 +188,7 @@ const cart = useCart()
 const slug = computed(() => storefrontStore.slug)
 
 const deliveryFeeDisplay = computed(() => {
-  const fee = storefrontStore.deliveryFee
-  if (fee === 0) return 'Free'
+  if (cartStore.deliveryFee === 0) return 'Free'
   return cart.formattedDeliveryFee.value
 })
 

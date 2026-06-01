@@ -1,16 +1,17 @@
 <template>
-  <div class="flex items-center justify-between text-sm">
+  <div class="flex w-full flex-col gap-3 text-sm sm:flex-row sm:items-center sm:justify-between">
     <!-- Info -->
-    <p class="text-slate-400">
+    <p class="font-medium text-slate-500">
       Showing {{ startItem }}–{{ endItem }} of {{ totalItems.toLocaleString() }} results
     </p>
 
     <!-- Controls -->
-    <div class="flex items-center gap-1">
+    <div class="owner-segmented">
       <!-- Prev -->
       <button
-        class="p-1.5 rounded-lg text-slate-400 hover:text-slate-100 hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+        class="owner-segment-button disabled:cursor-not-allowed disabled:opacity-30"
         :disabled="current <= 1"
+        title="Previous page"
         @click="$emit('change', current - 1)"
       >
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -20,13 +21,10 @@
 
       <!-- Page numbers -->
       <template v-for="p in pageNumbers" :key="p">
-        <span v-if="p === '...'" class="px-2 text-slate-500">…</span>
+        <span v-if="p === '...'" class="grid h-9 min-w-9 place-items-center px-2 text-slate-400">…</span>
         <button
           v-else
-          class="w-8 h-8 rounded-lg text-sm font-medium transition-colors"
-          :class="p === current
-            ? 'bg-indigo-600 text-white'
-            : 'text-slate-400 hover:text-slate-100 hover:bg-slate-700'"
+          :class="['owner-segment-button', p === current ? 'owner-segment-button-active' : '']"
           @click="$emit('change', p as number)"
         >
           {{ p }}
@@ -35,8 +33,9 @@
 
       <!-- Next -->
       <button
-        class="p-1.5 rounded-lg text-slate-400 hover:text-slate-100 hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+        class="owner-segment-button disabled:cursor-not-allowed disabled:opacity-30"
         :disabled="current >= totalPages"
+        title="Next page"
         @click="$emit('change', current + 1)"
       >
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -61,7 +60,7 @@ defineEmits<{
   change: [page: number]
 }>()
 
-const startItem = computed(() => (props.current - 1) * props.pageSize + 1)
+const startItem = computed(() => props.totalItems === 0 ? 0 : (props.current - 1) * props.pageSize + 1)
 const endItem = computed(() => Math.min(props.current * props.pageSize, props.totalItems))
 
 const pageNumbers = computed(() => {

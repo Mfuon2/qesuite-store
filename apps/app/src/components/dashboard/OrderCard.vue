@@ -1,9 +1,8 @@
 <template>
   <div
     :class="[
-      'bg-white dark:bg-gray-800 rounded-xl border transition-all cursor-pointer group',
-      viewMode === 'kanban' ? 'p-3' : 'p-3 flex items-center gap-3',
-      'border-gray-100 dark:border-gray-700 hover:border-primary/30 hover:shadow-md'
+      'cursor-pointer group',
+      viewMode === 'kanban' ? 'owner-card p-3' : 'owner-list-row flex items-center gap-3'
     ]"
     @click="emit('view-detail', order)"
   >
@@ -11,25 +10,25 @@
       <!-- Kanban card -->
       <div class="flex items-start justify-between gap-2 mb-2">
         <div>
-          <p class="text-xs font-mono text-gray-400 dark:text-gray-500">#{{ order.tracking_code }}</p>
-          <p class="font-semibold text-gray-900 dark:text-white text-sm mt-0.5">{{ order.customer_name || 'Customer' }}</p>
+          <p class="text-xs font-mono font-semibold text-slate-400">#{{ order.tracking_code }}</p>
+          <p class="mt-0.5 text-sm font-bold text-slate-950">{{ order.customer_name || 'Customer' }}</p>
         </div>
         <StatusBadge :status="order.status" size="xs" />
       </div>
 
       <div class="space-y-0.5 mb-2">
-        <p class="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
+        <p class="flex items-center gap-1.5 text-xs font-medium text-slate-500">
           <CubeIcon class="w-3.5 h-3.5 shrink-0" />
           {{ itemsSummary }}
         </p>
-        <p class="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
+        <p class="flex items-center gap-1.5 text-xs font-medium text-slate-500">
           <CreditCardIcon class="w-3.5 h-3.5 shrink-0" />
           {{ paymentMethodLabel }}
-          <span :class="['px-1.5 py-0.5 rounded-full font-medium', order.payment_status === 'paid' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400']">
+          <span :class="['px-1.5 py-0.5 rounded-full font-bold', order.payment_status === 'paid' ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500']">
             {{ order.payment_status }}
           </span>
         </p>
-        <p class="text-xs text-gray-400 dark:text-gray-500 flex items-center gap-1.5">
+        <p class="flex items-center gap-1.5 text-xs font-medium text-slate-400">
           <ClockIcon class="w-3.5 h-3.5 shrink-0" />
           {{ timeAgo }}
         </p>
@@ -41,7 +40,7 @@
           <a
             :href="`tel:${order.customer_phone}`"
             @click.stop
-            class="p-1.5 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors"
+            class="owner-action-icon"
             title="Call customer"
           >
             <PhoneIcon class="w-3.5 h-3.5" />
@@ -62,12 +61,12 @@
       <!-- List/table row -->
       <div class="flex-1 min-w-0 grid grid-cols-2 sm:grid-cols-4 gap-3 items-center">
         <div class="min-w-0">
-          <p class="text-xs font-mono text-gray-400 dark:text-gray-500">#{{ order.tracking_code }}</p>
-          <p class="font-semibold text-gray-900 dark:text-white text-sm truncate">{{ order.customer_name || 'Customer' }}</p>
+          <p class="text-xs font-mono font-semibold text-slate-400">#{{ order.tracking_code }}</p>
+          <p class="truncate text-sm font-bold text-slate-950">{{ order.customer_name || 'Customer' }}</p>
         </div>
         <div class="hidden sm:block">
-          <p class="text-xs text-gray-500 dark:text-gray-400 truncate">{{ itemsSummary }}</p>
-          <p class="text-xs text-gray-400 dark:text-gray-500">{{ timeAgo }}</p>
+          <p class="truncate text-xs font-medium text-slate-500">{{ itemsSummary }}</p>
+          <p class="text-xs font-medium text-slate-400">{{ timeAgo }}</p>
         </div>
         <div class="flex items-center gap-2">
           <StatusBadge :status="order.status" size="xs" />
@@ -77,7 +76,7 @@
           <a
             :href="`tel:${order.customer_phone}`"
             @click.stop
-            class="p-1.5 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors"
+            class="owner-action-icon"
           >
             <PhoneIcon class="w-4 h-4" />
           </a>
@@ -128,9 +127,9 @@ const timeAgo = computed(() => {
 })
 
 const statusActions: Record<OrderStatus, { status: OrderStatus; label: string; class: string }[]> = {
-  NEW: [{ status: 'CONFIRMED', label: 'Accept', class: 'bg-emerald-500 text-white hover:bg-emerald-600' }, { status: 'CANCELLED', label: 'Cancel', class: 'bg-red-100 text-red-600 hover:bg-red-200' }],
+  NEW: [{ status: 'CONFIRMED', label: 'Accept', class: 'bg-primary text-white hover:brightness-105' }, { status: 'CANCELLED', label: 'Cancel', class: 'bg-red-100 text-red-600 hover:bg-red-200' }],
   CONFIRMED: [{ status: 'PREPARING', label: 'Prepare', class: 'bg-amber-500 text-white hover:bg-amber-600' }],
-  PREPARING: [{ status: 'READY', label: 'Ready', class: 'bg-emerald-500 text-white hover:bg-emerald-600' }],
+  PREPARING: [{ status: 'READY', label: 'Ready', class: 'bg-primary text-white hover:brightness-105' }],
   READY: [{ status: 'OUT_FOR_DELIVERY', label: 'Dispatch', class: 'bg-teal-500 text-white hover:bg-teal-600' }],
   OUT_FOR_DELIVERY: [{ status: 'DELIVERED', label: 'Delivered', class: 'bg-green-500 text-white hover:bg-green-600' }],
   DELIVERED: [],

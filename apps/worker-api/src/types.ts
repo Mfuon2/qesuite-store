@@ -13,9 +13,14 @@ export interface Env {
   AT_API_KEY: string
   AT_USERNAME: string
   AT_SENDER_ID: string
+  SMS_API_KEY: string
+  SMS_PARTNER_ID: string
+  SMS_SHORTCODE: string
+  SMS_BASE_URL: string
   WHATSAPP_TOKEN: string
   WHATSAPP_PHONE_ID: string
   APP_BASE_URL: string
+  CDN_URL?: string
   SUPABASE_URL: string
   SUPABASE_ANON_KEY: string
 }

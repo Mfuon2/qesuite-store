@@ -7,6 +7,10 @@ import en from '../locales/en.json'
 import sw from '../locales/sw.json'
 import './style.css'
 
+if ('scrollRestoration' in window.history) {
+  window.history.scrollRestoration = 'manual'
+}
+
 const i18n = createI18n({
   legacy: false,
   locale: localStorage.getItem('lang') || 'en',

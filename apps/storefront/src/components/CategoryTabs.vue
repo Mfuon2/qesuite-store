@@ -1,24 +1,24 @@
 <template>
-  <div class="bg-white dark:bg-gray-900 sticky top-12 z-30 border-b border-gray-100 dark:border-gray-800">
+  <div class="sticky top-[6.15rem] z-30 border-b border-slate-100 bg-white/95 backdrop-blur-xl md:top-14 lg:static">
     <div
       ref="scrollContainer"
-      class="flex gap-1.5 overflow-x-auto scrollbar-hide px-3 py-2"
+      class="flex gap-2 overflow-x-auto px-0.5 py-3 scrollbar-hide sm:gap-2.5"
       style="scrollbar-width: none; -ms-overflow-style: none;"
     >
       <!-- All tab -->
       <button
         :ref="(el) => setTabRef('all', el)"
-        class="flex-shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold transition-all active:scale-95"
+        class="flex min-w-[5rem] flex-shrink-0 flex-col items-center justify-center gap-1 rounded-2xl border px-2.5 py-2 text-center text-[11px] font-bold transition-all active:scale-95 sm:min-w-0 sm:flex-row sm:gap-1.5 sm:rounded-full sm:px-3.5 sm:text-xs"
         :class="
           activeCategory === null
             ? 'text-white shadow-md'
-            : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+            : 'border-slate-200 bg-white text-slate-600 hover:border-emerald-200 hover:bg-emerald-50'
         "
         :style="activeCategory === null ? { backgroundColor: 'var(--color-primary)' } : {}"
         @click="selectCategory(null)"
       >
-        <Squares2X2Icon class="w-4 h-4" />
-        <span>{{ $t('product.all_categories') }}</span>
+        <Squares2X2Icon class="h-4 w-4" />
+        <span class="leading-tight">{{ $t('product.all_categories') }}</span>
       </button>
 
       <!-- Category tabs -->
@@ -26,17 +26,17 @@
         v-for="cat in categories"
         :key="cat.id"
         :ref="(el) => setTabRef(cat.id, el)"
-        class="flex-shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold transition-all active:scale-95"
+        class="flex min-w-[5rem] flex-shrink-0 flex-col items-center justify-center gap-1 rounded-2xl border px-2.5 py-2 text-center text-[11px] font-bold transition-all active:scale-95 sm:min-w-0 sm:flex-row sm:gap-1.5 sm:rounded-full sm:px-3.5 sm:text-xs"
         :class="
           activeCategory === cat.id
             ? 'text-white shadow-md'
-            : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+            : 'border-slate-200 bg-white text-slate-600 hover:border-emerald-200 hover:bg-emerald-50'
         "
         :style="activeCategory === cat.id ? { backgroundColor: 'var(--color-primary)' } : {}"
         @click="selectCategory(cat.id)"
       >
-        <span v-if="cat.icon" class="text-base">{{ cat.icon }}</span>
-        <span>{{ cat.name }}</span>
+        <span v-if="cat.icon" class="text-lg sm:text-base">{{ cat.icon }}</span>
+        <span class="max-w-[4.7rem] leading-tight sm:max-w-none">{{ cat.name }}</span>
       </button>
     </div>
   </div>

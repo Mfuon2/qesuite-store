@@ -1,14 +1,30 @@
 <template>
-  <div class="p-6 space-y-6">
-    <div>
-      <h1 class="text-2xl font-bold text-white">Platform Billing</h1>
-      <p class="text-slate-400 text-sm mt-0.5">All subscription payments across stores</p>
-    </div>
+  <div class="admin-page space-y-5">
+    <section class="admin-page-hero">
+      <div class="admin-page-header">
+        <div class="min-w-0">
+          <div class="owner-eyebrow">Revenue operations</div>
+          <h1 class="owner-title">Platform Billing</h1>
+          <p class="owner-subtitle">Track subscription payments, payment status, and store billing references.</p>
+        </div>
+        <div class="owner-stat-card p-3">
+          <div class="owner-stat-icon h-10 w-10">
+            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2 7h20M4 11h16M7 15h4m9-9v12a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h12a2 2 0 012 2z" />
+            </svg>
+          </div>
+          <div>
+            <p class="text-sm font-bold text-slate-950">{{ total.toLocaleString() }}</p>
+            <p class="text-xs font-medium text-slate-500">Billing records</p>
+          </div>
+        </div>
+      </div>
+    </section>
 
     <!-- Filters -->
-    <div class="flex flex-col sm:flex-row gap-3">
-      <div class="relative flex-1 max-w-sm">
-        <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <section class="admin-toolbar">
+      <div class="admin-search-wrap max-w-xl">
+        <svg class="admin-search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
         </svg>
         <input
@@ -19,26 +35,23 @@
           @input="handleSearch"
         />
       </div>
-      <div class="flex gap-2">
+      <div class="admin-filter-bar">
         <button
           v-for="s in statusFilters"
           :key="s.value"
-          class="px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-          :class="statusFilter === s.value
-            ? 'bg-indigo-600 text-white'
-            : 'bg-slate-700 text-slate-300 hover:bg-slate-600'"
+          :class="['admin-filter-pill', statusFilter === s.value ? 'admin-filter-pill-active' : '']"
           @click="statusFilter = s.value; fetchData()"
         >
           {{ s.label }}
         </button>
       </div>
-    </div>
+    </section>
 
     <!-- Table -->
-    <div class="admin-card overflow-hidden">
+    <section class="admin-table-card overflow-hidden">
       <div class="overflow-x-auto">
         <table class="w-full">
-          <thead class="border-b border-slate-700">
+          <thead class="border-b border-slate-100/80 bg-slate-50/60">
             <tr>
               <th class="table-th">Store</th>
               <th class="table-th">Plan</th>
@@ -61,18 +74,18 @@
             <tr
               v-for="rec in records"
               :key="rec.id"
-              class="border-b border-slate-700/50 hover:bg-slate-700/30 transition-colors"
+              class="table-tr"
             >
               <td class="table-td">
                 <RouterLink
                   :to="{ name: 'admin-store-detail', params: { id: rec.store_id } }"
-                  class="text-indigo-400 hover:text-indigo-300 font-medium"
+                  class="font-bold text-emerald-700 hover:text-emerald-800"
                 >
                   {{ rec.store_name }}
                 </RouterLink>
               </td>
               <td class="table-td">
-                <span class="px-2 py-0.5 bg-slate-700 rounded text-xs font-medium capitalize">
+                <span class="admin-pill bg-emerald-50 text-emerald-700 capitalize ring-1 ring-emerald-100">
                   {{ rec.plan ?? '—' }}
                 </span>
               </td>
@@ -80,20 +93,20 @@
                 {{ rec.currency }} {{ rec.amount.toLocaleString() }}
               </td>
               <td class="table-td capitalize">{{ rec.payment_method?.replace('_', ' ') ?? '—' }}</td>
-              <td class="table-td text-slate-400 font-mono text-xs">{{ rec.reference ?? '—' }}</td>
+              <td class="table-td text-slate-500 font-mono text-xs">{{ rec.reference ?? '—' }}</td>
               <td class="table-td">
                 <span
-                  class="px-2 py-0.5 rounded-full text-xs font-semibold"
+                  class="admin-pill"
                   :class="rec.status === 'paid'
-                    ? 'bg-emerald-500/20 text-emerald-400'
+                    ? 'bg-emerald-50 text-emerald-700'
                     : rec.status === 'failed'
-                    ? 'bg-red-500/20 text-red-400'
-                    : 'bg-amber-500/20 text-amber-400'"
+                    ? 'bg-red-50 text-red-700'
+                    : 'bg-amber-50 text-amber-700'"
                 >
                   {{ rec.status }}
                 </span>
               </td>
-              <td class="table-td text-slate-400">
+              <td class="table-td text-slate-500">
                 {{ rec.paid_at ? formatDate(rec.paid_at) : '—' }}
               </td>
             </tr>
@@ -102,7 +115,7 @@
       </div>
 
       <!-- Pagination -->
-      <div v-if="totalPages > 1" class="border-t border-slate-700 px-4 py-3">
+      <div v-if="totalPages > 1" class="border-t border-slate-100/80 bg-white/80 px-4 py-3">
         <Pagination
           :current="page"
           :total-pages="totalPages"
@@ -111,12 +124,13 @@
           @change="onPageChange"
         />
       </div>
-    </div>
+    </section>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { formatDate } from '@/composables/useDateFormat'
 import { RouterLink } from 'vue-router'
 import { getPlatformBilling, type PlatformBillingRecord } from '@/api/admin'
 import Pagination from '@/components/admin/Pagination.vue'
@@ -166,12 +180,6 @@ function handleSearch() {
 function onPageChange(p: number) {
   changePage(p)
   fetchData()
-}
-
-function formatDate(d: string) {
-  return new Date(d).toLocaleDateString('en-KE', {
-    year: 'numeric', month: 'short', day: 'numeric'
-  })
 }
 
 onMounted(fetchData)

@@ -1,9 +1,10 @@
 import { apiFetch } from './index'
-import type { ApiResponse, Tenant, StoreSettings, StoreSettingsUpdate, Subscription, BillingHistory } from '@qesuite/types'
+import type { ApiResponse, Tenant, StoreCategory, StoreSettings, StoreSettingsUpdate, Subscription, BillingHistory } from '@qesuite/types'
 
 export interface TenantUpdate {
   name?: string
   slug?: string
+  store_category?: StoreCategory
   logo_url?: string | null
   banner_url?: string | null
   primary_color?: string
@@ -14,9 +15,20 @@ export interface TenantUpdate {
   whatsapp_number?: string | null
 }
 
+export interface OnboardingProductRow {
+  name: string
+  price: number
+  description?: string
+  stock?: number
+  image_url?: string
+  sale_price?: number
+}
+
 export interface OnboardingPayload {
   tenant: TenantUpdate
   settings: StoreSettingsUpdate
+  products?: OnboardingProductRow[]
+  rider_phones?: string[]
 }
 
 export async function apiGetTenant(): Promise<ApiResponse<Tenant>> {
@@ -67,9 +79,9 @@ export async function apiInitiateMpesaPayment(phone: string): Promise<ApiRespons
   })
 }
 
-export async function apiGetUploadUrl(filename: string, contentType: string): Promise<ApiResponse<{ upload_url: string; public_url: string }>> {
+export async function apiGetUploadUrl(filename: string, contentType: string, purpose?: 'product' | 'logo' | 'banner'): Promise<ApiResponse<{ upload_url: string; public_url: string }>> {
   return apiFetch('/api/upload/image', {
     method: 'POST',
-    body: JSON.stringify({ filename, content_type: contentType })
+    body: JSON.stringify({ filename, content_type: contentType, ...(purpose && { purpose }) })
   })
 }

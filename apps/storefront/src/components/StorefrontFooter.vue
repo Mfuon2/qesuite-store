@@ -57,7 +57,7 @@
         <p class="text-xs text-gray-400 dark:text-gray-600">
           {{ $t('footer.powered_by') }}
           <a
-            href="https://qesuite.com"
+            href="https://store.qesuite.com"
             target="_blank"
             rel="noopener noreferrer"
             class="font-semibold hover:text-gray-600 dark:hover:text-gray-400 transition-colors"

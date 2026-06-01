@@ -1,20 +1,25 @@
 <template>
-  <div class="p-4 max-w-4xl space-y-5">
+  <div class="admin-page-narrow space-y-5">
     <!-- Header -->
-    <div>
-      <h1 class="text-lg font-bold text-white">My Profile</h1>
-      <p class="text-slate-400 text-xs mt-0.5">Update your name, contact info and password</p>
-    </div>
+    <section class="admin-page-hero">
+      <div class="admin-page-header">
+        <div class="min-w-0">
+          <div class="owner-eyebrow">Account security</div>
+          <h1 class="owner-title">My Profile</h1>
+          <p class="owner-subtitle">Update your admin identity, contact details, and password.</p>
+        </div>
+      </div>
+    </section>
 
     <!-- Avatar + role badge — full width -->
     <div class="admin-card p-5 flex items-center gap-4">
-      <div class="w-14 h-14 rounded-full bg-indigo-600/30 flex items-center justify-center shrink-0 ring-2 ring-indigo-500/40">
-        <span class="text-indigo-300 font-bold text-2xl">{{ initial }}</span>
+      <div class="flex h-16 w-16 shrink-0 items-center justify-center rounded-[24px] bg-emerald-50 ring-1 ring-emerald-100">
+        <span class="text-emerald-700 font-bold text-2xl">{{ initial }}</span>
       </div>
       <div>
-        <p class="text-white font-semibold">{{ form.name || authStore.user?.name }}</p>
-        <p class="text-slate-400 text-xs mt-0.5">{{ authStore.user?.email }}</p>
-        <span class="mt-1.5 inline-block px-2 py-0.5 rounded-full bg-indigo-600/20 text-indigo-300 text-xs font-semibold capitalize">
+        <p class="text-slate-950 font-semibold">{{ form.name || authStore.user?.name }}</p>
+        <p class="text-slate-500 text-xs mt-0.5">{{ authStore.user?.email }}</p>
+        <span class="admin-pill mt-1.5 bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100 capitalize">
           {{ authStore.user?.role }}
         </span>
       </div>
@@ -25,7 +30,10 @@
 
       <!-- Profile form -->
       <div class="admin-card p-5 space-y-4">
-        <h2 class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Personal Details</h2>
+        <div>
+          <h2 class="admin-section-title">Personal Details</h2>
+          <p class="admin-section-copy">Keep your platform profile accurate.</p>
+        </div>
 
         <div>
           <label for="profile-name" class="admin-label">Name</label>
@@ -73,7 +81,10 @@
 
       <!-- Password change -->
       <div class="admin-card p-5 space-y-4">
-        <h2 class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Change Password</h2>
+        <div>
+          <h2 class="admin-section-title">Change Password</h2>
+          <p class="admin-section-copy">Use a strong password for console access.</p>
+        </div>
 
         <div>
           <label for="profile-current-pw" class="admin-label">Current Password</label>
@@ -111,7 +122,7 @@
           />
         </div>
 
-        <p v-if="pwMismatch" class="text-red-400 text-xs">Passwords do not match.</p>
+        <p v-if="pwMismatch" class="text-red-700 text-xs">Passwords do not match.</p>
 
         <button
           id="btn-change-password"

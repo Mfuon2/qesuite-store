@@ -1,5 +1,12 @@
 import { apiFetch } from './index'
-import type { ApiResponse, PaginatedResponse, Order, OrderStatusUpdate, OrderFilters } from '@qesuite/types'
+import type { ApiResponse, PaginatedResponse, Order, OrderItem, DeliveryAssignment, OrderStatusUpdate, OrderFilters } from '@qesuite/types'
+
+// The worker returns { data: { items, total, page, limit }, error }
+// — NOT a flat PaginatedResponse. Normalise here so callers get a consistent shape.
+interface RawOrdersResponse {
+  data: { items: Order[]; total: number; page: number; limit: number } | null
+  error: string | null
+}
 
 export async function apiGetOrders(filters?: OrderFilters): Promise<PaginatedResponse<Order>> {
   const params = new URLSearchParams()
@@ -11,22 +18,65 @@ export async function apiGetOrders(filters?: OrderFilters): Promise<PaginatedRes
   if (filters?.page) params.set('page', String(filters.page))
   if (filters?.limit) params.set('limit', String(filters.limit))
   const qs = params.toString()
-  return apiFetch(`/api/orders${qs ? `?${qs}` : ''}`)
+  const raw = await apiFetch<RawOrdersResponse>(`/api/orders${qs ? `?${qs}` : ''}`)
+  const items = raw.data?.items ?? []
+  const total = raw.data?.total ?? 0
+  const page  = raw.data?.page  ?? 1
+  const limit = raw.data?.limit ?? 20
+  return {
+    success: true,
+    data: items,
+    meta: {
+      page,
+      limit,
+      total,
+      total_pages: Math.ceil(total / limit),
+      has_next: page * limit < total,
+      has_prev: page > 1,
+    },
+  }
+}
+
+// Backend returns { data: { order, items, assignment }, error }
+interface RawOrderDetailResponse {
+  data: { order: Order; items: OrderItem[]; assignment: DeliveryAssignment | null } | null
+  error: string | null
 }
 
 export async function apiGetOrder(id: string): Promise<ApiResponse<Order>> {
-  return apiFetch(`/api/orders/${id}`)
+  const raw = await apiFetch<RawOrderDetailResponse>(`/api/orders/${id}`)
+  if (!raw.data?.order) {
+    return { success: false, error: raw.error ?? 'Order not found' }
+  }
+  return {
+    success: true,
+    data: {
+      ...raw.data.order,
+      items: raw.data.items ?? [],
+      assignment: raw.data.assignment ?? undefined,
+    },
+  }
 }
 
-export async function apiUpdateOrderStatus(id: string, payload: OrderStatusUpdate): Promise<ApiResponse<Order>> {
-  return apiFetch(`/api/orders/${id}/status`, {
+// Backend returns { data: { id, status, previous_status }, error, message } — not a full Order.
+// We only need the call to succeed; callers update local state themselves.
+export async function apiUpdateOrderStatus(id: string, payload: OrderStatusUpdate): Promise<void> {
+  await apiFetch(`/api/orders/${id}/status`, {
     method: 'PUT',
     body: JSON.stringify(payload)
   })
 }
 
+// Backend returns { data: { packing_slip }, error } — field is packing_slip, not text.
+interface RawPackingSlipResponse {
+  data: { packing_slip: string } | null
+  error: string | null
+}
+
 export async function apiGetPackingSlip(id: string): Promise<ApiResponse<{ text: string }>> {
-  return apiFetch(`/api/orders/${id}/packing-slip`)
+  const raw = await apiFetch<RawPackingSlipResponse>(`/api/orders/${id}/packing-slip`)
+  if (!raw.data) return { success: false, error: raw.error ?? 'Failed to load packing slip' }
+  return { success: true, data: { text: raw.data.packing_slip } }
 }
 
 export async function apiAssignRider(orderId: string, staffId: string): Promise<ApiResponse<unknown>> {

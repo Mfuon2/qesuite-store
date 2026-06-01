@@ -39,10 +39,9 @@ export const useAnalyticsStore = defineStore('analytics', () => {
     loading.value = true
     const params = getParams()
     try {
-      const [summaryRes, revenueRes, topRevRes, topVolRes, peakRes, paymentRes] = await Promise.allSettled([
+      const [summaryRes, revenueRes, topRes, peakRes, paymentRes] = await Promise.allSettled([
         apiGetAnalyticsSummary(params),
         apiGetRevenueChart(params),
-        apiGetTopProducts({ ...params }),
         apiGetTopProducts({ ...params }),
         apiGetPeakHours(params),
         apiGetPaymentMethods(params)
@@ -50,11 +49,9 @@ export const useAnalyticsStore = defineStore('analytics', () => {
 
       if (summaryRes.status === 'fulfilled' && summaryRes.value.success) summary.value = summaryRes.value.data ?? null
       if (revenueRes.status === 'fulfilled' && revenueRes.value.success) revenueChart.value = revenueRes.value.data ?? []
-      if (topRevRes.status === 'fulfilled' && topRevRes.value.success) topProductsByRevenue.value = (topRevRes.value.data ?? []).slice(0, 5)
-      if (topVolRes.status === 'fulfilled' && topVolRes.value.success) {
-        topProductsByVolume.value = [...(topVolRes.value.data ?? [])]
-          .sort((a, b) => b.total_quantity - a.total_quantity)
-          .slice(0, 5)
+      if (topRes.status === 'fulfilled' && topRes.value.success) {
+        topProductsByRevenue.value = (topRes.value.data?.by_revenue ?? []).slice(0, 5)
+        topProductsByVolume.value = (topRes.value.data?.by_volume ?? []).slice(0, 5)
       }
       if (peakRes.status === 'fulfilled' && peakRes.value.success) peakHours.value = peakRes.value.data ?? []
       if (paymentRes.status === 'fulfilled' && paymentRes.value.success) paymentMethods.value = paymentRes.value.data ?? []

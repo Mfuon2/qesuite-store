@@ -1,8 +1,8 @@
 <template>
-  <div class="admin-card overflow-hidden">
+  <div class="admin-table-card overflow-hidden">
     <div class="overflow-x-auto">
       <table class="w-full">
-        <thead class="border-b border-slate-700">
+        <thead class="border-b border-slate-100/80 bg-slate-50/60">
           <tr>
             <th
               v-for="col in columns"
@@ -10,12 +10,12 @@
               class="table-th"
               :class="[
                 col.align === 'right' ? 'text-right' : '',
-                col.sortable ? 'cursor-pointer hover:text-slate-200 select-none' : ''
+                col.sortable ? 'cursor-pointer hover:text-emerald-700 select-none' : ''
               ]"
               @click="col.sortable ? $emit('sort', col.key) : undefined"
             >
               {{ col.label }}
-              <span v-if="col.sortable && sortBy === col.key" class="ml-1 text-slate-400">
+              <span v-if="col.sortable && sortBy === col.key" class="ml-1 text-slate-500">
                 {{ sortDir === 'asc' ? '↑' : '↓' }}
               </span>
             </th>
@@ -39,7 +39,7 @@
         </tbody>
       </table>
     </div>
-    <div v-if="$slots.footer" class="border-t border-slate-700">
+    <div v-if="$slots.footer" class="border-t border-slate-100/80 bg-white/80">
       <slot name="footer" />
     </div>
   </div>

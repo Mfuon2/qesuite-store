@@ -51,13 +51,13 @@ delivery.post('/staff', authMiddleware, tenantGuard, async (c) => {
     await sendSMS(
       c.env,
       body.phone,
-      `Habari ${body.name}! Umealikwa kama dereva wa QeSuite.\nIngia hapa: ${link}\nKiungo kinaisha dakika 30.`
+      `Hi ${body.name}! You have been invited as a delivery rider on QeSuite. Access your dashboard here: ${link}\nThis link expires in 30 minutes.`
     )
 
     const staff = await c.env.qesuite_db.prepare('SELECT id, name, phone, vehicle_type, is_active, created_at FROM delivery_staff WHERE id = ?')
       .bind(id).first()
 
-    return c.json({ data: staff, error: null, message: 'Rider added and magic link sent' }, 201)
+    return c.json({ success: true, data: staff, error: null, message: 'Rider added and magic link sent' }, 201)
   } catch (err) {
     console.error('add rider error', err)
     return c.json({ error: 'Failed to add rider', data: null }, 500)
@@ -81,7 +81,7 @@ delivery.get('/staff', authMiddleware, tenantGuard, async (c) => {
        ORDER BY ds.name ASC`
     ).bind(tenantId).all()
 
-    return c.json({ data: rows.results, error: null })
+    return c.json({ success: true, data: rows.results, error: null })
   } catch (err) {
     console.error('list riders error', err)
     return c.json({ error: 'Failed to fetch riders', data: null }, 500)
@@ -109,7 +109,7 @@ delivery.delete('/staff/:id', authMiddleware, tenantGuard, async (c) => {
     await c.env.qesuite_db.prepare('UPDATE delivery_staff SET is_active = 0 WHERE id = ?')
       .bind(id).run()
 
-    return c.json({ data: { deactivated: true }, error: null, message: 'Rider deactivated' })
+    return c.json({ success: true, data: { deactivated: true }, error: null, message: 'Rider deactivated' })
   } catch (err) {
     console.error('deactivate rider error', err)
     return c.json({ error: 'Failed to deactivate rider', data: null }, 500)
@@ -168,13 +168,14 @@ delivery.post('/assign', authMiddleware, tenantGuard, async (c) => {
       await sendSMS(
         c.env,
         staff.phone,
-        `Agizo jipya limekupewa! ID: ${order_id.substring(0, 8)}. Ingia app: ${c.env.APP_BASE_URL.replace('store.', 'go.')}`
+        `You have been assigned a new delivery order (ID: ${order_id.substring(0, 8).toUpperCase()}). Open your app: ${c.env.APP_BASE_URL.replace('store.', 'go.')}`
       )
     } catch {
       // Non-blocking
     }
 
     return c.json({
+      success: true,
       data: { assignment_id: assignmentId, order_id, staff_id },
       error: null,
       message: `Order assigned to ${staff.name}`,
@@ -269,6 +270,7 @@ delivery.put('/status', riderMiddleware, async (c) => {
     }
 
     return c.json({
+      success: true,
       data: { assignment_id: body.assignment_id, status: body.status },
       error: null,
       message: `Assignment updated to ${body.status}`,
@@ -306,7 +308,7 @@ delivery.get('/orders', riderMiddleware, async (c) => {
        ORDER BY da.assigned_at ASC`
     ).bind(staff.id).all()
 
-    return c.json({ data: rows.results, error: null })
+    return c.json({ success: true, data: rows.results, error: null })
   } catch (err) {
     console.error('rider orders error', err)
     return c.json({ error: 'Failed to fetch assigned orders', data: null }, 500)
@@ -331,7 +333,7 @@ delivery.put('/location', riderMiddleware, async (c) => {
       "UPDATE delivery_staff SET current_lat = ?, current_lng = ?, location_updated_at = datetime('now') WHERE user_id = ? AND tenant_id = ?"
     ).bind(lat, lng, user.sub, tenantId).run()
 
-    return c.json({ data: { lat, lng }, error: null })
+    return c.json({ success: true, data: { lat, lng }, error: null })
   } catch (err) {
     console.error('location update error', err)
     return c.json({ error: 'Failed to update location', data: null }, 500)
@@ -362,7 +364,7 @@ delivery.get('/assignments', authMiddleware, tenantGuard, async (c) => {
 
     query += ' ORDER BY da.assigned_at DESC LIMIT 100'
     const { results } = await c.env.qesuite_db.prepare(query).bind(...params).all()
-    return c.json({ data: results, error: null })
+    return c.json({ success: true, data: results, error: null })
   } catch (err) {
     console.error('assignments list error', err)
     return c.json({ error: 'Failed to fetch assignments', data: null }, 500)
@@ -391,7 +393,7 @@ delivery.put('/staff/:id', authMiddleware, tenantGuard, async (c) => {
     values.push(id)
     await c.env.qesuite_db.prepare(`UPDATE delivery_staff SET ${fields.join(', ')} WHERE id = ?`).bind(...values).run()
     const updated = await c.env.qesuite_db.prepare('SELECT * FROM delivery_staff WHERE id = ?').bind(id).first()
-    return c.json({ data: updated, error: null, message: 'Rider updated' })
+    return c.json({ success: true, data: updated, error: null, message: 'Rider updated' })
   } catch (err) {
     console.error('rider update error', err)
     return c.json({ error: 'Failed to update rider', data: null }, 500)
@@ -418,9 +420,9 @@ delivery.post('/staff/:id/magic-link', authMiddleware, tenantGuard, async (c) =>
     ).bind(token, expiresAt, id).run()
 
     const link = `${c.env.APP_BASE_URL.replace('store.', 'go.')}/auth/verify?token=${token}`
-    await sendSMS(c.env, staff.phone, `Karibu QeSuite! Bonyeza hapa kuingia: ${link}`)
+    await sendSMS(c.env, staff.phone, `Welcome to QeSuite! Click here to access your delivery dashboard: ${link}`)
 
-    return c.json({ data: { sent: true }, error: null, message: 'Magic link sent' })
+    return c.json({ success: true, data: { sent: true }, error: null, message: 'Magic link sent' })
   } catch (err) {
     console.error('magic-link error', err)
     return c.json({ error: 'Failed to send magic link', data: null }, 500)

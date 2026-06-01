@@ -7,7 +7,36 @@ import type {
   OrderCreate,
   TrackOrderResponse,
   ApiResponse,
+  StoreCategory,
 } from '@qesuite/types'
+
+export interface ProductPreview {
+  name: string
+  image_url: string | null
+}
+
+export interface StoreListItem {
+  id: string
+  name: string
+  slug: string
+  logo_url: string | null
+  banner_url: string | null
+  primary_color: string
+  accent_color: string
+  address: string | null
+  store_category: StoreCategory
+  product_previews: ProductPreview[]
+}
+
+export async function getStores(opts?: { category?: string; search?: string }): Promise<StoreListItem[]> {
+  const params = new URLSearchParams()
+  if (opts?.category && opts.category !== 'all') params.set('category', opts.category)
+  if (opts?.search) params.set('search', opts.search)
+  const qs = params.toString() ? `?${params}` : ''
+  const res = await api.get<ApiResponse<StoreListItem[]>>(`/storefront${qs}`)
+  if (!res.success || !res.data) return []
+  return res.data
+}
 
 export interface MpesaInitResponse {
   checkout_request_id: string

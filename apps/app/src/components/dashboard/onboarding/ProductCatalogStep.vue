@@ -1,102 +1,185 @@
 <template>
-  <div class="space-y-4">
-    <div class="flex items-center justify-between flex-wrap gap-3">
-      <div>
-        <h3 class="font-semibold text-gray-900 dark:text-white">Your Products</h3>
-        <p class="text-sm text-gray-500 dark:text-gray-400">Add at least one product to continue</p>
+  <div class="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_300px]">
+    <div class="space-y-4">
+      <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h3 class="text-base font-extrabold text-slate-950">Products</h3>
+          <p class="text-sm font-medium text-slate-500">{{ localProducts.length }} item{{ localProducts.length === 1 ? '' : 's' }} ready for launch</p>
+        </div>
+        <div class="flex gap-2">
+          <label class="inline-flex h-10 cursor-pointer items-center gap-2 rounded-2xl border border-slate-100 bg-white px-3 text-sm font-extrabold text-slate-700 shadow-[0_8px_20px_rgba(15,23,42,0.035)] transition hover:bg-emerald-50">
+            <ArrowUpTrayIcon class="h-4 w-4" />
+            Import CSV
+            <input type="file" accept=".csv" class="hidden" @change="handleCsvImport" />
+          </label>
+          <button
+            @click="showForm = true"
+            class="inline-flex h-10 items-center gap-2 rounded-2xl bg-emerald-700 px-3 text-sm font-extrabold text-white shadow-[0_12px_24px_rgba(20,132,71,0.20)] transition hover:bg-emerald-800"
+          >
+            <PlusIcon class="h-4 w-4" />
+            Add Product
+          </button>
+        </div>
       </div>
-      <div class="flex gap-2">
-        <label class="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-xl cursor-pointer transition-colors">
-          <ArrowUpTrayIcon class="w-4 h-4" />
-          Import CSV
-          <input type="file" accept=".csv" class="hidden" @change="handleCsvImport" />
-        </label>
-        <button
-          @click="showForm = true"
-          class="flex items-center gap-2 px-4 py-2 bg-primary text-white text-sm font-medium rounded-xl hover:opacity-90 transition-opacity shadow-sm shadow-primary/20"
+
+      <Transition name="slide">
+        <div v-if="showForm" class="qs-card-soft border-emerald-100 bg-emerald-50/40 p-4">
+          <div class="mb-3 flex items-center justify-between">
+            <h4 class="flex items-center gap-2 text-sm font-extrabold text-slate-950">
+              <PlusCircleIcon class="h-4 w-4 text-emerald-700" />
+              {{ editingIdx !== null ? 'Edit Product' : 'New Product' }}
+            </h4>
+            <button class="text-sm font-bold text-slate-500" @click="cancelForm">Cancel</button>
+          </div>
+
+          <div class="grid grid-cols-1 gap-3 md:grid-cols-[180px_minmax(0,1fr)]">
+            <div class="row-span-4">
+              <label class="admin-label">Product Image</label>
+              <ImageUpload
+                ref="imageUploadRef"
+                :model-value="newProduct.image_url"
+                :disabled="imageUploading"
+                class="h-[148px]"
+                @file-selected="handleProductImage"
+              />
+            </div>
+            <div>
+              <label class="admin-label">Product Name *</label>
+              <input v-model="newProduct.name" type="text" placeholder="e.g. Chicken Burger" required class="admin-input bg-white" />
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="admin-label">Price (KES) *</label>
+                <input v-model.number="newProduct.price" type="number" min="0" step="0.01" placeholder="0.00" required class="admin-input bg-white" />
+              </div>
+              <div>
+                <label class="admin-label">Stock</label>
+                <input v-model.number="newProduct.stock" type="number" min="0" placeholder="999" class="admin-input bg-white" />
+              </div>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="admin-label">
+                  Sale Price (KES)
+                  <span class="ml-1 font-medium text-slate-400">optional</span>
+                </label>
+                <input
+                  v-model.number="newProduct.sale_price"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="Leave empty for no discount"
+                  class="admin-input bg-white"
+                  :class="{ 'border-orange-400': newProduct.sale_price && newProduct.sale_price >= newProduct.price }"
+                />
+                <p v-if="newProduct.sale_price && newProduct.sale_price >= newProduct.price" class="mt-0.5 text-xs font-semibold text-orange-500">
+                  Sale price must be less than regular price
+                </p>
+                <p v-else-if="newProduct.sale_price && newProduct.price > 0" class="mt-0.5 text-xs font-semibold text-emerald-700">
+                  Save KES {{ (newProduct.price - newProduct.sale_price).toLocaleString() }}
+                  ({{ Math.round((1 - newProduct.sale_price / newProduct.price) * 100) }}% off)
+                </p>
+              </div>
+              <div>
+                <label class="admin-label">Description</label>
+                <input v-model="newProduct.description" type="text" placeholder="Brief description" class="admin-input bg-white" />
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-3 flex justify-end gap-2">
+            <button @click="cancelForm" class="h-10 rounded-xl border border-slate-100 bg-white px-4 text-sm font-extrabold text-slate-600">
+              Cancel
+            </button>
+            <button
+              @click="saveProduct"
+              :disabled="!newProduct.name || !newProduct.price"
+              class="h-10 rounded-xl bg-emerald-700 px-4 text-sm font-extrabold text-white shadow-[0_10px_22px_rgba(20,132,71,0.18)] disabled:opacity-60"
+            >
+              {{ editingIdx !== null ? 'Update' : 'Add Product' }}
+            </button>
+          </div>
+        </div>
+      </Transition>
+
+      <div v-if="localProducts.length" class="grid gap-2">
+        <div
+          v-for="(product, idx) in localProducts"
+          :key="idx"
+          class="qs-card qs-card-interactive flex items-center gap-3 p-3"
         >
-          <PlusIcon class="w-4 h-4" />
-          Add Product
-        </button>
+          <div class="h-12 w-12 shrink-0 overflow-hidden rounded-2xl bg-emerald-50">
+            <img v-if="product.image_url" :src="product.image_url" :alt="product.name" class="h-full w-full object-cover" />
+            <div v-else class="grid h-full w-full place-items-center text-emerald-700">
+              <CubeIcon class="h-5 w-5" />
+            </div>
+          </div>
+          <div class="min-w-0 flex-1">
+            <div class="flex items-center gap-2">
+              <p class="truncate text-sm font-extrabold text-slate-950">{{ product.name }}</p>
+              <span
+                v-if="product.sale_price && product.sale_price < product.price"
+                class="shrink-0 rounded-full bg-orange-500 px-1.5 py-0.5 text-[10px] font-extrabold text-white"
+              >
+                {{ Math.round((1 - product.sale_price / product.price) * 100) }}% OFF
+              </span>
+            </div>
+            <div class="flex items-center gap-2">
+              <template v-if="product.sale_price && product.sale_price < product.price">
+                <span class="text-xs font-extrabold text-emerald-700">KES {{ product.sale_price.toLocaleString() }}</span>
+                <span class="text-xs font-semibold text-slate-400 line-through">KES {{ product.price.toLocaleString() }}</span>
+              </template>
+              <template v-else>
+                <span class="text-xs font-semibold text-slate-500">KES {{ product.price.toLocaleString() }}</span>
+              </template>
+              <span class="text-xs font-semibold text-slate-400">· Stock: {{ product.stock ?? 'unlimited' }}</span>
+            </div>
+          </div>
+          <div class="flex items-center gap-1">
+            <button @click="editProduct(idx)" class="grid h-9 w-9 place-items-center rounded-xl text-slate-400 transition hover:bg-emerald-50 hover:text-emerald-700">
+              <PencilIcon class="h-4 w-4" />
+            </button>
+            <button @click="removeProduct(idx)" class="grid h-9 w-9 place-items-center rounded-xl text-slate-400 transition hover:bg-red-50 hover:text-red-500">
+              <TrashIcon class="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div v-else-if="!showForm" class="qs-card-soft flex flex-col items-center justify-center border-dashed py-12 text-center">
+        <CubeIcon class="mb-3 h-10 w-10 text-slate-300" />
+        <p class="text-sm font-extrabold text-slate-700">No products yet</p>
+        <p class="mt-1 text-sm font-medium text-slate-500">Add a product or import a CSV to continue.</p>
       </div>
     </div>
 
-    <!-- Add form (inline) -->
-    <Transition name="slide">
-      <div v-if="showForm" class="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-xl p-4">
-        <h4 class="text-sm font-medium text-gray-900 dark:text-white mb-3 flex items-center gap-2">
-          <PlusCircleIcon class="w-4 h-4 text-primary" />
-          {{ editingIdx !== null ? 'Edit Product' : 'New Product' }}
-        </h4>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <div class="md:col-span-2">
-            <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Product Name *</label>
-            <input v-model="newProduct.name" type="text" placeholder="e.g. Chicken Burger" required
-              class="w-full px-3 py-2.5 text-sm rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all" />
-          </div>
+    <aside class="qs-card-soft h-fit p-4">
+      <h4 class="text-sm font-extrabold text-slate-950">Catalog checklist</h4>
+      <div class="mt-3 space-y-3">
+        <div class="flex items-center gap-3">
+          <span class="grid h-8 w-8 place-items-center rounded-xl bg-emerald-50 text-emerald-700">
+            <CubeIcon class="h-4 w-4" />
+          </span>
           <div>
-            <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Price (KES) *</label>
-            <input v-model.number="newProduct.price" type="number" min="0" step="0.01" placeholder="0.00" required
-              class="w-full px-3 py-2.5 text-sm rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all" />
-          </div>
-          <div>
-            <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Stock</label>
-            <input v-model.number="newProduct.stock" type="number" min="0" placeholder="999"
-              class="w-full px-3 py-2.5 text-sm rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all" />
-          </div>
-          <div class="md:col-span-2">
-            <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Description</label>
-            <input v-model="newProduct.description" type="text" placeholder="Brief description"
-              class="w-full px-3 py-2.5 text-sm rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all" />
+            <p class="text-sm font-bold text-slate-700">At least one item</p>
+            <p class="text-xs font-medium text-slate-500">{{ localProducts.length ? 'Complete' : 'Required' }}</p>
           </div>
         </div>
-        <div class="flex gap-2 mt-3 justify-end">
-          <button @click="cancelForm" class="px-4 py-2 text-sm text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl hover:bg-gray-50 transition-colors">
-            Cancel
-          </button>
-          <button @click="saveProduct" :disabled="!newProduct.name || !newProduct.price"
-            class="px-4 py-2 text-sm bg-primary text-white rounded-xl hover:opacity-90 disabled:opacity-60 transition-opacity shadow-sm">
-            {{ editingIdx !== null ? 'Update' : 'Add Product' }}
-          </button>
+        <div class="rounded-2xl bg-slate-50 p-3">
+          <p class="text-xs font-bold uppercase tracking-wide text-slate-400">CSV columns</p>
+          <p class="mt-1 text-sm font-semibold text-slate-600">name, price, description, stock</p>
         </div>
       </div>
-    </Transition>
-
-    <!-- Products list -->
-    <div v-if="localProducts.length" class="space-y-2">
-      <div
-        v-for="(product, idx) in localProducts"
-        :key="idx"
-        class="flex items-center gap-3 p-3 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl hover:border-gray-200 dark:hover:border-gray-600 transition-colors"
-      >
-        <div class="w-10 h-10 bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center shrink-0">
-          <CubeIcon class="w-5 h-5 text-gray-400" />
-        </div>
-        <div class="flex-1 min-w-0">
-          <p class="text-sm font-medium text-gray-900 dark:text-white truncate">{{ product.name }}</p>
-          <p class="text-xs text-gray-500 dark:text-gray-400">KES {{ product.price.toLocaleString() }} · Stock: {{ product.stock ?? '∞' }}</p>
-        </div>
-        <div class="flex items-center gap-1">
-          <button @click="editProduct(idx)" class="p-1.5 text-gray-400 hover:text-primary hover:bg-primary/5 rounded-lg transition-colors">
-            <PencilIcon class="w-4 h-4" />
-          </button>
-          <button @click="removeProduct(idx)" class="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors">
-            <TrashIcon class="w-4 h-4" />
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <div v-else-if="!showForm" class="text-center py-8 text-gray-400 dark:text-gray-500">
-      <CubeIcon class="w-10 h-10 mx-auto mb-2 opacity-40" />
-      <p class="text-sm">No products yet. Add your first product or import from CSV.</p>
-    </div>
+    </aside>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import { PlusIcon, PlusCircleIcon, ArrowUpTrayIcon, PencilIcon, TrashIcon, CubeIcon } from '@heroicons/vue/24/outline'
+import ImageUpload from '@/components/dashboard/ImageUpload.vue'
+import { apiGetUploadUrl } from '@/api/settings'
+import { beginNetworkActivity, endNetworkActivity } from '@/composables/useNetworkActivity'
 import type { ProductCreate } from '@qesuite/types'
 
 const props = defineProps<{ products: ProductCreate[] }>()
@@ -105,22 +188,61 @@ const emit = defineEmits<{ 'update:products': [products: ProductCreate[]] }>()
 const localProducts = ref<ProductCreate[]>([...props.products])
 const showForm = ref(false)
 const editingIdx = ref<number | null>(null)
-const newProduct = ref<ProductCreate>({ name: '', price: 0, stock: 999 })
+const newProduct = ref<ProductCreate>({ name: '', price: 0, stock: 999, image_url: undefined, sale_price: undefined })
+const imageUploadRef = ref<InstanceType<typeof ImageUpload> | null>(null)
+const imageUploading = ref(false)
 
 watch(localProducts, (v) => emit('update:products', v), { deep: true })
 
 function cancelForm() {
   showForm.value = false
   editingIdx.value = null
-  newProduct.value = { name: '', price: 0, stock: 999 }
+  newProduct.value = { name: '', price: 0, stock: 999, image_url: undefined, sale_price: undefined }
+  imageUploadRef.value?.reset()
+}
+
+async function handleProductImage(file: File) {
+  if (!imageUploadRef.value) return
+  imageUploading.value = true
+  const activity = beginNetworkActivity('Uploading product image')
+  try {
+    const presign = await apiGetUploadUrl(file.name, file.type)
+    if (!presign.success || !presign.data) return
+    const { upload_url, public_url } = presign.data
+
+    await new Promise<void>((resolve, reject) => {
+      const xhr = new XMLHttpRequest()
+      xhr.upload.addEventListener('progress', e => {
+        if (e.lengthComputable) imageUploadRef.value?.setProgress(Math.round(e.loaded / e.total * 100))
+      })
+      xhr.addEventListener('load', () => xhr.status < 300 ? resolve() : reject())
+      xhr.addEventListener('error', reject)
+      xhr.open('PUT', upload_url)
+      xhr.setRequestHeader('Content-Type', file.type)
+      xhr.send(file)
+    })
+
+    imageUploadRef.value.setPreview(public_url)
+    newProduct.value.image_url = public_url
+  } catch {
+    // upload failed silently — image_url stays undefined
+  } finally {
+    imageUploading.value = false
+    endNetworkActivity(activity)
+  }
 }
 
 function saveProduct() {
   if (!newProduct.value.name || !newProduct.value.price) return
+  const product = { ...newProduct.value }
+  // Clear invalid sale prices
+  if (!product.sale_price || product.sale_price <= 0 || product.sale_price >= product.price) {
+    product.sale_price = undefined
+  }
   if (editingIdx.value !== null) {
-    localProducts.value[editingIdx.value] = { ...newProduct.value }
+    localProducts.value[editingIdx.value] = product
   } else {
-    localProducts.value.push({ ...newProduct.value })
+    localProducts.value.push(product)
   }
   cancelForm()
 }
@@ -129,6 +251,12 @@ function editProduct(idx: number) {
   editingIdx.value = idx
   newProduct.value = { ...localProducts.value[idx] }
   showForm.value = true
+  // If product has an image, prime the preview in the upload widget
+  if (localProducts.value[idx].image_url) {
+    setTimeout(() => imageUploadRef.value?.setPreview(localProducts.value[idx].image_url!), 50)
+  } else {
+    setTimeout(() => imageUploadRef.value?.reset(), 50)
+  }
 }
 
 function removeProduct(idx: number) {

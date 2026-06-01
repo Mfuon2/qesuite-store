@@ -1,29 +1,29 @@
 <template>
-  <div class="p-4 space-y-4">
+  <div class="admin-page space-y-5">
     <!-- Header -->
-    <div class="flex items-center justify-between">
-      <div>
-        <h1 class="text-lg font-bold text-white">Platform Metrics</h1>
-        <p class="text-slate-400 text-xs">Overview of the entire QeSuite platform</p>
+    <section class="admin-page-hero">
+      <div class="admin-page-header">
+        <div class="min-w-0">
+          <div class="owner-eyebrow">Platform health</div>
+          <h1 class="owner-title">Platform Metrics</h1>
+          <p class="owner-subtitle">Monitor store growth, subscriptions, conversion, GMV, and monthly recurring revenue.</p>
+        </div>
+        <!-- Period selector -->
+        <div class="owner-segmented">
+          <button
+            v-for="p in periods"
+            :key="p.value"
+            :class="['owner-segment-button', metricsStore.period === p.value ? 'owner-segment-button-active' : '']"
+            @click="metricsStore.setPeriod(p.value)"
+          >
+            {{ p.label }}
+          </button>
+        </div>
       </div>
-      <!-- Period selector -->
-      <div class="flex gap-2">
-        <button
-          v-for="p in periods"
-          :key="p.value"
-          class="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
-          :class="metricsStore.period === p.value
-            ? 'bg-indigo-600 text-white'
-            : 'bg-slate-700 text-slate-300 hover:bg-slate-600'"
-          @click="metricsStore.setPeriod(p.value)"
-        >
-          {{ p.label }}
-        </button>
-      </div>
-    </div>
+    </section>
 
     <!-- KPI Cards -->
-    <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+    <section class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
       <KpiCard
         v-for="kpi in kpiCards"
         :key="kpi.label"
@@ -34,13 +34,18 @@
         :color="kpi.color"
         :loading="metricsStore.loading"
       />
-    </div>
+    </section>
 
     <!-- Charts row -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
       <!-- GMV over time (area) -->
-      <div class="lg:col-span-2 admin-card p-4">
-        <h2 class="text-xs font-semibold text-slate-300 mb-3">Platform GMV</h2>
+      <div class="lg:col-span-2 admin-card p-5">
+        <div class="owner-panel-header">
+          <div>
+            <h2 class="admin-section-title">Platform GMV</h2>
+            <p class="admin-section-copy">Gross merchandise value over the selected period</p>
+          </div>
+        </div>
         <div class="h-44" v-if="!metricsStore.chartLoading && metricsStore.gmvChart.length">
           <Line :data="gmvChartData" :options="lineChartOptions" />
         </div>
@@ -51,8 +56,13 @@
       </div>
 
       <!-- Store status donut -->
-      <div class="admin-card p-4">
-        <h2 class="text-xs font-semibold text-slate-300 mb-3">Store Status</h2>
+      <div class="admin-card p-5">
+        <div class="owner-panel-header">
+          <div>
+            <h2 class="admin-section-title">Store Status</h2>
+            <p class="admin-section-copy">Current subscription split</p>
+          </div>
+        </div>
         <div v-if="!metricsStore.loading && metricsStore.metrics" class="h-44 flex items-center justify-center">
           <Doughnut :data="donutData" :options="donutOptions" />
         </div>
@@ -63,8 +73,13 @@
     </div>
 
     <!-- New stores over time -->
-    <div class="admin-card p-4">
-      <h2 class="text-xs font-semibold text-slate-300 mb-3">New Stores Over Time</h2>
+    <div class="admin-card p-5">
+      <div class="owner-panel-header">
+        <div>
+          <h2 class="admin-section-title">New Stores Over Time</h2>
+          <p class="admin-section-copy">Acquisition trend across the selected period</p>
+        </div>
+      </div>
       <div class="h-36" v-if="!metricsStore.chartLoading && metricsStore.growthChart.length">
         <Bar :data="growthChartData" :options="barChartOptions" />
       </div>
@@ -174,12 +189,12 @@ const gmvChartData = computed(() => ({
     {
       label: 'GMV',
       data: metricsStore.gmvChart.map((d) => d.value),
-      borderColor: '#6366f1',
-      backgroundColor: 'rgba(99, 102, 241, 0.15)',
+      borderColor: '#148447',
+      backgroundColor: 'rgba(20, 132, 71, 0.15)',
       fill: true,
       tension: 0.4,
       pointRadius: 3,
-      pointBackgroundColor: '#6366f1',
+      pointBackgroundColor: '#148447',
     },
   ],
 }))
@@ -190,7 +205,7 @@ const growthChartData = computed(() => ({
     {
       label: 'New Stores',
       data: metricsStore.growthChart.map((d) => d.count),
-      backgroundColor: 'rgba(99, 102, 241, 0.7)',
+      backgroundColor: 'rgba(20, 132, 71, 0.7)',
       borderRadius: 4,
     },
   ],

@@ -1,149 +1,201 @@
 <template>
-  <div class="p-3 sm:p-4">
-    <!-- Header -->
-    <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
-      <div>
-        <h2 class="text-base font-bold text-gray-900 dark:text-white">Products</h2>
-        <p class="text-xs text-gray-500 dark:text-gray-400">{{ productsStore.total }} products</p>
-      </div>
-      <div class="flex items-center gap-2 flex-wrap">
-        <label class="flex items-center gap-2 px-3 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-xl cursor-pointer transition-colors">
-          <ArrowUpTrayIcon class="w-4 h-4" />
-          <span class="hidden sm:inline">Import CSV</span>
-          <input type="file" accept=".csv" class="hidden" @change="handleCsvImport" />
-        </label>
-        <button
-          @click="openAddModal"
-          class="flex items-center gap-2 px-4 py-2 bg-primary text-white text-sm font-semibold rounded-xl hover:opacity-90 transition-opacity shadow-md shadow-primary/20"
-        >
-          <PlusIcon class="w-4 h-4" />
-          Add Product
-        </button>
-      </div>
-    </div>
+  <div class="owner-page">
+    <section class="owner-page-hero">
+      <div class="owner-page-header">
+        <div class="min-w-0">
+          <div class="owner-eyebrow">Catalog workspace</div>
+          <h1 class="owner-title">Products</h1>
+          <p class="owner-subtitle">
+            Manage the items customers can browse, search, and add to cart from your public storefront.
+          </p>
+        </div>
 
-    <!-- Filters -->
-    <div class="flex items-center gap-2 mb-3 flex-wrap">
-      <div class="relative flex-1 min-w-48">
-        <MagnifyingGlassIcon class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+        <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <label class="owner-secondary-action cursor-pointer">
+            <ArrowUpTrayIcon class="h-4 w-4" />
+            <span>Import CSV</span>
+            <input type="file" accept=".csv" class="hidden" @change="handleCsvImport" />
+          </label>
+          <button @click="openAddModal" class="owner-primary-action">
+            <PlusIcon class="h-4 w-4" />
+            Add product
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <section class="owner-stat-grid">
+      <div class="owner-stat-card">
+        <div class="owner-stat-icon">
+          <CubeIcon class="h-5 w-5" />
+        </div>
+        <div>
+          <p class="text-sm font-bold text-slate-950">{{ productsStore.total }}</p>
+          <p class="text-xs font-medium text-slate-500">Total products</p>
+        </div>
+      </div>
+      <div class="owner-stat-card">
+        <div class="owner-stat-icon bg-sky-50 text-sky-700 ring-sky-100">
+          <Squares2X2Icon class="h-5 w-5" />
+        </div>
+        <div>
+          <p class="text-sm font-bold text-slate-950">{{ categoriesStore.categories.length }}</p>
+          <p class="text-xs font-medium text-slate-500">Categories</p>
+        </div>
+      </div>
+      <div class="owner-stat-card">
+        <div class="owner-stat-icon bg-amber-50 text-amber-700 ring-amber-100">
+          <ArrowUpTrayIcon class="h-5 w-5" />
+        </div>
+        <div>
+          <p class="text-sm font-bold text-slate-950">{{ featuredCount }}</p>
+          <p class="text-xs font-medium text-slate-500">Featured</p>
+        </div>
+      </div>
+      <div class="owner-stat-card">
+        <div class="owner-stat-icon bg-orange-50 text-orange-700 ring-orange-100">
+          <ListBulletIcon class="h-5 w-5" />
+        </div>
+        <div>
+          <p class="text-sm font-bold text-slate-950">{{ lowStockCount }}</p>
+          <p class="text-xs font-medium text-slate-500">Low stock</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="owner-toolbar">
+      <div class="owner-search-wrap">
+        <MagnifyingGlassIcon class="owner-search-icon" />
         <input
           v-model="search"
           type="text"
           placeholder="Search products..."
-          class="w-full pl-9 pr-4 py-2.5 text-sm rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
+          class="owner-search-input"
         />
       </div>
-      <select
-        v-model="selectedCategory"
-        class="px-3 py-2.5 text-sm rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
-      >
-        <option value="">All categories</option>
-        <option v-for="cat in categoriesStore.categories" :key="cat.id" :value="cat.id">{{ cat.name }}</option>
-      </select>
-      <!-- View toggle -->
-      <div class="flex rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-        <button @click="viewMode = 'grid'" :class="['p-2.5', viewMode === 'grid' ? 'bg-primary text-white' : 'text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700']">
-          <Squares2X2Icon class="w-4 h-4" />
-        </button>
-        <button @click="viewMode = 'list'" :class="['p-2.5', viewMode === 'list' ? 'bg-primary text-white' : 'text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700']">
-          <ListBulletIcon class="w-4 h-4" />
-        </button>
-      </div>
-    </div>
 
-    <!-- Loading -->
-    <div v-if="productsStore.loading" :class="['gap-3', viewMode === 'grid' ? 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5' : 'flex flex-col']">
-      <div v-for="i in 12" :key="i" :class="[viewMode === 'grid' ? 'skeleton h-44 rounded-xl' : 'skeleton h-12 rounded-lg']" />
-    </div>
-
-    <!-- Empty -->
-    <div v-else-if="!productsStore.products.length" class="text-center py-10">
-      <CubeIcon class="w-12 h-12 mx-auto mb-3 text-gray-200 dark:text-gray-700" />
-      <p class="text-gray-500 dark:text-gray-400 font-medium text-sm">No products yet</p>
-      <p class="text-xs text-gray-400 mt-0.5">Add your first product to start selling</p>
-      <button @click="openAddModal" class="mt-3 px-4 py-2 bg-primary text-white text-sm font-medium rounded-xl hover:opacity-90 shadow-md shadow-primary/20">
-        Add Product
-      </button>
-    </div>
-
-    <!-- GRID VIEW -->
-    <div v-else-if="viewMode === 'grid'" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
-      <div
-        v-for="product in productsStore.products"
-        :key="product.id"
-        class="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 overflow-hidden hover:shadow-md hover:border-gray-200 dark:hover:border-gray-600 transition-all group"
-      >
-        <div class="relative aspect-square bg-gray-100 dark:bg-gray-700">
-          <img v-if="product.image_url" :src="product.image_url" :alt="product.name" class="w-full h-full object-cover" />
-          <div v-else class="w-full h-full flex items-center justify-center">
-            <CubeIcon class="w-8 h-8 text-gray-300 dark:text-gray-500" />
-          </div>
-          <!-- Badges -->
-          <div class="absolute top-1.5 left-1.5 flex flex-col gap-0.5">
-            <span v-if="product.featured" class="px-1.5 py-0.5 bg-amber-400 text-white text-xs font-bold rounded-full leading-none">★</span>
-            <span v-if="product.on_sale" class="px-1.5 py-0.5 bg-red-500 text-white text-xs font-bold rounded-full leading-none">%</span>
-            <span v-if="product.stock < 5" class="px-1.5 py-0.5 bg-orange-500 text-white text-xs font-bold rounded-full leading-none">!</span>
-          </div>
-          <!-- Actions overlay -->
-          <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-            <button @click="editProduct(product)" class="p-1.5 bg-white text-gray-700 rounded-lg hover:bg-gray-100 transition-colors" title="Edit">
-              <PencilIcon class="w-3.5 h-3.5" />
-            </button>
-            <button @click="confirmDelete(product.id)" class="p-1.5 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors" title="Delete">
-              <TrashIcon class="w-3.5 h-3.5" />
-            </button>
-          </div>
-        </div>
-        <div class="p-2.5">
-          <p class="font-medium text-gray-900 dark:text-white text-xs truncate">{{ product.name }}</p>
-          <div class="flex items-center gap-1.5 mt-0.5">
-            <span class="text-primary font-bold text-xs">KES {{ (product.sale_price || product.price).toLocaleString() }}</span>
-            <span v-if="product.sale_price" class="text-xs text-gray-400 line-through">{{ product.price.toLocaleString() }}</span>
-          </div>
-          <p class="text-xs text-gray-400">Stk: {{ product.stock }}</p>
+      <div class="flex flex-wrap items-center gap-2">
+        <select v-model="selectedCategory" class="owner-select">
+          <option value="">All categories</option>
+          <option v-for="cat in categoriesStore.categories" :key="cat.id" :value="cat.id">{{ cat.name }}</option>
+        </select>
+        <div class="owner-segmented" aria-label="Product view">
+          <button
+            @click="viewMode = 'grid'"
+            :class="['owner-segment-button', viewMode === 'grid' ? 'owner-segment-button-active' : '']"
+            title="Grid view"
+          >
+            <Squares2X2Icon class="h-4 w-4" />
+          </button>
+          <button
+            @click="viewMode = 'list'"
+            :class="['owner-segment-button', viewMode === 'list' ? 'owner-segment-button-active' : '']"
+            title="List view"
+          >
+            <ListBulletIcon class="h-4 w-4" />
+          </button>
         </div>
       </div>
-    </div>
+    </section>
 
-    <!-- LIST VIEW -->
-    <div v-else class="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 overflow-hidden">
-      <div class="divide-y divide-gray-50 dark:divide-gray-700">
+    <div class="mt-5">
+      <div v-if="productsStore.loading" :class="['gap-3', viewMode === 'grid' ? 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6' : 'flex flex-col']">
+        <div v-for="i in 12" :key="i" :class="[viewMode === 'grid' ? 'skeleton h-56 rounded-[24px]' : 'skeleton h-16 rounded-[22px]']" />
+      </div>
+
+      <div v-else-if="!productsStore.products.length" class="owner-empty">
+        <CubeIcon class="mx-auto mb-4 h-12 w-12 text-slate-300" />
+        <p class="text-base font-bold text-slate-800">No products yet</p>
+        <p class="mt-1 text-sm text-slate-500">Add your first product to start selling.</p>
+        <button @click="openAddModal" class="owner-primary-action mt-5">
+          <PlusIcon class="h-4 w-4" />
+          Add product
+        </button>
+      </div>
+
+      <div v-else-if="viewMode === 'grid'" class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
         <div
           v-for="product in productsStore.products"
           :key="product.id"
-          class="flex items-center gap-3 px-3 py-2.5 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors"
+          class="owner-card group overflow-hidden"
         >
-          <div class="w-9 h-9 bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden shrink-0">
-            <img v-if="product.image_url" :src="product.image_url" class="w-full h-full object-cover" />
-            <div v-else class="w-full h-full flex items-center justify-center">
-              <CubeIcon class="w-4 h-4 text-gray-300 dark:text-gray-500" />
+          <div class="relative aspect-[4/3] bg-slate-50">
+            <img v-if="product.image_url" :src="product.image_url" :alt="product.name" class="h-full w-full object-cover" />
+            <div v-else class="flex h-full w-full items-center justify-center">
+              <CubeIcon class="h-9 w-9 text-slate-300" />
+            </div>
+            <div class="absolute left-2 top-2 flex flex-wrap gap-1">
+              <span v-if="product.featured" class="rounded-full bg-amber-100 px-2 py-1 text-[10px] font-black text-amber-700">Feat</span>
+              <span v-if="product.stock < 5" class="rounded-full bg-orange-100 px-2 py-1 text-[10px] font-black text-orange-700">Low</span>
+            </div>
+            <div class="absolute inset-0 flex items-center justify-center gap-2 bg-slate-950/42 opacity-0 transition-opacity group-hover:opacity-100">
+              <button @click="editProduct(product)" class="grid h-9 w-9 place-items-center rounded-xl bg-white text-slate-700 shadow-lg transition hover:text-primary" title="Edit">
+                <PencilIcon class="h-4 w-4" />
+              </button>
+              <button @click="confirmDelete(product.id)" class="grid h-9 w-9 place-items-center rounded-xl bg-red-500 text-white shadow-lg transition hover:bg-red-600" title="Delete">
+                <TrashIcon class="h-4 w-4" />
+              </button>
             </div>
           </div>
-          <div class="flex-1 min-w-0">
-            <p class="font-medium text-gray-900 dark:text-white text-sm truncate">{{ product.name }}</p>
-            <p class="text-xs text-gray-400 truncate">{{ product.category?.name || 'No category' }}</p>
+          <div class="p-3">
+            <p class="truncate text-sm font-bold text-slate-950">{{ product.name }}</p>
+            <p class="mt-0.5 truncate text-xs font-medium text-slate-400">{{ product.category?.name || 'No category' }}</p>
+            <div class="mt-2 flex items-end justify-between gap-2">
+              <div class="min-w-0">
+                <p class="text-sm font-black text-primary">KES {{ (product.sale_price || product.price).toLocaleString() }}</p>
+                <div v-if="product.sale_price" class="flex items-center gap-1.5 flex-wrap">
+                  <p class="text-xs font-medium text-slate-400 line-through">KES {{ product.price.toLocaleString() }}</p>
+                  <span class="rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-black text-white">-{{ Math.round((1 - product.sale_price / product.price) * 100) }}%</span>
+                </div>
+              </div>
+              <span class="rounded-full bg-slate-50 px-2 py-1 text-xs font-bold text-slate-500">{{ product.stock }} left</span>
+            </div>
           </div>
-          <div class="hidden sm:flex items-center gap-1.5">
-            <span v-if="product.featured" class="px-1.5 py-0.5 bg-amber-100 text-amber-700 text-xs font-medium rounded-full dark:bg-amber-900/30 dark:text-amber-400">★</span>
-            <span v-if="product.stock < 5" class="px-1.5 py-0.5 bg-orange-100 text-orange-700 text-xs font-medium rounded-full dark:bg-orange-900/30 dark:text-orange-400">Low</span>
-          </div>
-          <div class="text-right shrink-0">
-            <p class="text-primary font-bold text-xs">KES {{ (product.sale_price || product.price).toLocaleString() }}</p>
-            <p class="text-xs text-gray-400">{{ product.stock }} left</p>
-          </div>
-          <div class="flex items-center gap-0.5 shrink-0">
-            <button @click="editProduct(product)" class="p-1.5 text-gray-400 hover:text-primary hover:bg-primary/5 rounded-lg transition-colors">
-              <PencilIcon class="w-3.5 h-3.5" />
-            </button>
-            <button @click="confirmDelete(product.id)" class="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors">
-              <TrashIcon class="w-3.5 h-3.5" />
-            </button>
+        </div>
+      </div>
+
+      <div v-else class="owner-panel p-2 sm:p-2">
+        <div class="space-y-2">
+          <div
+            v-for="product in productsStore.products"
+            :key="product.id"
+            class="owner-list-row flex items-center gap-3"
+          >
+            <div class="h-12 w-12 shrink-0 overflow-hidden rounded-2xl bg-slate-50">
+              <img v-if="product.image_url" :src="product.image_url" class="h-full w-full object-cover" />
+              <div v-else class="flex h-full w-full items-center justify-center">
+                <CubeIcon class="h-5 w-5 text-slate-300" />
+              </div>
+            </div>
+            <div class="min-w-0 flex-1">
+              <p class="truncate text-sm font-bold text-slate-950">{{ product.name }}</p>
+              <p class="truncate text-xs font-medium text-slate-500">{{ product.category?.name || 'No category' }}</p>
+            </div>
+            <div class="hidden items-center gap-1.5 md:flex">
+              <span v-if="product.featured" class="rounded-full bg-amber-100 px-2 py-1 text-xs font-bold text-amber-700">Featured</span>
+              <span v-if="product.stock < 5" class="rounded-full bg-orange-100 px-2 py-1 text-xs font-bold text-orange-700">Low stock</span>
+            </div>
+            <div class="shrink-0 text-right">
+              <p class="text-sm font-black text-primary">KES {{ (product.sale_price || product.price).toLocaleString() }}</p>
+              <div v-if="product.sale_price" class="flex items-center justify-end gap-1.5">
+                <p class="text-[11px] font-medium text-slate-400 line-through">KES {{ product.price.toLocaleString() }}</p>
+                <span class="rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-black text-white">-{{ Math.round((1 - product.sale_price / product.price) * 100) }}%</span>
+              </div>
+              <p class="text-xs font-medium text-slate-400">{{ product.stock }} left</p>
+            </div>
+            <div class="flex shrink-0 items-center gap-1">
+              <button @click="editProduct(product)" class="owner-action-icon">
+                <PencilIcon class="h-4 w-4" />
+              </button>
+              <button @click="confirmDelete(product.id)" class="owner-action-icon hover:bg-red-50 hover:text-red-500">
+                <TrashIcon class="h-4 w-4" />
+              </button>
+            </div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Product Form Modal -->
     <Teleport to="body">
       <ProductFormModal
         v-if="showModal"
@@ -156,7 +208,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted } from 'vue'
+import { computed, ref, watch, onMounted } from 'vue'
 import {
   PlusIcon, MagnifyingGlassIcon, ArrowUpTrayIcon, PencilIcon, TrashIcon,
   Squares2X2Icon, ListBulletIcon, CubeIcon
@@ -176,6 +228,8 @@ const search = ref('')
 const selectedCategory = ref('')
 const showModal = ref(false)
 const editingProduct = ref<Product | null>(null)
+const lowStockCount = computed(() => productsStore.products.filter(product => product.stock < 5).length)
+const featuredCount = computed(() => productsStore.products.filter(product => product.featured).length)
 
 let searchTimer: ReturnType<typeof setTimeout>
 

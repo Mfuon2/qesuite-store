@@ -204,16 +204,15 @@ export function validatePhone(phone: string): boolean {
  * Returns null if the number is invalid.
  */
 export function formatPhone(phone: string): string | null {
-  const cleaned = phone.replace(/[\s\-().]/g, '');
-  if (/^0[17]\d{8}$/.test(cleaned)) {
-    return '+254' + cleaned.slice(1);
-  }
-  if (/^254[17]\d{8}$/.test(cleaned)) {
-    return '+' + cleaned;
-  }
-  if (/^\+254[17]\d{8}$/.test(cleaned)) {
-    return cleaned;
-  }
+  const cleaned = phone.replace(/[\s\-().+]/g, '').replace(/^00/, '');
+  // Bare 9-digit: 724xxxxxx or 110xxxxxx
+  if (/^[17]\d{8}$/.test(cleaned)) return '+254' + cleaned;
+  // Local 10-digit: 0724xxxxxx
+  if (/^0[17]\d{8}$/.test(cleaned)) return '+254' + cleaned.slice(1);
+  // Without +: 254724xxxxxx
+  if (/^254[17]\d{8}$/.test(cleaned)) return '+' + cleaned;
+  // Full E.164: +254724xxxxxx
+  if (/^\+?254[17]\d{8}$/.test('+' + cleaned.replace(/^\+/, ''))) return '+254' + cleaned.replace(/^\+?254/, '');
   return null;
 }
 

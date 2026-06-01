@@ -6,12 +6,13 @@ import { generateId } from '../lib/jwt'
 
 const categories = new Hono<{ Bindings: Env; Variables: Variables }>()
 
-// GET /api/categories — public or authenticated
+// GET /api/categories — public (slug) or authenticated (owner dashboard)
 categories.get('/', async (c) => {
   try {
     const slug = c.req.query('slug')
 
     let tenantId: string | null = null
+    let isAuthenticated = false
 
     const authHeader = c.req.header('Authorization')
     if (authHeader?.startsWith('Bearer ')) {
@@ -19,6 +20,7 @@ categories.get('/', async (c) => {
         const { verifyJWT } = await import('../lib/jwt')
         const payload = await verifyJWT(authHeader.substring(7), c.env.JWT_SECRET)
         tenantId = payload.tenant_id
+        isAuthenticated = true
       } catch {
         // fall through
       }
@@ -32,23 +34,26 @@ categories.get('/', async (c) => {
     }
 
     if (!tenantId) {
-      return c.json({ error: 'slug or auth required', data: null }, 400)
+      return c.json({ success: false, error: 'slug or auth required', data: null }, 400)
     }
+
+    // Dashboard owners see all categories; storefront only shows active ones
+    const activeFilter = isAuthenticated ? '' : 'AND c.is_active = 1'
 
     const rows = await c.env.qesuite_db.prepare(
       `SELECT c.id, c.name, c.icon, c.sort_order, c.is_active,
               COUNT(p.id) as product_count
        FROM categories c
        LEFT JOIN products p ON p.category_id = c.id AND p.is_active = 1
-       WHERE c.tenant_id = ? AND c.is_active = 1
+       WHERE c.tenant_id = ? ${activeFilter}
        GROUP BY c.id
        ORDER BY c.sort_order ASC, c.name ASC`
     ).bind(tenantId).all()
 
-    return c.json({ data: rows.results, error: null })
+    return c.json({ success: true, data: rows.results, error: null })
   } catch (err) {
     console.error('categories list error', err)
-    return c.json({ error: 'Failed to fetch categories', data: null }, 500)
+    return c.json({ success: false, error: 'Failed to fetch categories', data: null }, 500)
   }
 })
 
@@ -85,7 +90,7 @@ categories.post('/', authMiddleware, tenantGuard, async (c) => {
     const category = await c.env.qesuite_db.prepare('SELECT * FROM categories WHERE id = ?')
       .bind(id).first()
 
-    return c.json({ data: category, error: null, message: 'Category created' }, 201)
+    return c.json({ success: true, data: category, error: null, message: 'Category created' }, 201)
   } catch (err) {
     console.error('category create error', err)
     return c.json({ error: 'Failed to create category', data: null }, 500)
@@ -134,7 +139,7 @@ categories.put('/:id', authMiddleware, tenantGuard, async (c) => {
     const category = await c.env.qesuite_db.prepare('SELECT * FROM categories WHERE id = ?')
       .bind(id).first()
 
-    return c.json({ data: category, error: null, message: 'Category updated' })
+    return c.json({ success: true, data: category, error: null, message: 'Category updated' })
   } catch (err) {
     console.error('category update error', err)
     return c.json({ error: 'Failed to update category', data: null }, 500)
@@ -183,18 +188,18 @@ categories.post('/reorder', authMiddleware, tenantGuard, async (c) => {
   try {
     const user = c.get('user')
     const tenantId = user.tenant_id!
-    const { order } = await c.req.json<{ order: { id: string; sort_order: number }[] }>()
-    if (!order?.length) return c.json({ error: 'order array is required', data: null }, 400)
+    const { ids } = await c.req.json<{ ids: string[] }>()
+    if (!ids?.length) return c.json({ success: false, error: 'ids array is required', data: null }, 400)
 
-    for (const item of order) {
+    for (let i = 0; i < ids.length; i++) {
       await c.env.qesuite_db.prepare(
         'UPDATE categories SET sort_order = ? WHERE id = ? AND tenant_id = ?'
-      ).bind(item.sort_order, item.id, tenantId).run()
+      ).bind(i, ids[i], tenantId).run()
     }
-    return c.json({ data: { reordered: true }, error: null, message: 'Order updated' })
+    return c.json({ success: true, data: { reordered: true }, error: null, message: 'Order updated' })
   } catch (err) {
     console.error('category reorder error', err)
-    return c.json({ error: 'Failed to reorder categories', data: null }, 500)
+    return c.json({ success: false, error: 'Failed to reorder categories', data: null }, 500)
   }
 })
 

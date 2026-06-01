@@ -54,6 +54,10 @@ export async function apiUpdateMe(payload: UpdateProfileRequest): Promise<ApiRes
 }
 
 
+export async function apiCheckStoreName(name: string): Promise<ApiResponse<{ available: boolean; slug: string }>> {
+  return apiFetch(`/api/auth/check-store-name?name=${encodeURIComponent(name)}`)
+}
+
 export async function apiLogout(): Promise<ApiResponse<null>> {
   return apiFetch('/api/auth/logout', { method: 'POST' })
 }

@@ -41,5 +41,8 @@ export async function apiBulkImportProducts(rows: ProductCreate[]): Promise<ApiR
 }
 
 export async function apiGetUploadUrl(filename: string, contentType: string): Promise<ApiResponse<{ upload_url: string; public_url: string }>> {
-  return apiFetch(`/api/images/presign?filename=${encodeURIComponent(filename)}&content_type=${encodeURIComponent(contentType)}`)
+  return apiFetch('/api/upload/image', {
+    method: 'POST',
+    body: JSON.stringify({ filename, content_type: contentType })
+  })
 }

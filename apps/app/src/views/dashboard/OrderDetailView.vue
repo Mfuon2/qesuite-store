@@ -204,6 +204,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { formatDate } from '@/composables/useDateFormat'
 import { useRoute, useRouter } from 'vue-router'
 import {
   ArrowLeftIcon, PhoneIcon, PhoneArrowUpRightIcon, MapPinIcon,
@@ -274,13 +275,6 @@ async function handleCancel() {
   await ordersStore.updateOrderStatus(order.value.id, 'CANCELLED', cancelReason.value)
   showCancelDropdown.value = false
   updatingStatus.value = false
-}
-
-function formatDate(d: string) {
-  return new Date(d).toLocaleString('en-KE', {
-    dateStyle: 'medium',
-    timeStyle: 'short'
-  })
 }
 
 onMounted(() => ordersStore.fetchOrder(orderId))

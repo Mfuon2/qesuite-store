@@ -51,13 +51,13 @@ export const useOrdersStore = defineStore('orders', () => {
 
   async function updateOrderStatus(id: string, status: OrderStatus, reason?: string) {
     try {
-      const res = await apiUpdateOrderStatus(id, { status, cancellation_reason: reason })
-      if (res.success && res.data) {
-        const idx = orders.value.findIndex(o => o.id === id)
-        if (idx !== -1) orders.value[idx] = res.data
-        if (currentOrder.value?.id === id) currentOrder.value = res.data
-        showToast('Order status updated', 'success')
-      }
+      await apiUpdateOrderStatus(id, { status, cancellation_reason: reason })
+      // apiFetch throws on any non-2xx, so reaching here means success.
+      // Patch the status locally — no need to re-fetch the whole order.
+      const idx = orders.value.findIndex(o => o.id === id)
+      if (idx !== -1) orders.value[idx] = { ...orders.value[idx], status }
+      if (currentOrder.value?.id === id) currentOrder.value = { ...currentOrder.value, status }
+      showToast('Order status updated', 'success')
     } catch (err: unknown) {
       showToast(err instanceof Error ? err.message : 'Failed to update order', 'error')
     }

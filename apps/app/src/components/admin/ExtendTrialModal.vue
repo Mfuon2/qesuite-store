@@ -1,21 +1,18 @@
 <template>
   <div class="fixed inset-0 z-50 flex items-center justify-center p-4">
-    <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="$emit('cancel')"></div>
-    <div class="relative bg-slate-800 border border-slate-700 rounded-2xl p-6 w-full max-w-sm shadow-2xl animate-fade-in">
-      <h2 class="text-lg font-bold text-white mb-1">Extend Trial</h2>
-      <p class="text-slate-400 text-sm mb-5">
+    <div class="absolute inset-0 bg-slate-950/45 backdrop-blur-sm" @click="$emit('cancel')"></div>
+    <div class="admin-card relative w-full max-w-sm animate-fade-in p-6">
+      <h2 class="text-lg font-bold text-slate-950 mb-1">Extend Trial</h2>
+      <p class="text-slate-500 text-sm mb-5">
         How many days would you like to extend the trial for
-        <span class="text-slate-200 font-medium">{{ storeName }}</span>?
+        <span class="text-slate-800 font-medium">{{ storeName }}</span>?
       </p>
 
       <div class="grid grid-cols-3 gap-2 mb-5">
         <button
           v-for="d in dayOptions"
           :key="d"
-          class="py-3 rounded-xl text-sm font-bold transition-colors"
-          :class="selected === d
-            ? 'bg-indigo-600 text-white'
-            : 'bg-slate-700 text-slate-300 hover:bg-slate-600'"
+          :class="['admin-filter-pill justify-center py-3', selected === d ? 'admin-filter-pill-active' : '']"
           @click="selected = d"
         >
           +{{ d }} days

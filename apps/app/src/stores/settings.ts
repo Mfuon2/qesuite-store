@@ -1,13 +1,14 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { apiGetTenant, apiUpdateTenant, apiGetStoreSettings, apiUpdateStoreSettings } from '@/api/settings'
-import type { Tenant, StoreSettings, StoreSettingsUpdate } from '@qesuite/types'
+import { apiGetTenant, apiUpdateTenant, apiGetStoreSettings, apiUpdateStoreSettings, apiGetSubscription } from '@/api/settings'
+import type { Tenant, StoreSettings, StoreSettingsUpdate, Subscription } from '@qesuite/types'
 import type { TenantUpdate } from '@/api/settings'
 import { useToast } from '@/composables/useToast'
 
 export const useSettingsStore = defineStore('settings', () => {
   const tenant = ref<Tenant | null>(null)
   const storeSettings = ref<StoreSettings | null>(null)
+  const subscription = ref<Subscription | null>(null)
   const loading = ref(false)
   const saving = ref(false)
   const { showToast } = useToast()
@@ -27,6 +28,35 @@ export const useSettingsStore = defineStore('settings', () => {
 
   const isTrialing = computed(() => tenant.value?.subscription_status === 'trialing')
 
+  // Days remaining on the current billing period (trial OR paid subscription)
+  const subscriptionDaysLeft = computed(() => {
+    const status = tenant.value?.subscription_status
+    if (status === 'trialing' && tenant.value?.trial_ends_at) {
+      const diff = new Date(tenant.value.trial_ends_at).getTime() - Date.now()
+      return Math.max(0, Math.ceil(diff / 86_400_000))
+    }
+    if (status === 'active' && subscription.value?.current_period_end) {
+      const diff = new Date(subscription.value.current_period_end).getTime() - Date.now()
+      return Math.max(0, Math.ceil(diff / 86_400_000))
+    }
+    return null
+  })
+
+  const planLabel = computed(() => {
+    const p = tenant.value?.plan
+    if (!p || p === 'trial') return 'Trial'
+    return p.charAt(0).toUpperCase() + p.slice(1)
+  })
+
+  // Subscription gate — false means show the wall and block all features
+  const isSubscriptionActive = computed(() => {
+    if (loading.value) return true // don't flash wall during initial load
+    const status = tenant.value?.subscription_status
+    if (status === 'active') return true
+    if (status === 'trialing') return (trialDaysLeft.value ?? 0) > 0
+    return false
+  })
+
   async function fetchTenant() {
     loading.value = true
     try {
@@ -40,6 +70,10 @@ export const useSettingsStore = defineStore('settings', () => {
     } finally {
       loading.value = false
     }
+    // Silently fetch subscription period so the banner can show renewal date
+    apiGetSubscription().then(res => {
+      if (res.success && res.data) subscription.value = res.data
+    }).catch(() => {})
   }
 
   async function fetchStoreSettings() {
@@ -56,14 +90,14 @@ export const useSettingsStore = defineStore('settings', () => {
     } catch { /* ignore */ }
   }
 
-  async function updateTenant(payload: TenantUpdate): Promise<boolean> {
+  async function updateTenant(payload: TenantUpdate, silent = false): Promise<boolean> {
     saving.value = true
     try {
       const res = await apiUpdateTenant(payload)
       if (res.success && res.data) {
         tenant.value = res.data
         applyBranding(res.data)
-        showToast('Store settings saved', 'success')
+        if (!silent) showToast('Store settings saved', 'success')
         return true
       }
       return false
@@ -117,6 +151,7 @@ export const useSettingsStore = defineStore('settings', () => {
   return {
     tenant,
     storeSettings,
+    subscription,
     loading,
     saving,
     darkMode,
@@ -124,6 +159,9 @@ export const useSettingsStore = defineStore('settings', () => {
     soundEnabled,
     trialDaysLeft,
     isTrialing,
+    isSubscriptionActive,
+    subscriptionDaysLeft,
+    planLabel,
     fetchTenant,
     fetchStoreSettings,
     updateTenant,

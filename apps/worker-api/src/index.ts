@@ -64,13 +64,19 @@ app.use('*', async (c, next) => {
   c.res.headers.set('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload')
 })
 
-// ── Request body size limit (1 MB) ────────────────────────────────────────────
+// ── Request body size limits ──────────────────────────────────────────────────
+// Upload routes: 10 MB (product images, logos, banners)
+// All other routes: 1 MB
 app.use('*', async (c, next) => {
   const contentLength = c.req.header('content-length')
-  if (contentLength && parseInt(contentLength, 10) > 1_048_576) {
-    return c.json({ error: 'Request body too large', data: null }, 413)
+  if (!contentLength) return next()
+  const bytes = parseInt(contentLength, 10)
+  const isUpload = c.req.path.startsWith('/api/upload')
+  const limit = isUpload ? 10_485_760 : 1_048_576  // 10 MB or 1 MB
+  if (bytes > limit) {
+    return c.json({ error: `Request body too large (max ${isUpload ? '10' : '1'} MB)`, data: null }, 413)
   }
-  await next()
+  return next()
 })
 
 // Routes

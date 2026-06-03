@@ -305,9 +305,11 @@ else
   abort "Fix apps/app build errors before deploying."
 fi
 
-info "Deploying to Cloudflare Pages (qesuite-go)..."
-if wrangler pages deploy apps/app/dist --project-name qesuite-go 2>&1 \
-   | tee /tmp/qesuite_app_deploy.log | tail -5 | sed 's/^/      /'; then
+info "Deploying to Cloudflare Pages (qesuite-go)... (uploading, please wait)"
+wrangler pages deploy apps/app/dist --project-name qesuite-go 2>&1 \
+  | tee /tmp/qesuite_app_deploy.log \
+  | sed 's/^/      /'
+if grep -qE "✨|Deployment complete|Successfully deployed" /tmp/qesuite_app_deploy.log; then
   ok "Dashboard deployed → ${BOLD}https://go.qesuite.com${RESET}"
   record_deploy "qesuite-go" "ok"
 else
@@ -336,9 +338,11 @@ else
   abort "Fix storefront build errors before deploying."
 fi
 
-info "Deploying to Cloudflare Pages (qesuite-store)..."
-if wrangler pages deploy apps/storefront/dist --project-name qesuite-store 2>&1 \
-   | tee /tmp/qesuite_storefront_deploy.log | tail -5 | sed 's/^/      /'; then
+info "Deploying to Cloudflare Pages (qesuite-store)... (uploading ~10 MB, may take 1–2 min)"
+wrangler pages deploy apps/storefront/dist --project-name qesuite-store 2>&1 \
+  | tee /tmp/qesuite_storefront_deploy.log \
+  | sed 's/^/      /'
+if grep -qE "✨|Deployment complete|Successfully deployed" /tmp/qesuite_storefront_deploy.log; then
   ok "Storefront deployed → ${BOLD}https://store.qesuite.com${RESET}"
   record_deploy "qesuite-store" "ok"
 else

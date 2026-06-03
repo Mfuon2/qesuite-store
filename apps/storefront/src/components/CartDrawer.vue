@@ -11,7 +11,7 @@
     <Transition name="drawer">
       <aside
         v-if="cartStore.isDrawerOpen"
-        class="fixed z-50 bg-white dark:bg-gray-900 shadow-2xl
+        class="fixed z-50 bg-white  shadow-2xl
                bottom-0 left-0 right-0 max-h-[90vh] rounded-t-3xl
                md:right-0 md:left-auto md:top-0 md:bottom-0 md:w-96 md:max-h-full md:rounded-none md:rounded-l-2xl
                flex flex-col"
@@ -19,15 +19,15 @@
         :aria-label="$t('cart.title')"
       >
         <!-- Header -->
-        <div class="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-800">
+        <div class="flex items-center justify-between px-4 py-3 border-b border-gray-100 ">
           <div class="flex items-center gap-2">
             <ShoppingCartIcon class="w-4.5 h-4.5" :style="{ color: 'var(--color-primary)' }" />
-            <h2 class="font-bold text-gray-900 dark:text-white text-base">
+            <h2 class="font-bold text-gray-900  text-base">
               {{ $t('cart.title') }}
             </h2>
           </div>
           <button
-            class="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            class="p-2 rounded-xl hover:bg-gray-100  transition-colors"
             @click="cartStore.closeDrawer"
           >
             <XMarkIcon class="w-5 h-5 text-gray-500" />
@@ -41,13 +41,13 @@
             v-if="cartStore.items.length === 0"
             class="flex flex-col items-center justify-center h-full py-16 text-center px-5"
           >
-            <div class="w-20 h-20 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-4">
+            <div class="w-20 h-20 rounded-full bg-gray-100  flex items-center justify-center mb-4">
               <ShoppingCartIcon class="w-10 h-10 text-gray-400" />
             </div>
-            <p class="font-semibold text-gray-700 dark:text-gray-300 mb-1">
+            <p class="font-semibold text-gray-700  mb-1">
               {{ $t('cart.empty') }}
             </p>
-            <p class="text-sm text-gray-400 dark:text-gray-500 mb-5">
+            <p class="text-sm text-gray-400  mb-5">
               {{ $t('cart.empty_hint') }}
             </p>
             <button
@@ -64,7 +64,7 @@
             v-else
             name="cart-item"
             tag="ul"
-            class="divide-y divide-gray-100 dark:divide-gray-800"
+            class="divide-y divide-gray-100 "
           >
             <li
               v-for="item in cartStore.items"
@@ -72,7 +72,7 @@
               class="flex gap-3 px-5 py-3.5"
             >
               <!-- Image -->
-              <div class="w-16 h-16 rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800 flex-shrink-0">
+              <div class="w-16 h-16 rounded-xl overflow-hidden bg-gray-100  flex-shrink-0">
                 <img
                   v-if="item.image_url"
                   :src="item.image_url"
@@ -87,7 +87,7 @@
 
               <!-- Details -->
               <div class="flex-1 min-w-0">
-                <p class="text-sm font-semibold text-gray-900 dark:text-white line-clamp-1">
+                <p class="text-sm font-semibold text-gray-900  line-clamp-1">
                   {{ item.product_name }}
                 </p>
                 <p class="text-sm font-bold mt-0.5" :style="{ color: 'var(--color-primary)' }">
@@ -95,14 +95,14 @@
                 </p>
                 <!-- Quantity controls -->
                 <div class="flex items-center gap-2 mt-2">
-                  <div class="flex items-center bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden">
+                  <div class="flex items-center bg-gray-100  rounded-lg overflow-hidden">
                     <button
-                      class="w-7 h-7 flex items-center justify-center text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                      class="w-7 h-7 flex items-center justify-center text-gray-600  hover:bg-gray-200  transition-colors"
                       @click="cart.decrement(item.product_id)"
                     >
                       <MinusIcon class="w-3.5 h-3.5" />
                     </button>
-                    <span class="w-7 text-center text-sm font-semibold text-gray-900 dark:text-white">
+                    <span class="w-7 text-center text-sm font-semibold text-gray-900 ">
                       {{ item.quantity }}
                     </span>
                     <button
@@ -114,7 +114,7 @@
                       <PlusIcon class="w-3.5 h-3.5" />
                     </button>
                   </div>
-                  <span class="text-xs text-gray-400 dark:text-gray-500 font-medium">
+                  <span class="text-xs text-gray-400  font-medium">
                     = {{ formatPrice((item.sale_price !== null ? item.sale_price : item.price) * item.quantity) }}
                   </span>
                 </div>
@@ -122,7 +122,7 @@
 
               <!-- Remove -->
               <button
-                class="self-start p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                class="self-start p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50  transition-colors"
                 @click="cartStore.removeItem(item.product_id)"
                 :aria-label="`Remove ${item.product_name}`"
               >
@@ -135,19 +135,19 @@
         <!-- Footer totals + checkout -->
         <div
           v-if="cartStore.items.length > 0"
-          class="border-t border-gray-100 dark:border-gray-800 px-5 py-4 space-y-2 pb-safe"
+          class="border-t border-gray-100  px-5 py-4 space-y-2 pb-safe"
         >
-          <div class="flex justify-between text-sm text-gray-600 dark:text-gray-400">
+          <div class="flex justify-between text-sm text-gray-600 ">
             <span>{{ $t('cart.subtotal') }}</span>
-            <span class="font-semibold text-gray-900 dark:text-white">{{ cart.formattedSubtotal.value }}</span>
+            <span class="font-semibold text-gray-900 ">{{ cart.formattedSubtotal.value }}</span>
           </div>
-          <div class="flex justify-between text-sm text-gray-600 dark:text-gray-400">
+          <div class="flex justify-between text-sm text-gray-600 ">
             <span>{{ $t('cart.delivery_fee') }}</span>
-            <span class="font-semibold text-gray-900 dark:text-white">
+            <span class="font-semibold text-gray-900 ">
               {{ deliveryFeeDisplay }}
             </span>
           </div>
-          <div class="flex justify-between text-base font-bold text-gray-900 dark:text-white pt-2 border-t border-gray-100 dark:border-gray-800">
+          <div class="flex justify-between text-base font-bold text-gray-900  pt-2 border-t border-gray-100 ">
             <span>{{ $t('cart.total') }}</span>
             <span :style="{ color: 'var(--color-primary)' }">{{ cart.formattedTotal.value }}</span>
           </div>

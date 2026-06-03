@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen flex flex-col items-center justify-center px-4 py-12 text-center bg-gray-50 dark:bg-gray-950">
+  <div class="min-h-screen flex flex-col items-center justify-center px-4 py-12 text-center bg-gray-50 ">
     <!-- Animated checkmark -->
     <div class="relative mb-6">
       <div
@@ -20,21 +20,21 @@
       />
     </div>
 
-    <h1 class="text-3xl font-extrabold text-gray-900 dark:text-white mb-2">
+    <h1 class="text-3xl font-extrabold text-gray-900  mb-2">
       {{ $t('checkout.confirmation.title') }}
     </h1>
-    <p class="text-gray-500 dark:text-gray-400 mb-8 max-w-xs">
+    <p class="text-gray-500  mb-8 max-w-xs">
       {{ $t('checkout.confirmation.subtitle') }}
     </p>
 
     <!-- Order details -->
     <div
       v-if="order"
-      class="w-full max-w-sm bg-white dark:bg-gray-900 rounded-3xl p-6 shadow-lg border border-gray-100 dark:border-gray-800 mb-8 text-left space-y-4"
+      class="w-full max-w-sm bg-white  rounded-3xl p-6 shadow-lg border border-gray-100  mb-8 text-left space-y-4"
     >
       <!-- Tracking code highlight -->
       <div class="text-center">
-        <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
+        <p class="text-xs font-medium text-gray-500  uppercase tracking-wider mb-2">
           {{ $t('checkout.confirmation.tracking_code') }}
         </p>
         <div
@@ -46,17 +46,17 @@
         <p class="text-xs text-gray-400 mt-2">Save this code to track your order</p>
       </div>
 
-      <div class="border-t border-gray-100 dark:border-gray-800 pt-4 space-y-2">
+      <div class="border-t border-gray-100  pt-4 space-y-2">
         <div class="flex justify-between text-sm">
-          <span class="text-gray-500 dark:text-gray-400">{{ $t('checkout.confirmation.order_id') }}</span>
-          <span class="font-mono text-xs text-gray-700 dark:text-gray-300">{{ order.id.slice(0, 8) }}...</span>
+          <span class="text-gray-500 ">{{ $t('checkout.confirmation.order_id') }}</span>
+          <span class="font-mono text-xs text-gray-700 ">{{ order.id.slice(0, 8) }}...</span>
         </div>
         <div v-if="order.customer_name" class="flex justify-between text-sm">
-          <span class="text-gray-500 dark:text-gray-400">Name</span>
-          <span class="font-medium text-gray-900 dark:text-white">{{ order.customer_name }}</span>
+          <span class="text-gray-500 ">Name</span>
+          <span class="font-medium text-gray-900 ">{{ order.customer_name }}</span>
         </div>
         <div class="flex justify-between text-sm">
-          <span class="text-gray-500 dark:text-gray-400">{{ $t('cart.total') }}</span>
+          <span class="text-gray-500 ">{{ $t('cart.total') }}</span>
           <span class="font-bold" :style="{ color: 'var(--color-primary)' }">
             {{ formatPrice(order.total) }}
           </span>
@@ -77,7 +77,7 @@
       </RouterLink>
       <RouterLink
         :to="`/${slug}`"
-        class="flex items-center justify-center w-full py-4 rounded-2xl font-bold text-base transition-all active:scale-[0.98] border-2 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
+        class="flex items-center justify-center w-full py-4 rounded-2xl font-bold text-base transition-all active:scale-[0.98] border-2 border-gray-200  text-gray-700  hover:bg-gray-50 "
         @click="checkout.reset()"
       >
         {{ $t('checkout.confirmation.continue_shopping') }}

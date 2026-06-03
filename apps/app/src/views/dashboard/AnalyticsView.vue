@@ -2,22 +2,22 @@
   <div class="p-3 sm:p-4">
     <!-- Header + date range -->
     <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
-      <h2 class="text-base font-bold text-gray-900 dark:text-white">Analytics</h2>
+      <h2 class="text-base font-bold text-gray-900 ">Analytics</h2>
       <div class="flex items-center gap-2 flex-wrap">
-        <div class="flex rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden text-sm">
+        <div class="flex rounded-xl border border-gray-200  overflow-hidden text-sm">
           <button
             v-for="r in ranges"
             :key="r.value"
             @click="setRange(r.value)"
-            :class="['px-3 py-2 font-medium transition-colors', analyticsStore.dateRange === r.value ? 'bg-primary text-white' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700']"
+            :class="['px-3 py-2 font-medium transition-colors', analyticsStore.dateRange === r.value ? 'bg-primary text-white' : 'text-gray-500  hover:bg-gray-50 ']"
           >
             {{ r.label }}
           </button>
         </div>
         <!-- Custom date range -->
         <template v-if="analyticsStore.dateRange === 'custom'">
-          <input type="date" v-model="customFrom" class="px-3 py-2 text-sm rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/50" />
-          <input type="date" v-model="customTo" class="px-3 py-2 text-sm rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/50" />
+          <input type="date" v-model="customFrom" class="px-3 py-2 text-sm rounded-xl border border-gray-200  bg-white  text-gray-900  focus:outline-none focus:ring-2 focus:ring-primary/50" />
+          <input type="date" v-model="customTo" class="px-3 py-2 text-sm rounded-xl border border-gray-200  bg-white  text-gray-900  focus:outline-none focus:ring-2 focus:ring-primary/50" />
           <button @click="applyCustom" class="px-3 py-2 text-sm bg-primary text-white rounded-xl hover:opacity-90">Apply</button>
         </template>
       </div>
@@ -65,16 +65,16 @@
     <!-- Charts grid -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
       <!-- Revenue over time -->
-      <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 p-3.5">
-        <h3 class="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Daily Revenue</h3>
+      <div class="bg-white  rounded-xl border border-gray-100  p-3.5">
+        <h3 class="text-xs font-semibold text-gray-700  mb-2">Daily Revenue</h3>
         <div v-if="analyticsStore.loading" class="skeleton h-36 rounded-lg" />
         <Line v-else-if="revenueChartData" :data="revenueChartData" :options="lineOptions" class="max-h-40" />
         <p v-else class="text-center text-gray-400 py-10 text-xs">No data</p>
       </div>
 
       <!-- Payment methods donut -->
-      <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 p-3.5">
-        <h3 class="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Payment Methods</h3>
+      <div class="bg-white  rounded-xl border border-gray-100  p-3.5">
+        <h3 class="text-xs font-semibold text-gray-700  mb-2">Payment Methods</h3>
         <div v-if="analyticsStore.loading" class="skeleton h-36 rounded-lg" />
         <div v-else-if="paymentChartData" class="flex items-center gap-4">
           <Doughnut :data="paymentChartData" :options="doughnutOptions" class="max-h-36 max-w-[144px]" />
@@ -82,9 +82,9 @@
             <div v-for="(method, i) in analyticsStore.paymentMethods" :key="method.method" class="flex items-center justify-between text-xs">
               <div class="flex items-center gap-1.5">
                 <div class="w-2.5 h-2.5 rounded-full" :style="{ backgroundColor: paymentColors[i % paymentColors.length] }" />
-                <span class="text-gray-600 dark:text-gray-400">{{ paymentLabel(method.method) }}</span>
+                <span class="text-gray-600 ">{{ paymentLabel(method.method) }}</span>
               </div>
-              <span class="font-medium text-gray-900 dark:text-white">{{ method.percentage.toFixed(0) }}%</span>
+              <span class="font-medium text-gray-900 ">{{ method.percentage.toFixed(0) }}%</span>
             </div>
           </div>
         </div>
@@ -92,24 +92,24 @@
       </div>
 
       <!-- Top products by revenue -->
-      <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 p-3.5">
-        <h3 class="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Top Products by Revenue</h3>
+      <div class="bg-white  rounded-xl border border-gray-100  p-3.5">
+        <h3 class="text-xs font-semibold text-gray-700  mb-2">Top Products by Revenue</h3>
         <div v-if="analyticsStore.loading" class="skeleton h-36 rounded-lg" />
         <Bar v-else-if="topRevenueChartData" :data="topRevenueChartData" :options="horizontalBarOptions" class="max-h-40" />
         <p v-else class="text-center text-gray-400 py-10 text-xs">No data</p>
       </div>
 
       <!-- Top products by volume -->
-      <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 p-3.5">
-        <h3 class="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Top Products by Volume</h3>
+      <div class="bg-white  rounded-xl border border-gray-100  p-3.5">
+        <h3 class="text-xs font-semibold text-gray-700  mb-2">Top Products by Volume</h3>
         <div v-if="analyticsStore.loading" class="skeleton h-36 rounded-lg" />
         <Bar v-else-if="topVolumeChartData" :data="topVolumeChartData" :options="horizontalBarOptions" class="max-h-40" />
         <p v-else class="text-center text-gray-400 py-10 text-xs">No data</p>
       </div>
 
       <!-- Peak hours -->
-      <div class="lg:col-span-2 bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 p-3.5">
-        <h3 class="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Peak Order Hours</h3>
+      <div class="lg:col-span-2 bg-white  rounded-xl border border-gray-100  p-3.5">
+        <h3 class="text-xs font-semibold text-gray-700  mb-2">Peak Order Hours</h3>
         <div v-if="analyticsStore.loading" class="skeleton h-36 rounded-lg" />
         <Bar v-else-if="peakHoursChartData" :data="peakHoursChartData" :options="barOptions" class="max-h-40" />
         <p v-else class="text-center text-gray-400 py-10 text-xs">No data</p>

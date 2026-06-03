@@ -68,7 +68,7 @@
     </div>
 
     <!-- Error -->
-    <p v-if="checkout.error" class="text-sm text-red-500 text-center bg-red-50 dark:bg-red-900/20 rounded-xl p-3">
+    <p v-if="checkout.error" class="text-sm text-red-500 text-center bg-red-50  rounded-xl p-3">
       {{ checkout.error }}
     </p>
 

@@ -33,7 +33,7 @@
       <!-- Out of stock overlay -->
       <div
         v-if="isOutOfStock"
-        class="absolute inset-0 bg-white/60 dark:bg-gray-900/60 flex items-center justify-center"
+        class="absolute inset-0 bg-white/60  flex items-center justify-center"
       >
         <span class="bg-gray-800/80 text-white text-xs font-semibold px-3 py-1.5 rounded-full">
           {{ $t('product.out_of_stock') }}

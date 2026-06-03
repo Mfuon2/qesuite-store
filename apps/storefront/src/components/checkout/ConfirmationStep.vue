@@ -9,10 +9,10 @@
         <CheckBadgeIcon class="w-12 h-12" :style="{ color: 'var(--color-primary)' }" />
       </div>
       <div>
-        <h2 class="text-2xl font-bold text-gray-900 dark:text-white">
+        <h2 class="text-2xl font-bold text-gray-900 ">
           {{ $t('checkout.confirmation.title') }}
         </h2>
-        <p class="text-gray-500 dark:text-gray-400 mt-1">
+        <p class="text-gray-500  mt-1">
           {{ $t('checkout.confirmation.subtitle') }}
         </p>
       </div>
@@ -29,14 +29,14 @@
     <!-- Order details card -->
     <div
       v-if="order"
-      class="bg-gray-50 dark:bg-gray-800 rounded-2xl p-5 text-left space-y-3"
+      class="bg-gray-50  rounded-2xl p-5 text-left space-y-3"
     >
       <div class="flex justify-between items-start">
         <div>
-          <p class="text-xs text-gray-500 dark:text-gray-400 font-medium uppercase tracking-wide">
+          <p class="text-xs text-gray-500  font-medium uppercase tracking-wide">
             {{ $t('checkout.confirmation.tracking_code') }}
           </p>
-          <p class="text-xl font-bold text-gray-900 dark:text-white tracking-widest mt-0.5">
+          <p class="text-xl font-bold text-gray-900  tracking-widest mt-0.5">
             {{ order.tracking_code }}
           </p>
         </div>
@@ -49,20 +49,20 @@
         </button>
       </div>
 
-      <div class="border-t border-gray-200 dark:border-gray-700 pt-3 space-y-1.5">
+      <div class="border-t border-gray-200  pt-3 space-y-1.5">
         <div class="flex justify-between text-sm">
-          <span class="text-gray-500 dark:text-gray-400">{{ $t('checkout.confirmation.order_id') }}</span>
-          <span class="font-medium text-gray-900 dark:text-white text-xs font-mono">{{ order.id.slice(0, 8) }}...</span>
+          <span class="text-gray-500 ">{{ $t('checkout.confirmation.order_id') }}</span>
+          <span class="font-medium text-gray-900  text-xs font-mono">{{ order.id.slice(0, 8) }}...</span>
         </div>
         <div class="flex justify-between text-sm">
-          <span class="text-gray-500 dark:text-gray-400">{{ $t('cart.total') }}</span>
+          <span class="text-gray-500 ">{{ $t('cart.total') }}</span>
           <span class="font-bold" :style="{ color: 'var(--color-primary)' }">
             {{ formatPrice(order.total) }}
           </span>
         </div>
         <div class="flex justify-between text-sm">
-          <span class="text-gray-500 dark:text-gray-400">{{ $t('checkout.payment.title') }}</span>
-          <span class="font-medium text-gray-900 dark:text-white capitalize">
+          <span class="text-gray-500 ">{{ $t('checkout.payment.title') }}</span>
+          <span class="font-medium text-gray-900  capitalize">
             {{ order.payment_method?.replace('_', ' ') }}
           </span>
         </div>
@@ -81,7 +81,7 @@
       </RouterLink>
       <RouterLink
         :to="`/${slug}`"
-        class="block w-full py-3.5 rounded-2xl font-bold text-base transition-all active:scale-[0.98] border-2 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"
+        class="block w-full py-3.5 rounded-2xl font-bold text-base transition-all active:scale-[0.98] border-2 text-gray-700  border-gray-200  hover:bg-gray-50 "
         @click="checkout.reset"
       >
         {{ $t('checkout.confirmation.continue_shopping') }}

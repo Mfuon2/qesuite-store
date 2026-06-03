@@ -10,17 +10,17 @@
         <form @submit.prevent="handleRegister" class="space-y-3">
           <!-- Store Name with live availability check -->
           <div>
-            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Store Name *</label>
+            <label class="block text-xs font-medium text-gray-700  mb-1">Store Name *</label>
             <div class="relative">
               <input
                 v-model="form.store_name"
                 type="text"
                 placeholder="Mama Mboga Shop"
                 required
-                :class="['w-full px-3 py-2 pr-8 rounded-lg border bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all',
-                  storeNameStatus === 'taken'      ? 'border-red-400 dark:border-red-500' :
-                  storeNameStatus === 'available'  ? 'border-emerald-400 dark:border-emerald-500' :
-                  'border-gray-200 dark:border-gray-600 focus:border-primary']"
+                :class="['w-full px-3 py-2 pr-8 rounded-lg border bg-gray-50  text-gray-900  placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all',
+                  storeNameStatus === 'taken'      ? 'border-red-400 ' :
+                  storeNameStatus === 'available'  ? 'border-emerald-400 ' :
+                  'border-gray-200  focus:border-primary']"
                 @input="handleStoreNameInput"
               />
               <div class="absolute right-2.5 top-1/2 -translate-y-1/2">
@@ -37,7 +37,7 @@
               </div>
             </div>
             <!-- URL preview / status -->
-            <p v-if="storeNameStatus === 'available'" class="text-emerald-600 dark:text-emerald-400 text-xs mt-1 flex items-center gap-1">
+            <p v-if="storeNameStatus === 'available'" class="text-emerald-600  text-xs mt-1 flex items-center gap-1">
               <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
               Available · Your URL: <span class="font-mono font-medium">{{ storefrontBase }}/{{ storeSlugPreview }}</span>
             </p>
@@ -50,40 +50,40 @@
           </div>
 
           <div>
-            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Your Name *</label>
+            <label class="block text-xs font-medium text-gray-700  mb-1">Your Name *</label>
             <input
               v-model="form.name"
               type="text"
               placeholder="Jane Doe"
               required
-              class="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
+              class="w-full px-3 py-2 rounded-lg border border-gray-200  bg-gray-50  text-gray-900  placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
             /></div>
 
           <div class="grid grid-cols-2 gap-3">
             <div>
-              <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Email</label>
+              <label class="block text-xs font-medium text-gray-700  mb-1">Email</label>
               <input
                 v-model="form.email"
                 type="email"
                 placeholder="jane@example.com"
                 required
-                class="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
+                class="w-full px-3 py-2 rounded-lg border border-gray-200  bg-gray-50  text-gray-900  placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
               />
             </div>
             <div>
-              <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Phone</label>
+              <label class="block text-xs font-medium text-gray-700  mb-1">Phone</label>
               <input
                 v-model="form.phone"
                 type="tel"
                 placeholder="+254700000000"
                 required
-                class="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
+                class="w-full px-3 py-2 rounded-lg border border-gray-200  bg-gray-50  text-gray-900  placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
               />
             </div>
           </div>
 
           <div>
-            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Password</label>
+            <label class="block text-xs font-medium text-gray-700  mb-1">Password</label>
             <div class="relative">
               <input
                 v-model="form.password"
@@ -91,7 +91,7 @@
                 placeholder="Min 8 characters"
                 required
                 minlength="8"
-                class="w-full px-3 py-2 pr-10 rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
+                class="w-full px-3 py-2 pr-10 rounded-lg border border-gray-200  bg-gray-50  text-gray-900  placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
               />
               <button type="button" @click="showPwd = !showPwd" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
                 <EyeIcon v-if="!showPwd" class="w-4 h-4" />
@@ -101,16 +101,16 @@
           </div>
 
           <div>
-            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Confirm Password</label>
+            <label class="block text-xs font-medium text-gray-700  mb-1">Confirm Password</label>
             <input
               v-model="form.confirm"
               :type="showPwd ? 'text' : 'password'"
               placeholder="Repeat password"
               required
-              :class="['w-full px-3 py-2 rounded-lg border bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all',
+              :class="['w-full px-3 py-2 rounded-lg border bg-gray-50  text-gray-900  placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all',
                 form.confirm && form.confirm !== form.password
-                  ? 'border-red-400 dark:border-red-500'
-                  : 'border-gray-200 dark:border-gray-600 focus:border-primary']"
+                  ? 'border-red-400 '
+                  : 'border-gray-200  focus:border-primary']"
             />
             <p v-if="form.confirm && form.confirm !== form.password" class="text-red-500 text-xs mt-0.5">Passwords do not match</p>
           </div>
@@ -123,7 +123,7 @@
               required
               class="mt-0.5 w-3.5 h-3.5 text-primary rounded border-gray-300 focus:ring-primary"
             />
-            <label for="terms" class="text-xs text-gray-600 dark:text-gray-400">
+            <label for="terms" class="text-xs text-gray-600 ">
               I agree to the
               <a href="#" class="text-primary hover:text-accent">Terms of Service</a>
               and
@@ -132,7 +132,7 @@
           </div>
 
           <Transition name="fade">
-            <div v-if="error" class="flex items-center gap-2 px-3 py-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 rounded-lg text-xs">
+            <div v-if="error" class="flex items-center gap-2 px-3 py-2 bg-red-50  border border-red-200  text-red-700  rounded-lg text-xs">
               <ExclamationCircleIcon class="w-4 h-4 shrink-0" />
               {{ error }}
             </div>
@@ -151,7 +151,7 @@
           </button>
         </form>
 
-        <p class="text-center text-xs text-gray-500 dark:text-gray-400 mt-4">
+        <p class="text-center text-xs text-gray-500  mt-4">
           Already have an account?
           <router-link to="/login" class="text-primary hover:text-accent font-medium transition-colors">Login</router-link>
         </p>

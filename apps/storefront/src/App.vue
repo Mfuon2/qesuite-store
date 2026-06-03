@@ -1,5 +1,5 @@
 <template>
-  <div :class="isDark ? 'dark' : ''" class="min-h-screen bg-white dark:bg-gray-900 transition-colors duration-200">
+  <div :class="isDark ? 'dark' : ''" class="min-h-screen bg-white  transition-colors duration-200">
     <RouterView />
     <ToastContainer />
   </div>

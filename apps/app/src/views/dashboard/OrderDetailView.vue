@@ -1,7 +1,7 @@
 <template>
   <div class="p-3 sm:p-4 max-w-3xl mx-auto">
     <!-- Back -->
-    <button @click="router.back()" class="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 mb-3 transition-colors">
+    <button @click="router.back()" class="flex items-center gap-1.5 text-xs text-gray-500  hover:text-gray-700  mb-3 transition-colors">
       <ArrowLeftIcon class="w-3.5 h-3.5" /> Back to Orders
     </button>
 
@@ -14,14 +14,14 @@
 
     <template v-else-if="order">
       <!-- Header card -->
-      <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 p-4 mb-3">
+      <div class="bg-white  rounded-xl border border-gray-100  p-4 mb-3">
         <div class="flex items-start justify-between gap-3 flex-wrap">
           <div>
             <div class="flex items-center gap-2 mb-1">
-              <span class="text-xs font-mono text-gray-400 dark:text-gray-500">Order</span>
-              <span class="font-mono font-bold text-gray-900 dark:text-white">#{{ order.tracking_code }}</span>
+              <span class="text-xs font-mono text-gray-400 ">Order</span>
+              <span class="font-mono font-bold text-gray-900 ">#{{ order.tracking_code }}</span>
             </div>
-            <p class="text-xs text-gray-400 dark:text-gray-500">{{ formatDate(order.created_at) }}</p>
+            <p class="text-xs text-gray-400 ">{{ formatDate(order.created_at) }}</p>
           </div>
           <StatusBadge :status="order.status" size="md" />
         </div>
@@ -49,7 +49,7 @@
           <button
             v-if="canCancel"
             @click="showCancelDropdown = !showCancelDropdown"
-            class="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors"
+            class="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold bg-red-100  text-red-600  hover:bg-red-200  transition-colors"
           >
             <XCircleIcon class="w-4 h-4" />
             Cancel Order
@@ -58,11 +58,11 @@
 
         <!-- Cancel dropdown -->
         <Transition name="fade">
-          <div v-if="showCancelDropdown" class="mt-3 p-3 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-200 dark:border-red-800">
-            <p class="text-xs font-medium text-red-700 dark:text-red-400 mb-2">Cancellation reason</p>
+          <div v-if="showCancelDropdown" class="mt-3 p-3 bg-red-50  rounded-xl border border-red-200 ">
+            <p class="text-xs font-medium text-red-700  mb-2">Cancellation reason</p>
             <select
               v-model="cancelReason"
-              class="w-full px-3 py-2 text-sm rounded-lg border border-red-200 dark:border-red-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-red-400/50 mb-2"
+              class="w-full px-3 py-2 text-sm rounded-lg border border-red-200  bg-white  text-gray-900  focus:outline-none focus:ring-2 focus:ring-red-400/50 mb-2"
             >
               <option value="">Select reason</option>
               <option value="Customer requested">Customer requested</option>
@@ -83,11 +83,11 @@
       </div>
 
       <!-- Customer -->
-      <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 p-3.5 mb-3">
-        <h3 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">Customer</h3>
+      <div class="bg-white  rounded-xl border border-gray-100  p-3.5 mb-3">
+        <h3 class="text-xs font-semibold text-gray-500  uppercase tracking-wide mb-2">Customer</h3>
         <div class="flex items-center justify-between">
           <div>
-            <p class="font-semibold text-gray-900 dark:text-white">{{ order.customer_name || 'Anonymous' }}</p>
+            <p class="font-semibold text-gray-900 ">{{ order.customer_name || 'Anonymous' }}</p>
             <a :href="`tel:${order.customer_phone}`" class="text-sm text-primary hover:text-accent font-mono transition-colors flex items-center gap-1.5 mt-0.5">
               <PhoneIcon class="w-4 h-4" />
               {{ order.customer_phone }}
@@ -95,24 +95,24 @@
           </div>
           <a
             :href="`tel:${order.customer_phone}`"
-            class="p-3 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 rounded-xl hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors"
+            class="p-3 bg-emerald-50  text-emerald-600  rounded-xl hover:bg-emerald-100  transition-colors"
           >
             <PhoneArrowUpRightIcon class="w-5 h-5" />
           </a>
         </div>
-        <div v-if="order.delivery_address" class="mt-3 flex items-start gap-2 text-sm text-gray-600 dark:text-gray-400">
+        <div v-if="order.delivery_address" class="mt-3 flex items-start gap-2 text-sm text-gray-600 ">
           <MapPinIcon class="w-4 h-4 mt-0.5 shrink-0 text-gray-400" />
           {{ order.delivery_address }}
         </div>
-        <div v-if="order.notes" class="mt-3 text-sm text-gray-500 dark:text-gray-400 italic flex items-start gap-2">
+        <div v-if="order.notes" class="mt-3 text-sm text-gray-500  italic flex items-start gap-2">
           <ChatBubbleLeftIcon class="w-4 h-4 mt-0.5 shrink-0" />
           "{{ order.notes }}"
         </div>
       </div>
 
       <!-- Items -->
-      <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 p-3.5 mb-3">
-        <h3 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">Items</h3>
+      <div class="bg-white  rounded-xl border border-gray-100  p-3.5 mb-3">
+        <h3 class="text-xs font-semibold text-gray-500  uppercase tracking-wide mb-2">Items</h3>
         <div class="space-y-2">
           <div
             v-for="item in order.items || []"
@@ -120,30 +120,30 @@
             class="flex items-center justify-between"
           >
             <div class="flex items-center gap-3">
-              <div class="w-8 h-8 bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center shrink-0">
+              <div class="w-8 h-8 bg-gray-100  rounded-lg flex items-center justify-center shrink-0">
                 <CubeIcon class="w-4 h-4 text-gray-400" />
               </div>
               <div>
-                <p class="text-sm font-medium text-gray-900 dark:text-white">{{ item.product_name }}</p>
+                <p class="text-sm font-medium text-gray-900 ">{{ item.product_name }}</p>
                 <p class="text-xs text-gray-400">× {{ item.quantity }}</p>
               </div>
             </div>
-            <p class="text-sm font-semibold text-gray-900 dark:text-white">
+            <p class="text-sm font-semibold text-gray-900 ">
               KES {{ (item.price * item.quantity).toLocaleString() }}
             </p>
           </div>
         </div>
 
-        <div class="border-t border-gray-100 dark:border-gray-700 mt-3 pt-3 space-y-1.5">
-          <div class="flex justify-between text-sm text-gray-600 dark:text-gray-400">
+        <div class="border-t border-gray-100  mt-3 pt-3 space-y-1.5">
+          <div class="flex justify-between text-sm text-gray-600 ">
             <span>Subtotal</span>
             <span>KES {{ order.subtotal.toLocaleString() }}</span>
           </div>
-          <div class="flex justify-between text-sm text-gray-600 dark:text-gray-400">
+          <div class="flex justify-between text-sm text-gray-600 ">
             <span>Delivery fee</span>
             <span>KES {{ order.delivery_fee.toLocaleString() }}</span>
           </div>
-          <div class="flex justify-between font-bold text-gray-900 dark:text-white text-base border-t border-gray-100 dark:border-gray-700 pt-2 mt-2">
+          <div class="flex justify-between font-bold text-gray-900  text-base border-t border-gray-100  pt-2 mt-2">
             <span>Total</span>
             <span>KES {{ order.total.toLocaleString() }}</span>
           </div>
@@ -153,10 +153,10 @@
       <!-- Live delivery map -->
       <div
         v-if="order.status === 'OUT_FOR_DELIVERY'"
-        class="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 p-3.5 mb-3"
+        class="bg-white  rounded-xl border border-gray-100  p-3.5 mb-3"
       >
         <div class="flex items-center justify-between mb-3">
-          <h3 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Live Delivery</h3>
+          <h3 class="text-xs font-semibold text-gray-500  uppercase tracking-wide">Live Delivery</h3>
           <span class="flex items-center gap-1.5 text-[11px] font-bold text-emerald-600">
             <span class="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
             Updates every 15s
@@ -176,28 +176,28 @@
 
       <!-- Payment & Rider info -->
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
-        <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 p-3.5">
-          <h3 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">Payment</h3>
+        <div class="bg-white  rounded-xl border border-gray-100  p-3.5">
+          <h3 class="text-xs font-semibold text-gray-500  uppercase tracking-wide mb-2">Payment</h3>
           <div class="flex items-center justify-between mb-2">
-            <span class="text-sm text-gray-600 dark:text-gray-400">{{ paymentMethodLabel }}</span>
+            <span class="text-sm text-gray-600 ">{{ paymentMethodLabel }}</span>
             <StatusBadge :status="order.payment_status" size="sm" />
           </div>
           <button
             v-if="order.payment_status !== 'paid' && order.status !== 'CANCELLED'"
             @click="showPaymentModal = true"
-            class="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 text-xs font-semibold hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors border border-emerald-200 dark:border-emerald-800"
+            class="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl bg-emerald-50  text-emerald-700  text-xs font-semibold hover:bg-emerald-100  transition-colors border border-emerald-200 "
           >
             <BanknotesIcon class="w-4 h-4" />
             Mark as Paid
           </button>
-          <p v-else-if="order.payment_status === 'paid'" class="text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+          <p v-else-if="order.payment_status === 'paid'" class="text-xs text-emerald-600  flex items-center gap-1">
             <CheckCircleIcon class="w-3.5 h-3.5" /> Payment recorded
           </p>
         </div>
 
-        <div v-if="order.assignment" class="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 p-3.5">
-          <h3 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">Rider</h3>
-          <p class="font-medium text-gray-900 dark:text-white text-sm">{{ order.assignment.staff?.name }}</p>
+        <div v-if="order.assignment" class="bg-white  rounded-xl border border-gray-100  p-3.5">
+          <h3 class="text-xs font-semibold text-gray-500  uppercase tracking-wide mb-2">Rider</h3>
+          <p class="font-medium text-gray-900  text-sm">{{ order.assignment.staff?.name }}</p>
           <a :href="`tel:${order.assignment.staff?.phone}`" class="text-xs text-primary font-mono hover:text-accent transition-colors">
             {{ order.assignment.staff?.phone }}
           </a>
@@ -208,7 +208,7 @@
       <div class="flex justify-end">
         <button
           @click="showPackingSlip = true"
-          class="flex items-center gap-2 px-4 py-2.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-xl hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+          class="flex items-center gap-2 px-4 py-2.5 bg-gray-100  text-gray-700  text-sm font-medium rounded-xl hover:bg-gray-200  transition-colors"
         >
           <DocumentTextIcon class="w-4 h-4" />
           Packing Slip

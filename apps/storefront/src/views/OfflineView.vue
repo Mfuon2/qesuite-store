@@ -1,23 +1,23 @@
 <template>
-  <div class="min-h-screen flex flex-col items-center justify-center px-4 py-12 text-center bg-gray-50 dark:bg-gray-950">
+  <div class="min-h-screen flex flex-col items-center justify-center px-4 py-12 text-center bg-gray-50 ">
     <!-- Icon -->
-    <div class="w-24 h-24 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-6">
+    <div class="w-24 h-24 rounded-full bg-gray-100  flex items-center justify-center mb-6">
       <WifiIcon class="w-12 h-12 text-gray-400 line-through" />
     </div>
 
-    <h1 class="text-2xl font-extrabold text-gray-900 dark:text-white mb-2">
+    <h1 class="text-2xl font-extrabold text-gray-900  mb-2">
       {{ $t('offline.title') }}
     </h1>
-    <p class="text-gray-500 dark:text-gray-400 text-sm mb-1">
+    <p class="text-gray-500  text-sm mb-1">
       {{ $t('offline.subtitle') }}
     </p>
-    <p class="text-gray-400 dark:text-gray-600 text-sm mb-8 max-w-xs">
+    <p class="text-gray-400  text-sm mb-8 max-w-xs">
       {{ $t('offline.message') }}
     </p>
 
     <!-- Swahili translation -->
-    <div class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-2xl px-5 py-4 mb-8 max-w-xs">
-      <p class="text-amber-800 dark:text-amber-300 text-sm font-medium">
+    <div class="bg-amber-50  border border-amber-200  rounded-2xl px-5 py-4 mb-8 max-w-xs">
+      <p class="text-amber-800  text-sm font-medium">
         Hakuna mtandao. Tafadhali angalia muunganisho wako na ujaribu tena.
       </p>
     </div>
@@ -33,16 +33,16 @@
 
     <!-- Cached products section -->
     <div v-if="cachedProducts.length > 0" class="mt-12 w-full max-w-lg text-left">
-      <h2 class="text-base font-bold text-gray-700 dark:text-gray-300 px-4 mb-4">
+      <h2 class="text-base font-bold text-gray-700  px-4 mb-4">
         {{ $t('offline.cached_products') }}
       </h2>
       <div class="grid grid-cols-2 gap-3 px-4">
         <div
           v-for="product in cachedProducts"
           :key="product.id"
-          class="bg-white dark:bg-gray-900 rounded-2xl p-3 border border-gray-100 dark:border-gray-800 opacity-75"
+          class="bg-white  rounded-2xl p-3 border border-gray-100  opacity-75"
         >
-          <div class="aspect-square rounded-xl bg-gray-100 dark:bg-gray-800 mb-2 overflow-hidden">
+          <div class="aspect-square rounded-xl bg-gray-100  mb-2 overflow-hidden">
             <img
               v-if="product.image_url"
               :src="product.image_url"
@@ -50,7 +50,7 @@
               class="w-full h-full object-cover"
             />
           </div>
-          <p class="text-xs font-semibold text-gray-900 dark:text-white line-clamp-2">{{ product.name }}</p>
+          <p class="text-xs font-semibold text-gray-900  line-clamp-2">{{ product.name }}</p>
           <p class="text-xs font-bold mt-1" :style="{ color: 'var(--color-primary)' }">
             {{ formatPrice(product.sale_price ?? product.price) }}
           </p>

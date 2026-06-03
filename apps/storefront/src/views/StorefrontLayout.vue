@@ -2,7 +2,7 @@
   <div class="storefront-surface min-h-screen bg-white text-slate-950">
     <!-- Loading skeleton -->
     <template v-if="store.loading">
-      <div class="bg-white dark:bg-gray-900 h-16 border-b border-gray-100 dark:border-gray-800 flex items-center px-4 gap-3">
+      <div class="bg-white  h-16 border-b border-gray-100  flex items-center px-4 gap-3">
         <div class="skeleton w-9 h-9 rounded-xl" />
         <div class="skeleton h-5 w-32 rounded" />
         <div class="ml-auto skeleton h-9 w-24 rounded-xl" />
@@ -20,13 +20,13 @@
       v-else-if="store.notFound"
       class="min-h-screen flex flex-col items-center justify-center text-center p-6"
     >
-      <div class="w-20 h-20 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-4">
+      <div class="w-20 h-20 rounded-full bg-gray-100  flex items-center justify-center mb-4">
         <ExclamationCircleIcon class="w-10 h-10 text-gray-400" />
       </div>
-      <h1 class="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+      <h1 class="text-2xl font-bold text-gray-900  mb-2">
         {{ $t('errors.store_not_found') }}
       </h1>
-      <p class="text-gray-500 dark:text-gray-400 max-w-xs">
+      <p class="text-gray-500  max-w-xs">
         {{ $t('errors.store_not_found_hint') }}
       </p>
     </div>
@@ -36,13 +36,13 @@
       v-else-if="store.error"
       class="min-h-screen flex flex-col items-center justify-center text-center p-6"
     >
-      <div class="w-20 h-20 rounded-full bg-red-50 dark:bg-red-900/20 flex items-center justify-center mb-4">
+      <div class="w-20 h-20 rounded-full bg-red-50  flex items-center justify-center mb-4">
         <ExclamationCircleIcon class="w-10 h-10 text-red-400" />
       </div>
-      <h1 class="text-xl font-bold text-gray-900 dark:text-white mb-2">
+      <h1 class="text-xl font-bold text-gray-900  mb-2">
         {{ $t('errors.generic') }}
       </h1>
-      <p class="text-gray-500 dark:text-gray-400 mb-5">{{ store.error }}</p>
+      <p class="text-gray-500  mb-5">{{ store.error }}</p>
       <button
         class="text-white font-semibold px-6 py-2.5 rounded-xl text-sm transition-all active:scale-95"
         :style="{ backgroundColor: 'var(--color-primary)' }"

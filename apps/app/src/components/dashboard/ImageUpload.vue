@@ -7,7 +7,7 @@
       @click="fileInput?.click()"
       :class="[
         'relative flex flex-col items-center justify-center border-2 border-dashed rounded-xl cursor-pointer transition-all min-h-[120px]',
-        isDragging ? 'border-primary bg-primary/5' : 'border-gray-200 dark:border-gray-600 hover:border-primary/50 bg-gray-50 dark:bg-gray-700/30',
+        isDragging ? 'border-primary bg-primary/5' : 'border-gray-200  hover:border-primary/50 bg-gray-50 ',
         disabled ? 'opacity-60 cursor-not-allowed' : ''
       ]"
     >
@@ -31,18 +31,18 @@
       <!-- Upload prompt -->
       <template v-else>
         <div class="p-4 text-center">
-          <PhotoIcon class="w-10 h-10 text-gray-300 dark:text-gray-500 mx-auto mb-2" />
-          <p class="text-sm font-medium text-gray-600 dark:text-gray-400">
+          <PhotoIcon class="w-10 h-10 text-gray-300  mx-auto mb-2" />
+          <p class="text-sm font-medium text-gray-600 ">
             {{ isDragging ? 'Drop to upload' : 'Click or drag & drop' }}
           </p>
-          <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">JPEG, PNG, WebP — max 10MB</p>
+          <p class="text-xs text-gray-400  mt-1">JPEG, PNG, WebP — max 10MB</p>
         </div>
       </template>
     </div>
 
     <!-- Progress -->
     <div v-if="progress > 0 && progress < 100" class="mt-2">
-      <div class="h-1.5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
+      <div class="h-1.5 bg-gray-100  rounded-full overflow-hidden">
         <div
           class="h-full bg-primary rounded-full transition-all duration-300"
           :style="{ width: `${progress}%` }"
@@ -52,7 +52,7 @@
     </div>
 
     <!-- Error -->
-    <p v-if="uploadError" class="text-red-500 dark:text-red-400 text-xs mt-1">{{ uploadError }}</p>
+    <p v-if="uploadError" class="text-red-500  text-xs mt-1">{{ uploadError }}</p>
   </div>
 </template>
 

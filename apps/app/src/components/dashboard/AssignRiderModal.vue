@@ -1,15 +1,15 @@
 <template>
   <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-md animate-bounce-in">
-      <div class="flex items-center justify-between p-5 border-b border-gray-100 dark:border-gray-700">
-        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Assign Rider</h3>
-        <button @click="emit('close')" class="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
+    <div class="bg-white  rounded-2xl shadow-2xl w-full max-w-md animate-bounce-in">
+      <div class="flex items-center justify-between p-5 border-b border-gray-100 ">
+        <h3 class="text-lg font-semibold text-gray-900 ">Assign Rider</h3>
+        <button @click="emit('close')" class="p-1.5 text-gray-400 hover:text-gray-600  hover:bg-gray-100  rounded-lg transition-colors">
           <XMarkIcon class="w-5 h-5" />
         </button>
       </div>
 
       <div class="p-5">
-        <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
+        <p class="text-sm text-gray-500  mb-4">
           Select a rider for Order #{{ orderId }}
         </p>
 
@@ -17,7 +17,7 @@
           <div v-for="i in 3" :key="i" class="skeleton h-16 rounded-xl" />
         </div>
 
-        <div v-else-if="riders.length === 0" class="text-center py-8 text-gray-400 dark:text-gray-500">
+        <div v-else-if="riders.length === 0" class="text-center py-8 text-gray-400 ">
           <TruckIcon class="w-12 h-12 mx-auto mb-3 opacity-40" />
           <p class="text-sm">No active riders available</p>
         </div>
@@ -31,15 +31,15 @@
               'w-full flex items-center gap-3 p-3 rounded-xl border-2 text-left transition-all',
               selectedRiderId === rider.id
                 ? 'border-primary bg-primary/5'
-                : 'border-gray-100 dark:border-gray-700 hover:border-gray-200 dark:hover:border-gray-600'
+                : 'border-gray-100  hover:border-gray-200 '
             ]"
           >
-            <div class="w-10 h-10 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center shrink-0">
-              <span class="text-sm font-semibold text-gray-600 dark:text-gray-300">{{ rider.name[0].toUpperCase() }}</span>
+            <div class="w-10 h-10 bg-gray-100  rounded-full flex items-center justify-center shrink-0">
+              <span class="text-sm font-semibold text-gray-600 ">{{ rider.name[0].toUpperCase() }}</span>
             </div>
             <div class="flex-1 min-w-0">
-              <p class="font-medium text-gray-900 dark:text-white text-sm">{{ rider.name }}</p>
-              <p class="text-xs text-gray-400 dark:text-gray-500">{{ rider.phone }} · {{ vehicleLabel(rider.vehicle_type) }}</p>
+              <p class="font-medium text-gray-900  text-sm">{{ rider.name }}</p>
+              <p class="text-xs text-gray-400 ">{{ rider.phone }} · {{ vehicleLabel(rider.vehicle_type) }}</p>
             </div>
             <div v-if="selectedRiderId === rider.id" class="shrink-0">
               <CheckCircleIcon class="w-5 h-5 text-primary" />
@@ -49,7 +49,7 @@
       </div>
 
       <div class="flex items-center justify-end gap-3 px-5 pb-5">
-        <button @click="emit('close')" class="px-4 py-2 text-sm text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-xl font-medium transition-colors">
+        <button @click="emit('close')" class="px-4 py-2 text-sm text-gray-600  bg-gray-100  hover:bg-gray-200  rounded-xl font-medium transition-colors">
           Cancel
         </button>
         <button

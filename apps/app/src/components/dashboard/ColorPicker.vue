@@ -5,7 +5,7 @@
         type="color"
         :value="modelValue"
         @input="emit('update:modelValue', ($event.target as HTMLInputElement).value)"
-        class="w-10 h-10 rounded-lg cursor-pointer border border-gray-200 dark:border-gray-600 p-0.5 bg-white dark:bg-gray-800"
+        class="w-10 h-10 rounded-lg cursor-pointer border border-gray-200  p-0.5 bg-white "
         :title="label"
       />
     </div>
@@ -15,10 +15,10 @@
       @input="handleHexInput"
       placeholder="#10b981"
       maxlength="7"
-      class="flex-1 px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white font-mono focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
+      class="flex-1 px-3 py-2 text-sm rounded-lg border border-gray-200  bg-gray-50  text-gray-900  font-mono focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
     />
     <div
-      class="w-8 h-8 rounded-lg border border-gray-200 dark:border-gray-600 shadow-sm shrink-0"
+      class="w-8 h-8 rounded-lg border border-gray-200  shadow-sm shrink-0"
       :style="{ backgroundColor: modelValue }"
     />
   </div>

@@ -19,7 +19,7 @@
         </div>
       </div>
       <div>
-        <p class="font-bold text-gray-900 dark:text-white text-base">
+        <p class="font-bold text-gray-900  text-base">
           {{ $t('payment.mpesa_prompt') }}
         </p>
         <p class="mt-1 text-sm text-slate-500">

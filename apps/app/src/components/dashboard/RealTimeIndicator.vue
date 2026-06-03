@@ -27,9 +27,9 @@ const pingClass = computed(() => ({
 }[props.status]))
 
 const textClass = computed(() => ({
-  connected: 'text-emerald-600 dark:text-emerald-400',
-  reconnecting: 'text-yellow-600 dark:text-yellow-400',
-  disconnected: 'text-red-500 dark:text-red-400'
+  connected: 'text-emerald-600 ',
+  reconnecting: 'text-yellow-600 ',
+  disconnected: 'text-red-500 '
 }[props.status]))
 
 const label = computed(() => ({

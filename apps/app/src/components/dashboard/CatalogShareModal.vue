@@ -894,14 +894,38 @@ function drawDot(ctx: CanvasRenderingContext2D, x: number, y: number, color: str
   ctx.restore()
 }
 
-function loadImage(src: string) {
+// CDN domain that stores product/logo/banner images (R2 public domain, no CORS headers)
+const CDN_ORIGIN = 'https://images.qesuite.com'
+// Worker that serves /api/upload/img?key=… WITH proper CORS headers
+const API_ORIGIN = (import.meta.env.VITE_API_URL as string | undefined) ?? 'https://qesuite-worker-api.leemfo.workers.dev'
+
+/**
+ * Convert any image URL to a CORS-safe Worker proxy URL before drawing to canvas.
+ * CDN URLs (images.qesuite.com) don't include CORS headers so canvas.drawImage()
+ * taints the canvas and toBlob/toDataURL throw. Routing through the Worker fixes this.
+ */
+function toCorsProxied(src: string | null | undefined): string | null {
+  if (!src) return null
+  // Already going through the Worker proxy — no change needed
+  if (src.includes('/api/upload/img')) return src
+  // CDN URL: https://images.qesuite.com/product/tenant/file.jpg → extract key
+  if (src.startsWith(CDN_ORIGIN + '/')) {
+    const key = src.slice(CDN_ORIGIN.length + 1) // strip leading slash
+    return `${API_ORIGIN}/api/upload/img?key=${encodeURIComponent(key)}`
+  }
+  // Unknown origin — try as-is (may still work if CORS is configured on that server)
+  return src
+}
+
+function loadImage(src: string | null | undefined) {
   return new Promise<HTMLImageElement | null>((resolve) => {
+    const proxied = toCorsProxied(src)
+    if (!proxied) { resolve(null); return }
     const image = new Image()
     image.crossOrigin = 'anonymous'
-    image.referrerPolicy = 'no-referrer'
     image.onload = () => resolve(image)
     image.onerror = () => resolve(null)
-    image.src = src
+    image.src = proxied
   })
 }
 

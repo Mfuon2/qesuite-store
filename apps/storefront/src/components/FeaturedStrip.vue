@@ -3,7 +3,7 @@
     <div class="px-4 flex items-center justify-between mb-3">
       <div class="flex items-center gap-2">
         <SparklesIcon class="w-5 h-5" :style="{ color: 'var(--color-primary)' }" />
-        <h2 class="text-base font-bold text-gray-900 dark:text-white">
+        <h2 class="text-base font-bold text-gray-900 ">
           {{ $t('product.featured') }}
         </h2>
       </div>

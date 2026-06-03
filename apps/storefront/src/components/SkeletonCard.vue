@@ -1,5 +1,5 @@
 <template>
-  <div class="bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-sm border border-gray-100 dark:border-gray-700">
+  <div class="bg-white  rounded-2xl overflow-hidden shadow-sm border border-gray-100 ">
     <!-- Image skeleton -->
     <div class="skeleton aspect-square w-full" />
     <!-- Content -->

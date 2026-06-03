@@ -10,21 +10,35 @@ const MAX_SIZE_BYTES = 4 * 1024 * 1024 // 4 MB
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp']
 
 function publicImageUrl(env: Env, key: string, workerOrigin: string): string {
-  if (env.CDN_URL) return `${env.CDN_URL}/${key}`
+  // Always route through the Worker's /img endpoint so CORS headers are present.
+  // This is needed for canvas operations (WhatsApp catalog, etc.).
+  // CDN_URL (R2 public domain) doesn't emit CORS headers on its own.
   return `${workerOrigin}/api/upload/img?key=${encodeURIComponent(key)}`
 }
 
-// GET /api/upload/img?key=... — serve an image from R2 (dev + prod fallback)
+// GET /api/upload/img?key=... — serve an image from R2 with explicit CORS headers
+// Used as a CORS-safe proxy when images are on a CDN that doesn't add CORS headers,
+// which is required for drawing to <canvas> (e.g. the WhatsApp catalog generator).
 upload.get('/img', async (c) => {
   const key = c.req.query('key')
   if (!key) return c.json({ error: 'Missing key', data: null }, 400)
 
+  // Validate key is a safe R2 path (no path traversal)
+  if (!/^[a-zA-Z0-9/_\-\.]+$/.test(key) || key.includes('..')) {
+    return c.json({ error: 'Invalid key', data: null }, 400)
+  }
+
   const object = await c.env.IMAGES.get(key)
   if (!object) return c.json({ error: 'Not found', data: null }, 404)
 
+  const origin = c.req.header('Origin') ?? '*'
   const headers = new Headers()
   headers.set('Content-Type', object.httpMetadata?.contentType ?? 'image/jpeg')
   headers.set('Cache-Control', 'public, max-age=31536000, immutable')
+  // Explicit CORS so canvas drawImage() works without tainting
+  headers.set('Access-Control-Allow-Origin', origin)
+  headers.set('Access-Control-Allow-Methods', 'GET')
+  headers.set('Vary', 'Origin')
   return new Response(object.body, { headers })
 })
 

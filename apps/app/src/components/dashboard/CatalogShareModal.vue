@@ -345,10 +345,9 @@ const accentColor = computed(() => props.tenant?.accent_color || '#0d9488')
 const contactNumber = computed(() => props.tenant?.whatsapp_number || props.tenant?.phone || '')
 const storefrontUrl = computed(() => {
   if (!props.tenant?.slug) return ''
-  const url = new URL(window.location.origin)
-  if (url.port === '3000') url.port = '5173'
-  url.pathname = `/${props.tenant.slug}`
-  return url.toString().replace(/\/$/, '')
+  const base = (import.meta.env.VITE_STOREFRONT_URL as string | undefined)?.replace(/\/$/, '')
+    ?? 'https://store.qesuite.com'
+  return `${base}/${props.tenant.slug}`
 })
 
 function defaultMessage() {

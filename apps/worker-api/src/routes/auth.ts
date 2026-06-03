@@ -2,7 +2,7 @@ import { Hono } from 'hono'
 import { getCookie, setCookie, deleteCookie } from 'hono/cookie'
 import { Env, Variables } from '../types'
 import { signJWT, verifyJWT, generateOTP, generateId, generateTrackingCode } from '../lib/jwt'
-import { hashPassword, verifyPassword } from '../lib/password'
+import { hashPassword, verifyPassword, hashToken } from '../lib/password'
 import { sendSMS } from '../lib/notifications'
 
 const auth = new Hono<{ Bindings: Env; Variables: Variables }>()
@@ -11,6 +11,37 @@ const ACCESS_TOKEN_TTL = 900        // 15 minutes
 const REFRESH_TOKEN_TTL = 604800    // 7 days
 const OTP_TTL_SECONDS = 600         // 10 minutes
 const OTP_MAX_ATTEMPTS = 5
+
+// ── In-memory sliding-window rate limiter (per Workers isolate) ─────────────
+// For production, back with KV for cross-isolate coordination.
+const rateBuckets = new Map<string, { count: number; resetAt: number }>()
+
+function checkRateLimit(key: string, maxRequests: number, windowSeconds: number): boolean {
+  const now = Date.now()
+  const bucket = rateBuckets.get(key)
+  if (!bucket || now > bucket.resetAt) {
+    rateBuckets.set(key, { count: 1, resetAt: now + windowSeconds * 1000 })
+    return true  // allowed
+  }
+  if (bucket.count >= maxRequests) return false  // blocked
+  bucket.count++
+  return true  // allowed
+}
+
+// Input length guards
+const MAX_IDENTIFIER = 320   // max email length per RFC
+const MAX_PASSWORD   = 128
+const MAX_NAME       = 120
+const MAX_STORE_NAME = 80
+const MAX_PHONE      = 20
+
+/** Store refresh tokens as SHA-256 hashes — raw tokens never touch the DB */
+async function storeRefreshToken(db: D1Database, token: string, userId: string): Promise<void> {
+  const hash = await hashToken(token)
+  await db.prepare('UPDATE users SET refresh_token = ? WHERE id = ?').bind(hash, userId).run()
+}
+// D1Database type shim for the helper above
+type D1Database = { prepare: (sql: string) => { bind: (...args: unknown[]) => { run: () => Promise<unknown> } } }
 
 const DEMO_PRODUCTS = [
   { name: 'Tomatoes 2kg', description: 'Fresh farm tomatoes', price: 80, stock: 50, featured: 1 },
@@ -44,6 +75,12 @@ auth.get('/check-store-name', async (c) => {
 // POST /api/auth/register
 auth.post('/register', async (c) => {
   try {
+    // Rate limit: 5 registrations per IP per 15 minutes
+    const ip = c.req.header('CF-Connecting-IP') ?? 'unknown'
+    if (!checkRateLimit(`register:${ip}`, 5, 900)) {
+      return c.json({ error: 'Too many registration attempts. Please try again later.', data: null }, 429)
+    }
+
     const body = await c.req.json<{
       name: string
       email?: string
@@ -60,8 +97,19 @@ auth.post('/register', async (c) => {
     if (!email && !phone) {
       return c.json({ error: 'email or phone is required', data: null }, 400)
     }
-    if (password.length < 8) {
-      return c.json({ error: 'Password must be at least 8 characters', data: null }, 400)
+
+    // Length guards
+    if (name.length > MAX_NAME || store_name.length > MAX_STORE_NAME) {
+      return c.json({ error: 'Name or store name too long', data: null }, 400)
+    }
+    if (email && email.length > MAX_IDENTIFIER) {
+      return c.json({ error: 'Email too long', data: null }, 400)
+    }
+    if (phone && phone.length > MAX_PHONE) {
+      return c.json({ error: 'Phone number too long', data: null }, 400)
+    }
+    if (password.length < 8 || password.length > MAX_PASSWORD) {
+      return c.json({ error: 'Password must be 8–128 characters', data: null }, 400)
     }
 
     // Check email/phone uniqueness
@@ -145,14 +193,12 @@ auth.post('/register', async (c) => {
       REFRESH_TOKEN_TTL
     )
 
-    await c.env.qesuite_db.prepare('UPDATE users SET refresh_token = ? WHERE id = ?')
-      .bind(refreshToken, userId)
-      .run()
+    await storeRefreshToken(c.env.qesuite_db as unknown as D1Database, refreshToken, userId)
 
     setCookie(c, 'refresh_token', refreshToken, {
       httpOnly: true,
       secure: true,
-      sameSite: 'Lax',
+      sameSite: 'Strict',
       maxAge: REFRESH_TOKEN_TTL,
       path: '/',
     })
@@ -176,6 +222,12 @@ auth.post('/register', async (c) => {
 // POST /api/auth/login
 auth.post('/login', async (c) => {
   try {
+    // Rate limit: 10 attempts per IP per 15 minutes
+    const ip = c.req.header('CF-Connecting-IP') ?? 'unknown'
+    if (!checkRateLimit(`login:${ip}`, 10, 900)) {
+      return c.json({ error: 'Too many login attempts. Please try again later.', data: null }, 429)
+    }
+
     const body = await c.req.json<{
       identifier: string   // email or phone
       password: string
@@ -184,6 +236,11 @@ auth.post('/login', async (c) => {
     const { identifier, password } = body
     if (!identifier || !password) {
       return c.json({ error: 'identifier and password are required', data: null }, 400)
+    }
+
+    // Length guards — reject oversized inputs before hitting DB
+    if (identifier.length > MAX_IDENTIFIER || password.length > MAX_PASSWORD) {
+      return c.json({ error: 'Invalid credentials', data: null }, 401)
     }
 
     const isEmail = identifier.includes('@')
@@ -275,14 +332,12 @@ auth.post('/login', async (c) => {
       REFRESH_TOKEN_TTL
     )
 
-    await c.env.qesuite_db.prepare('UPDATE users SET refresh_token = ? WHERE id = ?')
-      .bind(refreshToken, user.id)
-      .run()
+    await storeRefreshToken(c.env.qesuite_db as unknown as D1Database, refreshToken, user.id)
 
     setCookie(c, 'refresh_token', refreshToken, {
       httpOnly: true,
       secure: true,
-      sameSite: 'Lax',
+      sameSite: 'Strict',
       maxAge: REFRESH_TOKEN_TTL,
       path: '/',
     })
@@ -359,11 +414,10 @@ auth.post('/select-store', async (c) => {
       REFRESH_TOKEN_TTL
     )
 
-    await c.env.qesuite_db.prepare('UPDATE users SET refresh_token = ? WHERE id = ?')
-      .bind(refreshToken, user.id).run()
+    await storeRefreshToken(c.env.qesuite_db as unknown as D1Database, refreshToken, user.id)
 
     setCookie(c, 'refresh_token', refreshToken, {
-      httpOnly: true, secure: true, sameSite: 'Lax', maxAge: REFRESH_TOKEN_TTL, path: '/',
+      httpOnly: true, secure: true, sameSite: 'Strict', maxAge: REFRESH_TOKEN_TTL, path: '/',
     })
 
     const tenant = await c.env.qesuite_db.prepare('SELECT slug FROM tenants WHERE id = ?')
@@ -439,14 +493,34 @@ auth.post('/otp/verify', async (c) => {
       return c.json({ error: 'phone and otp are required', data: null }, 400)
     }
 
+    // Rate limit OTP attempts per phone
+    const ip = c.req.header('CF-Connecting-IP') ?? 'unknown'
+    if (!checkRateLimit(`otp:${phone}:${ip}`, 5, 600)) {
+      return c.json({ error: 'Too many attempts. Request a new OTP.', data: null }, 429)
+    }
+
     const now = new Date().toISOString()
+    // Fetch by phone only — do NOT include otp_code in the WHERE clause to prevent timing-based OTP enumeration
     const user = await c.env.qesuite_db.prepare(
-      `SELECT * FROM users WHERE phone = ? AND otp_code = ? AND otp_expires_at > ? AND is_active = 1`
-    ).bind(phone, otp, now).first<{
+      `SELECT id, tenant_id, name, role, otp_code, otp_expires_at
+       FROM users WHERE phone = ? AND is_active = 1 AND otp_expires_at > ?`
+    ).bind(phone, now).first<{
       id: string; tenant_id: string | null; name: string; role: string
+      otp_code: string | null; otp_expires_at: string | null
     }>()
 
-    if (!user) {
+    // Constant-time comparison — always compare even when user is not found to prevent timing attacks
+    const storedOtp  = user?.otp_code ?? '000000'
+    const submittedOtp = otp.trim()
+    const otpEnc  = new TextEncoder().encode(storedOtp)
+    const subEnc  = new TextEncoder().encode(submittedOtp.padEnd(storedOtp.length, '\x00').substring(0, storedOtp.length))
+    const otpKey  = await crypto.subtle.importKey('raw', otpEnc,  { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'])
+    const subKey  = await crypto.subtle.importKey('raw', subEnc,  { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'])
+    const msg = new TextEncoder().encode('otp-verify')
+    const [sig1, sig2] = await Promise.all([crypto.subtle.sign('HMAC', otpKey, msg), crypto.subtle.sign('HMAC', subKey, msg)])
+    const match = new Uint8Array(sig1).every((b, i) => b === new Uint8Array(sig2)[i])
+
+    if (!user || !match) {
       return c.json({ error: 'Invalid or expired OTP', data: null }, 401)
     }
 
@@ -467,14 +541,12 @@ auth.post('/otp/verify', async (c) => {
       REFRESH_TOKEN_TTL
     )
 
-    await c.env.qesuite_db.prepare('UPDATE users SET refresh_token = ? WHERE id = ?')
-      .bind(refreshToken, user.id)
-      .run()
+    await storeRefreshToken(c.env.qesuite_db as unknown as D1Database, refreshToken, user.id)
 
     setCookie(c, 'refresh_token', refreshToken, {
       httpOnly: true,
       secure: true,
-      sameSite: 'Lax',
+      sameSite: 'Strict',
       maxAge: REFRESH_TOKEN_TTL,
       path: '/',
     })
@@ -508,14 +580,15 @@ auth.post('/refresh', async (c) => {
       return c.json({ error: 'Invalid refresh token', data: null }, 401)
     }
 
-    // Verify token still matches stored value
+    // Verify token still matches stored HASH (refresh tokens stored as SHA-256 hashes)
     const user = await c.env.qesuite_db.prepare(
       'SELECT id, name, role, tenant_id, refresh_token FROM users WHERE id = ? AND is_active = 1'
     ).bind(payload.sub).first<{
-      id: string; name: string; role: string; tenant_id: string | null; refresh_token: string
+      id: string; name: string; role: string; tenant_id: string | null; refresh_token: string | null
     }>()
 
-    if (!user || user.refresh_token !== token) {
+    const tokenHash = await hashToken(token)
+    if (!user || user.refresh_token !== tokenHash) {
       deleteCookie(c, 'refresh_token')
       return c.json({ error: 'Refresh token revoked', data: null }, 401)
     }
@@ -594,7 +667,8 @@ auth.post('/rider/magic-link', async (c) => {
   }
 })
 
-// GET /api/auth/rider/verify?token=...
+// GET /api/auth/rider/verify?token=... — legacy (SMS links land here, token in URL)
+// New clients should POST to /rider/verify with token in body instead
 auth.get('/rider/verify', async (c) => {
   try {
     const token = c.req.query('token')
@@ -646,14 +720,12 @@ auth.get('/rider/verify', async (c) => {
       REFRESH_TOKEN_TTL
     )
 
-    await c.env.qesuite_db.prepare('UPDATE users SET refresh_token = ? WHERE id = ?')
-      .bind(refreshToken, userId)
-      .run()
+    await storeRefreshToken(c.env.qesuite_db as unknown as D1Database, refreshToken, userId)
 
     setCookie(c, 'refresh_token', refreshToken, {
       httpOnly: true,
       secure: true,
-      sameSite: 'Lax',
+      sameSite: 'Strict',
       maxAge: REFRESH_TOKEN_TTL,
       path: '/',
     })
@@ -668,6 +740,50 @@ auth.get('/rider/verify', async (c) => {
     })
   } catch (err) {
     console.error('rider/verify error', err)
+    return c.json({ error: 'Verification failed', data: null }, 500)
+  }
+})
+
+// POST /api/auth/rider/verify — preferred: token in request body (not URL) to avoid log exposure
+auth.post('/rider/verify', async (c) => {
+  try {
+    const { token } = await c.req.json<{ token: string }>()
+    if (!token) return c.json({ error: 'token is required', data: null }, 400)
+
+    const now = new Date().toISOString()
+    const staff = await c.env.qesuite_db.prepare(
+      `SELECT ds.*, u.id as user_id FROM delivery_staff ds
+       LEFT JOIN users u ON u.id = ds.user_id
+       WHERE ds.magic_link_token = ? AND ds.magic_link_expires_at > ? AND ds.is_active = 1`
+    ).bind(token, now).first<{
+      id: string; tenant_id: string; name: string; phone: string; user_id: string | null
+    }>()
+
+    if (!staff) return c.json({ error: 'Invalid or expired link', data: null }, 401)
+
+    await c.env.qesuite_db.prepare(
+      'UPDATE delivery_staff SET magic_link_token = NULL, magic_link_expires_at = NULL WHERE id = ?'
+    ).bind(staff.id).run()
+
+    let userId = staff.user_id
+    if (!userId) {
+      userId = generateId()
+      await c.env.qesuite_db.prepare(
+        `INSERT INTO users (id, tenant_id, name, phone, role, is_active, created_at)
+         VALUES (?, ?, ?, ?, 'rider', 1, datetime('now'))`
+      ).bind(userId, staff.tenant_id, staff.name, staff.phone).run()
+      await c.env.qesuite_db.prepare('UPDATE delivery_staff SET user_id = ? WHERE id = ?')
+        .bind(userId, staff.id).run()
+    }
+
+    const accessToken = await signJWT({ sub: userId, tenant_id: staff.tenant_id, role: 'rider', name: staff.name }, c.env.JWT_SECRET, ACCESS_TOKEN_TTL)
+    const refreshToken = await signJWT({ sub: userId, tenant_id: staff.tenant_id, role: 'rider', name: staff.name }, c.env.JWT_SECRET, REFRESH_TOKEN_TTL)
+    await storeRefreshToken(c.env.qesuite_db as unknown as D1Database, refreshToken, userId)
+    setCookie(c, 'refresh_token', refreshToken, { httpOnly: true, secure: true, sameSite: 'Strict', maxAge: REFRESH_TOKEN_TTL, path: '/' })
+
+    return c.json({ success: true, data: { access_token: accessToken, user: { id: userId, name: staff.name, role: 'rider', tenant_id: staff.tenant_id } }, error: null })
+  } catch (err) {
+    console.error('rider/verify POST error', err)
     return c.json({ error: 'Verification failed', data: null }, 500)
   }
 })

@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -80,10 +81,6 @@ const router = createRouter({
   ]
 })
 
-function getRoleFromToken(token: string): string | null {
-  try { return JSON.parse(atob(token.split('.')[1])).role ?? null } catch { return null }
-}
-
 function getHomeForRole(role: string): string {
   if (role === 'owner') return '/dashboard'
   if (role === 'rider') return '/rider'
@@ -91,10 +88,18 @@ function getHomeForRole(role: string): string {
   return '/login'
 }
 
-router.beforeEach((to) => {
-  const token = sessionStorage.getItem('access_token')
-  const role = token ? getRoleFromToken(token) : null
-  const onboardingComplete = sessionStorage.getItem('onboarding_complete') === 'true'
+router.beforeEach(async (to) => {
+  // Read from the Pinia auth store (memory token) — NOT sessionStorage,
+  // which no longer holds the access token after the security hardening.
+  const authStore = useAuthStore()
+
+  // On first navigation after a page reload, wait for the cookie-based
+  // rehydration attempt to complete before deciding auth state.
+  await authStore.ready
+
+  const token = authStore.token
+  const role  = authStore.role
+  const onboardingComplete = authStore.onboardingComplete
 
   // Already authenticated → redirect away from public routes
   if (to.meta.public && token && role) {

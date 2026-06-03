@@ -112,6 +112,23 @@ orders.post('/', async (c) => {
       return c.json({ error: 'slug, customer_phone, payment_method, and items are required', data: null }, 400)
     }
 
+    // Length and type guards
+    if (body.customer_phone.length > 20) return c.json({ error: 'Invalid phone number', data: null }, 400)
+    if (body.customer_name && body.customer_name.length > 120) return c.json({ error: 'Name too long', data: null }, 400)
+    if (body.delivery_address && body.delivery_address.length > 500) return c.json({ error: 'Address too long', data: null }, 400)
+    if (body.notes && body.notes.length > 500) return c.json({ error: 'Notes too long', data: null }, 400)
+    if (body.items.length > 50) return c.json({ error: 'Too many items', data: null }, 400)
+    if (body.delivery_lat !== undefined && (typeof body.delivery_lat !== 'number' || body.delivery_lat < -90 || body.delivery_lat > 90)) {
+      return c.json({ error: 'Invalid coordinates', data: null }, 400)
+    }
+    if (body.delivery_lng !== undefined && (typeof body.delivery_lng !== 'number' || body.delivery_lng < -180 || body.delivery_lng > 180)) {
+      return c.json({ error: 'Invalid coordinates', data: null }, 400)
+    }
+    const validMethods = ['pay_on_delivery', 'mpesa', 'stripe']
+    if (!validMethods.includes(body.payment_method)) {
+      return c.json({ error: 'Invalid payment method', data: null }, 400)
+    }
+
     // Resolve tenant
     const tenant = await c.env.qesuite_db.prepare(
       'SELECT id, name, slug, phone, whatsapp_number, is_suspended FROM tenants WHERE slug = ?'
@@ -393,6 +410,9 @@ orders.put('/:id/status', authMiddleware, tenantGuard, async (c) => {
 
     if (!status) {
       return c.json({ error: 'status is required', data: null }, 400)
+    }
+    if (cancellation_reason && cancellation_reason.length > 500) {
+      return c.json({ error: 'Cancellation reason too long (max 500 characters)', data: null }, 400)
     }
 
     const order = await c.env.qesuite_db.prepare(

@@ -1,13 +1,31 @@
 import { Hono } from 'hono'
 import { Env, Variables } from '../types'
 import { superadminMiddleware } from '../middleware/auth'
-import { signJWT } from '../lib/jwt'
+import { signJWT, generateId } from '../lib/jwt'
 import { hashPassword } from '../lib/password'
 
 const admin = new Hono<{ Bindings: Env; Variables: Variables }>()
 
 // All admin routes require superadmin role
 admin.use('*', superadminMiddleware)
+
+// Audit helper — fire-and-forget, never blocks the response
+async function audit(
+  db: Env['qesuite_db'],
+  actorId: string,
+  action: string,
+  targetType: string,
+  targetId: string,
+  detail?: string,
+  ip?: string
+) {
+  try {
+    await db.prepare(
+      `INSERT INTO audit_log (id, actor_id, actor_role, action, target_type, target_id, detail, ip)
+       VALUES (?, ?, 'superadmin', ?, ?, ?, ?, ?)`
+    ).bind(generateId(), actorId, action, targetType, targetId, detail ?? null, ip ?? null).run()
+  } catch { /* audit must never crash the main flow */ }
+}
 
 // GET /api/admin/stores — all stores
 admin.get('/stores', async (c) => {
@@ -226,8 +244,7 @@ admin.put('/stores/:id/suspend', async (c) => {
     }
 
     await c.env.qesuite_db.prepare('UPDATE tenants SET is_suspended = 1 WHERE id = ?').bind(id).run()
-
-    console.info(`Store ${id} suspended by admin. Reason: ${reason ?? 'unspecified'}`)
+    await audit(c.env.qesuite_db, c.get('user').sub, 'SUSPEND_STORE', 'tenant', id, reason ?? 'unspecified', c.req.header('CF-Connecting-IP'))
 
     return c.json({ success: true, data: { suspended: true, id }, error: null, message: 'Store suspended' })
   } catch (err) {
@@ -247,6 +264,7 @@ admin.put('/stores/:id/unsuspend', async (c) => {
     }
 
     await c.env.qesuite_db.prepare('UPDATE tenants SET is_suspended = 0 WHERE id = ?').bind(id).run()
+    await audit(c.env.qesuite_db, c.get('user').sub, 'UNSUSPEND_STORE', 'tenant', id, undefined, c.req.header('CF-Connecting-IP'))
 
     return c.json({ success: true, data: { suspended: false, id }, error: null, message: 'Store unsuspended' })
   } catch (err) {
@@ -292,9 +310,9 @@ admin.delete('/stores/:id', async (c) => {
     await c.env.qesuite_db.prepare('DELETE FROM users WHERE tenant_id = ?').bind(id).run()
     await c.env.qesuite_db.prepare('DELETE FROM tenants WHERE id = ?').bind(id).run()
 
-    console.info(`Store "${tenant.name}" (${id}) permanently deleted by admin.`)
+    await audit(c.env.qesuite_db, c.get('user').sub, 'DELETE_STORE', 'tenant', id, (tenant as {name: string}).name, c.req.header('CF-Connecting-IP'))
 
-    return c.json({ success: true, data: { deleted: true, id }, error: null, message: `Store "${tenant.name}" permanently deleted.` })
+    return c.json({ success: true, data: { deleted: true, id }, error: null, message: `Store permanently deleted.` })
   } catch (err) {
     console.error('admin delete store error', err)
     return c.json({ success: false, error: 'Failed to delete store', data: null }, 500)
@@ -490,6 +508,7 @@ admin.post('/stores/:id/subscription/cancel', async (c) => {
 
     await c.env.qesuite_db.prepare("UPDATE tenants SET subscription_status = 'cancelled' WHERE id = ?").bind(id).run()
     await c.env.qesuite_db.prepare("UPDATE subscriptions SET status = 'cancelled' WHERE tenant_id = ?").bind(id).run()
+    await audit(c.env.qesuite_db, c.get('user').sub, 'CANCEL_SUBSCRIPTION', 'tenant', id, undefined, c.req.header('CF-Connecting-IP'))
 
     return c.json({ success: true, data: { cancelled: true }, error: null, message: 'Subscription cancelled' })
   } catch (err) {
@@ -841,10 +860,10 @@ admin.get('/metrics', async (c) => {
 admin.post('/stores/:id/reset-password', async (c) => {
   try {
     const tenantId = c.req.param('id')
-    const body = await c.req.json<{ password?: string }>().catch(() => ({}))
+    const body = await c.req.json<{ password?: string }>().catch(() => ({ password: undefined }))
 
     // Resolve or auto-generate password
-    const plainPassword = body.password?.trim() ||
+    const plainPassword = (body as { password?: string }).password?.trim() ||
       Array.from(crypto.getRandomValues(new Uint8Array(12)))
         .map(b => 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789'[b % 56])
         .join('')

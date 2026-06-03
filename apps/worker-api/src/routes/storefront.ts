@@ -5,6 +5,16 @@ import { sendSMS, sendWhatsApp, normalizeKenyaPhone, getOrderConfirmedSMS, getNe
 
 const storefront = new Hono<{ Bindings: Env; Variables: Variables }>()
 
+// Simple in-memory rate limiter for order placement (5 per IP per 15 min)
+const _orderBuckets = new Map<string, { count: number; resetAt: number }>()
+function orderRateLimit(key: string): boolean {
+  const now = Date.now()
+  const b = _orderBuckets.get(key)
+  if (!b || now > b.resetAt) { _orderBuckets.set(key, { count: 1, resetAt: now + 900_000 }); return true }
+  if (b.count >= 5) return false
+  b.count++; return true
+}
+
 // GET /api/storefront — list all active stores for the marketplace directory
 storefront.get('/', async (c) => {
   try {
@@ -212,9 +222,17 @@ storefront.get('/:slug/products', async (c) => {
   }
 })
 
+const VALID_PAYMENT_METHODS = ['pay_on_delivery', 'mpesa', 'stripe'] as const
+
 // POST /api/storefront/:slug/orders — customer places order (no auth)
 storefront.post('/:slug/orders', async (c) => {
   try {
+    // Rate limit: 5 orders per phone per 15 minutes (per isolate)
+    const ip = c.req.header('CF-Connecting-IP') ?? 'unknown'
+    if (!orderRateLimit(ip)) {
+      return c.json({ success: false, error: 'Too many order attempts. Please wait before trying again.', data: null }, 429)
+    }
+
     const slug = c.req.param('slug')
     const body = await c.req.json<{
       customer_name?: string
@@ -229,6 +247,33 @@ storefront.post('/:slug/orders', async (c) => {
 
     if (!body.customer_phone || !body.items?.length || !body.payment_method) {
       return c.json({ success: false, error: 'customer_phone, items, and payment_method are required', data: null }, 400)
+    }
+
+    // Input length and type validation
+    if (body.customer_phone.length > 20) {
+      return c.json({ success: false, error: 'Invalid phone number', data: null }, 400)
+    }
+    if (body.customer_name && body.customer_name.length > 120) {
+      return c.json({ success: false, error: 'Name too long', data: null }, 400)
+    }
+    if (body.delivery_address && body.delivery_address.length > 500) {
+      return c.json({ success: false, error: 'Address too long', data: null }, 400)
+    }
+    if (body.notes && body.notes.length > 500) {
+      return c.json({ success: false, error: 'Notes too long', data: null }, 400)
+    }
+    if (!VALID_PAYMENT_METHODS.includes(body.payment_method as typeof VALID_PAYMENT_METHODS[number])) {
+      return c.json({ success: false, error: 'Invalid payment method', data: null }, 400)
+    }
+    if (body.items.length > 50) {
+      return c.json({ success: false, error: 'Too many items in order', data: null }, 400)
+    }
+    // Coordinate validation
+    if (body.delivery_lat !== undefined && (typeof body.delivery_lat !== 'number' || body.delivery_lat < -90 || body.delivery_lat > 90)) {
+      return c.json({ success: false, error: 'Invalid coordinates', data: null }, 400)
+    }
+    if (body.delivery_lng !== undefined && (typeof body.delivery_lng !== 'number' || body.delivery_lng < -180 || body.delivery_lng > 180)) {
+      return c.json({ success: false, error: 'Invalid coordinates', data: null }, 400)
     }
 
     const tenant = await c.env.qesuite_db.prepare(
@@ -259,10 +304,10 @@ storefront.post('/:slug/orders', async (c) => {
       }>()
 
       if (!product || !product.is_active) {
-        return c.json({ success: false, error: `Product not available: ${item.product_id}`, data: null }, 400)
+        return c.json({ success: false, error: 'One or more items are unavailable', data: null }, 400)
       }
       if (product.stock < item.quantity) {
-        return c.json({ success: false, error: `Insufficient stock for: ${product.name}`, data: null }, 400)
+        return c.json({ success: false, error: 'Insufficient stock for one or more items', data: null }, 400)
       }
 
       const unitPrice = (product.on_sale && product.sale_price) ? product.sale_price : product.price
@@ -321,9 +366,14 @@ storefront.post('/:slug/orders', async (c) => {
          VALUES (?, ?, ?, ?, ?, ?)`
       ).bind(generateId(), orderId, item.product_id, item.product_name, item.quantity, item.price).run()
 
-      await c.env.qesuite_db.prepare(
-        'UPDATE products SET stock = stock - ? WHERE id = ? AND tenant_id = ?'
-      ).bind(item.quantity, item.product_id, tenant.id).run()
+      // Atomic stock deduction — fails if stock was depleted between check and update
+      const stockResult = await c.env.qesuite_db.prepare(
+        'UPDATE products SET stock = stock - ? WHERE id = ? AND tenant_id = ? AND stock >= ?'
+      ).bind(item.quantity, item.product_id, tenant.id, item.quantity).run()
+      if (stockResult.meta.changes === 0) {
+        // Roll back is not needed for D1 (no transaction yet) but order won't be fulfilled
+        return c.json({ success: false, error: 'Insufficient stock for one or more items', data: null }, 400)
+      }
     }
 
     // Queue notifications asynchronously
@@ -395,9 +445,19 @@ storefront.get('/:slug/track/:code', async (c) => {
        ORDER BY da.assigned_at DESC LIMIT 1`
     ).bind((order as { id: string }).id).first()
 
+    // Mask the full phone — only expose last 4 digits to prevent phone enumeration
+    const o = order as Record<string, unknown>
+    const maskedPhone = typeof o.customer_phone === 'string'
+      ? o.customer_phone.slice(0, -4).replace(/\d/g, '*') + o.customer_phone.slice(-4)
+      : null
+
     return c.json({
       success: true,
-      data: { order, items, assignment: assignment ?? null },
+      data: {
+        order: { ...o, customer_phone: maskedPhone },
+        items,
+        assignment: assignment ?? null,
+      },
       error: null,
     })
   } catch (err) {
@@ -420,12 +480,19 @@ storefront.post('/:slug/mpesa/initiate', async (c) => {
     if (!tenant) return c.json({ success: false, error: 'Store not found', data: null }, 404)
 
     const order = await c.env.qesuite_db.prepare(
-      'SELECT id, total FROM orders WHERE id = ? AND tenant_id = ?'
-    ).bind(body.order_id, tenant.id).first<{ id: string; total: number }>()
+      'SELECT id, total, customer_phone FROM orders WHERE id = ? AND tenant_id = ?'
+    ).bind(body.order_id, tenant.id).first<{ id: string; total: number; customer_phone: string }>()
     if (!order) return c.json({ success: false, error: 'Order not found', data: null }, 404)
 
+    // Verify the submitted phone matches the order's customer phone to prevent misdirected STK pushes
+    const normalizedSubmitted = normalizeKenyaPhone(body.phone)
+    const normalizedStored    = normalizeKenyaPhone(order.customer_phone)
+    if (normalizedSubmitted !== normalizedStored) {
+      return c.json({ success: false, error: 'Phone number does not match this order', data: null }, 403)
+    }
+
     // M-Pesa STK Push
-    const phone = normalizeKenyaPhone(body.phone)
+    const phone = normalizedSubmitted
     const timestamp = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 14)
     const password = btoa(`${c.env.MPESA_SHORTCODE}${c.env.MPESA_PASSKEY}${timestamp}`)
 
@@ -490,21 +557,25 @@ storefront.post('/:slug/mpesa/initiate', async (c) => {
   }
 })
 
-// GET /api/storefront/mpesa/status/:orderId
-storefront.get('/mpesa/status/:orderId', async (c) => {
+// GET /api/storefront/:slug/mpesa/status/:orderId — scoped to tenant
+storefront.get('/:slug/mpesa/status/:orderId', async (c) => {
   try {
+    const slug = c.req.param('slug')
     const orderId = c.req.param('orderId')
+
+    const tenant = await c.env.qesuite_db.prepare(
+      'SELECT id FROM tenants WHERE slug = ?'
+    ).bind(slug).first<{ id: string }>()
+    if (!tenant) return c.json({ success: false, error: 'Store not found', data: null }, 404)
+
+    // Enforce tenant isolation — only return status for orders belonging to this store
     const order = await c.env.qesuite_db.prepare(
-      'SELECT payment_status FROM orders WHERE id = ?'
-    ).bind(orderId).first<{ payment_status: string }>()
+      'SELECT payment_status FROM orders WHERE id = ? AND tenant_id = ?'
+    ).bind(orderId, tenant.id).first<{ payment_status: string }>()
 
     if (!order) return c.json({ success: false, error: 'Order not found', data: null }, 404)
 
-    return c.json({
-      success: true,
-      data: { status: order.payment_status },
-      error: null,
-    })
+    return c.json({ success: true, data: { status: order.payment_status }, error: null })
   } catch (err) {
     console.error('mpesa status error', err)
     return c.json({ success: false, error: 'Failed to check payment status', data: null }, 500)

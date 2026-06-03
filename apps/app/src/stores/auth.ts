@@ -30,9 +30,14 @@ function parseJwt(token: string): { exp: number; tenant_id: string | null; role:
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<AppUser | null>(null)
-  const token = ref<string | null>(sessionStorage.getItem('access_token'))
+  // Access token lives in memory only — rehydrated from HTTP-only cookie via refreshOwnerToken()
+  const token = ref<string | null>(null)
   const onboardingComplete = ref<boolean>(sessionStorage.getItem('onboarding_complete') === 'true')
   const loading = ref(false)
+  // Resolves once the initial cookie-based rehydration attempt is complete.
+  // The router guard awaits this before checking auth state on first load.
+  let _readyResolve: () => void = () => {}
+  const ready = new Promise<void>(r => { _readyResolve = r })
 
   // Multi-store selection state — set when login returns requires_store_selection
   const pendingStoreSelection = ref<StoreSelectionData | null>(null)
@@ -203,7 +208,8 @@ export const useAuthStore = defineStore('auth', () => {
       const adminUser = { id: u.id, name: u.name, role: 'superadmin' as const, tenant_id: null, email: u.email }
       user.value = adminUser
       setTokens(result.token)
-      sessionStorage.setItem('admin_user', JSON.stringify(adminUser))
+      // Do NOT persist admin user object to sessionStorage — only keep a non-sensitive session marker
+      sessionStorage.setItem('admin_session', '1')
       return { success: true }
     } catch (err: unknown) {
       return { success: false, error: err instanceof Error ? err.message : 'Login failed' }
@@ -227,30 +233,18 @@ export const useAuthStore = defineStore('auth', () => {
     onboardingComplete.value = false
     clearTokens()
     sessionStorage.removeItem('onboarding_complete')
-    sessionStorage.removeItem('admin_user')
+    sessionStorage.removeItem('admin_session')
     if (refreshTimer) clearTimeout(refreshTimer)
   }
 
-  // Restore session on init
-  if (token.value) {
-    const r = parseJwt(token.value)?.role
-    if (r === 'owner') {
-      scheduleRefresh(token.value)
-      fetchMe()
-    } else if (r === 'superadmin') {
-      const saved = sessionStorage.getItem('admin_user')
-      if (saved) {
-        try { user.value = { ...JSON.parse(saved), role: 'superadmin' } } catch { /* ignore */ }
-      }
-    } else if (r === 'rider') {
-      const saved = sessionStorage.getItem('rider_info')
-      if (saved) {
-        try {
-          const riderInfo = JSON.parse(saved)
-          user.value = { ...riderInfo, role: 'rider' }
-        } catch { /* ignore */ }
-      }
-    }
+  // Restore session on page load — silently re-hydrate from the HTTP-only refresh token cookie.
+  // Access tokens are memory-only so there is nothing to restore from sessionStorage.
+  if (sessionStorage.getItem('onboarding_complete') !== null) {
+    // Likely a valid refresh cookie exists — rehydrate then mark ready
+    refreshOwnerToken().finally(() => _readyResolve())
+  } else {
+    // No prior session marker — nothing to restore
+    _readyResolve()
   }
 
   return {
@@ -260,6 +254,7 @@ export const useAuthStore = defineStore('auth', () => {
     isAuthenticated,
     onboardingComplete,
     loading,
+    ready,
     login,
     selectStore,
     pendingStoreSelection,

@@ -47,6 +47,12 @@ export async function hashPassword(password: string): Promise<string> {
   return `v2:${iterHex}:${toHex(salt)}:${hash}`
 }
 
+/** Fast SHA-256 hash for non-password tokens (refresh tokens, not passwords) */
+export async function hashToken(token: string): Promise<string> {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(token))
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('')
+}
+
 export async function verifyPassword(password: string, stored: string): Promise<boolean> {
   if (stored.startsWith('v2:')) {
     // Current format: v2:<iterHex>:<saltHex>:<hashHex>

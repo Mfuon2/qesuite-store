@@ -66,7 +66,9 @@ export async function verifyJWT(token: string, secret: string): Promise<JWTPaylo
 }
 
 export function generateOTP(): string {
-  return Math.floor(100000 + Math.random() * 900000).toString()
+  // Cryptographically secure 6-digit OTP
+  const buf = crypto.getRandomValues(new Uint32Array(1))
+  return String(100000 + (buf[0] % 900000))
 }
 
 export function generateId(): string {
@@ -74,5 +76,7 @@ export function generateId(): string {
 }
 
 export function generateTrackingCode(): string {
-  return Math.random().toString(36).substring(2, 8).toUpperCase()
+  // Cryptographically secure — replaces Math.random()
+  const bytes = crypto.getRandomValues(new Uint8Array(4))
+  return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('').toUpperCase()
 }

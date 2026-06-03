@@ -5,17 +5,21 @@ import { beginNetworkActivity, endNetworkActivity } from '@/composables/useNetwo
 // In production, set VITE_API_URL to the deployed worker URL.
 const BASE_URL = import.meta.env.VITE_API_URL || ''
 
-let accessToken: string | null = sessionStorage.getItem('access_token')
+// Access token lives in memory only — never written to localStorage or sessionStorage.
+// This prevents XSS-based token theft from persistent storage.
+// Session continuity across page reloads is handled by the HTTP-only refresh token cookie:
+// on mount, auth.ts calls refreshOwnerToken() which silently re-hydrates the memory token.
+let accessToken: string | null = null
 let refreshPromise: Promise<string | null> | null = null
 
 export function setTokens(access: string) {
   accessToken = access
-  sessionStorage.setItem('access_token', access)
+  // Do NOT persist the access token to any browser storage
 }
 
 export function clearTokens() {
   accessToken = null
-  sessionStorage.removeItem('access_token')
+  sessionStorage.removeItem('onboarding_complete')
 }
 
 export function getAccessToken() {

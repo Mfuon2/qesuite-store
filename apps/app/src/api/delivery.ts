@@ -35,7 +35,8 @@ export async function requestMagicLinkApi(phone: string): Promise<void> {
 
 export async function verifyMagicLinkApi(token: string): Promise<VerifyResponse> {
   const res = await apiFetch<ApiResponse<VerifyResponse>>(
-    `/api/auth/rider/verify?token=${encodeURIComponent(token)}`
+    '/api/auth/rider/verify',
+    { method: 'POST', body: JSON.stringify({ token }) }
   )
   if (!res.success || !res.data) throw new Error(res.error || 'Verification failed')
   return res.data

@@ -26,21 +26,52 @@ const app = new Hono<{ Bindings: Env; Variables: Variables }>()
 
 app.use('*', logger())
 
+// ── CORS — exact origin matching only, no substring tricks ──────────────────
+const ALLOWED_ORIGINS = [
+  'https://store.qesuite.com',
+  'https://go.qesuite.com',
+  'https://admin.qesuite.com',
+  'http://localhost:3000',
+  'http://localhost:3001',
+  'http://localhost:5173',
+  'http://127.0.0.1:3000',
+  'http://127.0.0.1:5173',
+]
+
 app.use(
   '*',
   cors({
     origin: (origin) => {
-      if (!origin) return origin
-      const allowed = ['.qesuite.com', 'localhost', '127.0.0.1']
-      if (allowed.some((h) => origin.includes(h))) return origin
-      return null
+      if (!origin) return null          // block null-origin requests
+      return ALLOWED_ORIGINS.includes(origin) ? origin : null
     },
     credentials: true,
     allowHeaders: ['Authorization', 'Content-Type', 'X-Admin-Request'],
     allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     exposeHeaders: ['Set-Cookie'],
+    maxAge: 86400,
   })
 )
+
+// ── Security headers on every response ──────────────────────────────────────
+app.use('*', async (c, next) => {
+  await next()
+  c.res.headers.set('X-Content-Type-Options', 'nosniff')
+  c.res.headers.set('X-Frame-Options', 'DENY')
+  c.res.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
+  c.res.headers.set('Permissions-Policy', 'geolocation=(), camera=(), microphone=()')
+  // HSTS — only on HTTPS (Workers always serve HTTPS in production)
+  c.res.headers.set('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload')
+})
+
+// ── Request body size limit (1 MB) ────────────────────────────────────────────
+app.use('*', async (c, next) => {
+  const contentLength = c.req.header('content-length')
+  if (contentLength && parseInt(contentLength, 10) > 1_048_576) {
+    return c.json({ error: 'Request body too large', data: null }, 413)
+  }
+  await next()
+})
 
 // Routes
 app.route('/api/auth', authRoutes)
@@ -104,6 +135,11 @@ app.get('/robots.txt', (c) => {
   )
 })
 
+function escHtml(str: string): string {
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;').replace(/'/g, '&#x27;')
+}
+
 // GET /render/:slug — pre-rendered HTML for bots (dynamic rendering)
 // Cloudflare Worker Route on store.qesuite.com calls this for crawlers
 app.get('/render/:slug', async (c) => {
@@ -134,72 +170,80 @@ app.get('/render/:slug', async (c) => {
      WHERE tenant_id = ? AND is_active = 1 ORDER BY featured DESC LIMIT 12`
   ).bind(tenant.id).all<{ name: string; description: string | null; price: number; sale_price: number | null; image_url: string | null }>()
 
-  const desc = `Shop ${tenant.name} online${tenant.address ? ` in ${tenant.address}` : ''}. Order groceries, get fast delivery and track your order live. ${products.slice(0, 5).map(p => p.name).join(', ')} and more.`
-  const currency = tenant.currency ?? 'KES'
-  const storeUrl = `${base}/${slug}`
+  const eName = escHtml(tenant.name)
+  const eAddr = tenant.address ? escHtml(tenant.address) : null
+  const ePhone = tenant.phone ? escHtml(tenant.phone) : null
+  const desc = escHtml(`Shop ${tenant.name} online${tenant.address ? ` in ${tenant.address}` : ''}. Fast delivery. ${products.slice(0, 5).map(p => p.name).join(', ')} and more.`)
+  const currency = escHtml(tenant.currency ?? 'KES')
+  const storeUrl = `${base}/${escHtml(slug)}`
 
-  const productSchema = products.map((p, i) => `{
-    "@type": "Product",
-    "name": "${p.name.replace(/"/g, '\\"')}",
-    ${p.description ? `"description": "${p.description.replace(/"/g, '\\"')}",` : ''}
-    "offers": { "@type": "Offer", "price": "${p.sale_price ?? p.price}", "priceCurrency": "${currency}", "availability": "https://schema.org/InStock" }
-  }`).join(',')
+  // JSON-LD uses JSON.stringify for safe escaping
+  const productSchema = products.map(p => JSON.stringify({
+    '@type': 'Product',
+    name: p.name,
+    ...(p.description ? { description: p.description } : {}),
+    offers: { '@type': 'Offer', price: String(p.sale_price ?? p.price), priceCurrency: tenant.currency ?? 'KES', availability: 'https://schema.org/InStock' },
+  })).join(',')
 
-  const jsonLd = `{
-    "@context": "https://schema.org",
-    "@type": "LocalBusiness",
-    "name": "${tenant.name.replace(/"/g, '\\"')}",
-    "url": "${storeUrl}",
-    ${tenant.logo_url ? `"image": "${tenant.logo_url}",` : ''}
-    ${tenant.address ? `"address": { "@type": "PostalAddress", "streetAddress": "${tenant.address.replace(/"/g, '\\"')}" },` : ''}
-    ${tenant.phone ? `"telephone": "${tenant.phone}",` : ''}
-    "currenciesAccepted": "${currency}",
-    "openingHoursSpecification": { "@type": "OpeningHoursSpecification", "dayOfWeek": ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"] },
-    "hasOfferCatalog": { "@type": "OfferCatalog", "name": "Products", "itemListElement": [${productSchema}] }
-  }`
+  const jsonLd = JSON.stringify({
+    '@context': 'https://schema.org',
+    '@type': 'LocalBusiness',
+    name: tenant.name,
+    url: storeUrl,
+    ...(tenant.logo_url ? { image: tenant.logo_url } : {}),
+    ...(tenant.address ? { address: { '@type': 'PostalAddress', streetAddress: tenant.address } } : {}),
+    ...(tenant.phone ? { telephone: tenant.phone } : {}),
+    currenciesAccepted: tenant.currency ?? 'KES',
+  })
 
-  const productListHtml = products.map(p =>
-    `<div class="product">
-      ${p.image_url ? `<img src="${p.image_url}" alt="${p.name}" loading="lazy">` : ''}
-      <h3>${p.name}</h3>
-      ${p.description ? `<p>${p.description}</p>` : ''}
+  const productListHtml = products.map(p => {
+    const pName = escHtml(p.name)
+    const pDesc = p.description ? escHtml(p.description) : null
+    const imgSrc = p.image_url && p.image_url.startsWith('https://') ? escHtml(p.image_url) : null
+    return `<div class="product">
+      ${imgSrc ? `<img src="${imgSrc}" alt="${pName}" loading="lazy">` : ''}
+      <h3>${pName}</h3>
+      ${pDesc ? `<p>${pDesc}</p>` : ''}
       <span class="price">${currency} ${(p.sale_price ?? p.price).toLocaleString()}</span>
       ${p.sale_price ? `<span class="was">${currency} ${p.price.toLocaleString()}</span>` : ''}
     </div>`
-  ).join('')
+  }).join('')
+
+  const logoSrc = tenant.logo_url && tenant.logo_url.startsWith('https://') ? escHtml(tenant.logo_url) : null
+  const primaryColor = /^#[0-9a-fA-F]{3,8}$/.test(tenant.primary_color) ? tenant.primary_color : '#10b981'
 
   const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${tenant.name} — Shop Online | QeSuite</title>
+<title>${eName} — Shop Online | QeSuite</title>
 <meta name="description" content="${desc}">
 <meta name="robots" content="index,follow">
 <link rel="canonical" href="${storeUrl}">
 <meta property="og:type" content="website">
 <meta property="og:url" content="${storeUrl}">
-<meta property="og:title" content="${tenant.name} — Shop Online">
+<meta property="og:title" content="${eName} — Shop Online">
 <meta property="og:description" content="${desc}">
-${tenant.logo_url ? `<meta property="og:image" content="${tenant.logo_url}">` : ''}
+${logoSrc ? `<meta property="og:image" content="${logoSrc}">` : ''}
 <meta property="og:site_name" content="QeSuite Stores">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="theme-color" content="${tenant.primary_color}">
+<meta name="theme-color" content="${primaryColor}">
 <script type="application/ld+json">${jsonLd}</script>
 <style>body{font-family:sans-serif;max-width:1200px;margin:0 auto;padding:16px}
 .products{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px}
 .product{border:1px solid #eee;border-radius:8px;padding:12px}
 .product img{width:100%;height:160px;object-fit:cover;border-radius:6px}
-.price{font-weight:bold;color:${tenant.primary_color}}
+.price{font-weight:bold;color:${primaryColor}}
 .was{text-decoration:line-through;color:#999;font-size:.9em;margin-left:8px}
 </style>
 </head>
 <body>
 <header>
-  ${tenant.logo_url ? `<img src="${tenant.logo_url}" alt="${tenant.name} logo" height="60">` : ''}
-  <h1>${tenant.name}</h1>
-  ${tenant.address ? `<p>📍 ${tenant.address}</p>` : ''}
-  ${tenant.phone ? `<p>📞 ${tenant.phone}</p>` : ''}
+  ${logoSrc ? `<img src="${logoSrc}" alt="${eName} logo" height="60">` : ''}
+  <h1>${eName}</h1>
+  ${eAddr ? `<p>📍 ${eAddr}</p>` : ''}
+  ${ePhone ? `<p>📞 ${ePhone}</p>` : ''}
   <p><a href="${storeUrl}">Shop now at ${storeUrl}</a></p>
 </header>
 <main>
@@ -214,6 +258,9 @@ ${tenant.logo_url ? `<meta property="og:image" content="${tenant.logo_url}">` : 
     headers: {
       'Content-Type': 'text/html; charset=utf-8',
       'Cache-Control': 'public, max-age=3600, s-maxage=3600',
+      'Content-Security-Policy': "default-src 'none'; img-src https:; style-src 'unsafe-inline'; frame-ancestors 'none'",
+      'X-Content-Type-Options': 'nosniff',
+      'X-Frame-Options': 'DENY',
     }
   })
 })

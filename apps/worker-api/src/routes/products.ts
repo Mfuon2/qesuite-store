@@ -6,6 +6,16 @@ import { generateId } from '../lib/jwt'
 
 const products = new Hono<{ Bindings: Env; Variables: Variables }>()
 
+/** Reject image URLs not originating from our own Worker/CDN — prevents SSRF via stored URLs */
+function validateImageUrl(url: string | null | undefined, workerOrigin: string): string | null {
+  if (!url) return null
+  try {
+    const allowed = [workerOrigin, 'https://images.qesuite.com']
+    if (!allowed.some(o => url.startsWith(o))) return null
+    return url
+  } catch { return null }
+}
+
 // Nest the flat category_name column into { category: { id, name } } matching the Product type
 function withCategory(p: Record<string, unknown>) {
   const { category_name, ...rest } = p as { category_name: string | null } & Record<string, unknown>
@@ -312,7 +322,8 @@ products.post('/', authMiddleware, tenantGuard, async (c) => {
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, datetime('now'), datetime('now'))`
     ).bind(
       id, tenantId, body.category_id ?? null, body.name, body.description ?? null,
-      body.price, body.sale_price ?? null, body.stock ?? 0, body.image_url ?? null,
+      body.price, body.sale_price ?? null, body.stock ?? 0,
+      validateImageUrl(body.image_url, new URL(c.req.url).origin),
       body.featured ?? 0, body.on_sale ?? 0
     ).run()
 
@@ -365,7 +376,7 @@ products.put('/:id', authMiddleware, tenantGuard, async (c) => {
       sale_price: body.sale_price,
       stock: body.stock,
       category_id: body.category_id,
-      image_url: body.image_url,
+      image_url: body.image_url !== undefined ? validateImageUrl(body.image_url, new URL(c.req.url).origin) : undefined,
       // Convert booleans to SQLite integers (frontend may send true/false)
       featured: body.featured !== undefined ? (body.featured ? 1 : 0) : undefined,
       on_sale: body.on_sale !== undefined ? (body.on_sale ? 1 : 0) : undefined,

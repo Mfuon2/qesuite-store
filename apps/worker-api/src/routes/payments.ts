@@ -99,6 +99,18 @@ payments.post('/mpesa/initiate', async (c) => {
       return c.json({ error: stkData.errorMessage ?? 'STK Push failed', data: null }, 502)
     }
 
+    // Persist CheckoutRequestID so the callback can locate this order
+    if (stkData.CheckoutRequestID) {
+      await c.env.qesuite_db.prepare(
+        `INSERT INTO notifications_log (id, channel, recipient, message, status, metadata, created_at)
+         VALUES (?, 'mpesa_checkout', ?, 'STK Push initiated', 'sent', ?, datetime('now'))`
+      ).bind(
+        generateId(),
+        body.phone,
+        JSON.stringify({ order_id: body.order_id, checkout_request_id: stkData.CheckoutRequestID })
+      ).run().catch(() => { /* non-fatal */ })
+    }
+
     return c.json({
       data: {
         checkout_request_id: stkData.CheckoutRequestID,
@@ -134,25 +146,47 @@ payments.post('/mpesa/callback', async (c) => {
       return c.json({ error: 'Invalid callback', data: null }, 400)
     }
 
-    // Find matching order by CheckoutRequestID stored in account reference
-    // We look up by reference embedded in metadata
+    const checkoutRequestId = callback.CheckoutRequestID
+    if (!checkoutRequestId) {
+      return c.json({ ResultCode: 0, ResultDesc: 'Accepted' })
+    }
+
     if (callback.ResultCode === 0) {
+      // Match on CheckoutRequestID stored in notifications_log at STK initiation
       const meta = callback.CallbackMetadata?.Item ?? []
       const mpesaRef = meta.find((i) => i.Name === 'MpesaReceiptNumber')?.Value as string | undefined
-      const phoneItem = meta.find((i) => i.Name === 'PhoneNumber')?.Value as string | undefined
-      const amount = meta.find((i) => i.Name === 'Amount')?.Value as number | undefined
 
-      if (mpesaRef && amount) {
-        // Update orders where payment is still pending and amount matches
-        // Best effort — in production, store CheckoutRequestID on order creation
+      // Look up the order by the CheckoutRequestID we stored when we sent the STK push
+      const logEntry = await c.env.qesuite_db.prepare(
+        `SELECT metadata FROM notifications_log
+         WHERE channel = 'mpesa_checkout' AND metadata LIKE ?
+         ORDER BY created_at DESC LIMIT 1`
+      ).bind(`%${checkoutRequestId}%`).first<{ metadata: string }>()
+
+      let orderId: string | null = null
+      if (logEntry?.metadata) {
+        try {
+          const m = JSON.parse(logEntry.metadata) as { order_id?: string; checkout_request_id?: string }
+          if (m.checkout_request_id === checkoutRequestId) orderId = m.order_id ?? null
+        } catch { /* malformed log — fall through */ }
+      }
+
+      if (orderId) {
         await c.env.qesuite_db.prepare(
           `UPDATE orders SET payment_status = 'paid', updated_at = datetime('now')
-           WHERE payment_status = 'pending' AND payment_method = 'mpesa' AND total = ?
-           AND customer_phone LIKE ?`
-        ).bind(amount, `%${String(phoneItem ?? '').slice(-9)}`).run()
+           WHERE id = ? AND payment_status = 'pending' AND payment_method = 'mpesa'`
+        ).bind(orderId).run()
+        if (mpesaRef) {
+          // Store receipt reference on the order for audit
+          await c.env.qesuite_db.prepare(
+            `UPDATE orders SET notes = COALESCE(notes || ' ', '') || ? WHERE id = ?`
+          ).bind(`[M-Pesa ref: ${mpesaRef}]`, orderId).run().catch(() => {})
+        }
+      } else {
+        console.warn('M-Pesa callback: no order found for CheckoutRequestID', checkoutRequestId)
       }
     } else {
-      console.warn('M-Pesa payment failed:', callback.ResultDesc)
+      console.warn(`M-Pesa payment failed (${checkoutRequestId}):`, callback.ResultDesc)
     }
 
     return c.json({ ResultCode: 0, ResultDesc: 'Accepted' })

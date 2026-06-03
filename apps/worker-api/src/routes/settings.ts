@@ -20,11 +20,34 @@ settings.put('/tenant', tenantGuard, async (c) => {
   try {
     const tenantId = c.get('user').tenant_id!
     const body = await c.req.json<Record<string, string | null>>()
+    const workerOrigin = new URL(c.req.url).origin
     const allowed = ['name', 'logo_url', 'banner_url', 'primary_color', 'accent_color', 'font_family', 'phone', 'address', 'lat', 'lng', 'whatsapp_number', 'store_category']
     const fields: string[] = []
-    const values: (string | null)[] = []
+    const values: (string | number | null)[] = []
     for (const key of allowed) {
-      if (key in body) { fields.push(`${key} = ?`); values.push(body[key]) }
+      if (!(key in body)) continue
+      let val: string | number | null = body[key]
+      // Validate image URLs to prevent stored SSRF
+      if ((key === 'logo_url' || key === 'banner_url') && val) {
+        const allowed_origins = [workerOrigin, 'https://images.qesuite.com']
+        try {
+          if (!allowed_origins.some(o => (val as string).startsWith(o))) val = null
+        } catch { val = null }
+      }
+      // Validate colour strings (hex only)
+      if ((key === 'primary_color' || key === 'accent_color') && val) {
+        if (!/^#[0-9a-fA-F]{3,8}$/.test(val as string)) val = null
+      }
+      // Validate coordinate types
+      if ((key === 'lat' || key === 'lng') && val !== null) {
+        const n = parseFloat(String(val))
+        if (isNaN(n)) { val = null } else {
+          val = n
+          if (key === 'lat'  && (n < -90  || n > 90))  val = null
+          if (key === 'lng'  && (n < -180 || n > 180)) val = null
+        }
+      }
+      fields.push(`${key} = ?`); values.push(val)
     }
     if (!fields.length) return c.json({ success: false, error: 'No fields to update', data: null }, 400)
     values.push(tenantId)

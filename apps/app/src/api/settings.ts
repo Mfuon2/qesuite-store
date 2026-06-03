@@ -12,6 +12,8 @@ export interface TenantUpdate {
   font_family?: string
   phone?: string | null
   address?: string | null
+  lat?: number | null
+  lng?: number | null
   whatsapp_number?: string | null
 }
 

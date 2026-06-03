@@ -218,7 +218,9 @@ const storeIdentity = ref({
   accent_color: '#0d9488',
   font_family: 'Inter',
   phone: '',
-  address: ''
+  address: '',
+  lat: null as number | null,
+  lng: null as number | null,
 })
 
 const products = ref<ProductCreate[]>([])

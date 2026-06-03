@@ -251,11 +251,12 @@ products.post('/:id/image', authMiddleware, tenantGuard, async (c) => {
     const url = await c.env.IMAGES.createMultipartUpload(key)
     // R2 direct upload — return the object key and a signed PUT URL
     // Cloudflare R2 presigned URLs require Workers signed URL pattern
+    const workerOrigin = new URL(c.req.url).origin
     const publicUrl = c.env.CDN_URL
       ? `${c.env.CDN_URL}/${key}`
-      : `${c.env.APP_BASE_URL}/api/upload/img?key=${encodeURIComponent(key)}`
+      : `${workerOrigin}/api/upload/img?key=${encodeURIComponent(key)}`
     const uploadToken = btoa(JSON.stringify({ key, tenant_id: tenantId, exp: Date.now() + 600_000 }))
-    const uploadUrl = `${c.env.APP_BASE_URL}/api/upload/r2?token=${encodeURIComponent(uploadToken)}`
+    const uploadUrl = `${workerOrigin}/api/upload/r2?token=${encodeURIComponent(uploadToken)}`
 
     await c.env.qesuite_db.prepare("UPDATE products SET image_url = ?, updated_at = datetime('now') WHERE id = ?")
       .bind(publicUrl, productId)

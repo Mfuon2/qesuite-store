@@ -270,6 +270,7 @@ orders.get('/', authMiddleware, tenantGuard, async (c) => {
     const user = c.get('user')
     const tenantId = user.tenant_id!
     const status = c.req.query('status')
+    const paymentStatus = c.req.query('payment_status')
     const periodParam = c.req.query('period')
     const fromParam = c.req.query('from')
     const toParam = c.req.query('to')
@@ -283,6 +284,11 @@ orders.get('/', authMiddleware, tenantGuard, async (c) => {
     if (status) {
       conditions.push('o.status = ?')
       params.push(status.toUpperCase())
+    }
+
+    if (paymentStatus) {
+      conditions.push('o.payment_status = ?')
+      params.push(paymentStatus)
     }
 
     // Optional date filter (from dashboard period selector or custom range)
@@ -445,6 +451,54 @@ orders.put('/:id/status', authMiddleware, tenantGuard, async (c) => {
   } catch (err) {
     console.error('order status update error', err)
     return c.json({ error: 'Failed to update order status', data: null }, 500)
+  }
+})
+
+// POST /api/orders/:id/payment — record a manual payment and mark order as paid
+orders.post('/:id/payment', authMiddleware, tenantGuard, async (c) => {
+  try {
+    const user = c.get('user')
+    const tenantId = user.tenant_id!
+    const id = c.req.param('id')
+
+    const body = await c.req.json<{
+      reference?: string
+      note?: string
+      method?: string
+    }>()
+
+    const order = await c.env.qesuite_db.prepare(
+      'SELECT id, total, payment_status, payment_method FROM orders WHERE id = ? AND tenant_id = ?'
+    ).bind(id, tenantId).first<{
+      id: string; total: number; payment_status: string; payment_method: string
+    }>()
+
+    if (!order) {
+      return c.json({ success: false, error: 'Order not found', data: null }, 404)
+    }
+
+    const paymentId = generateId()
+    const method = body.method ?? order.payment_method
+
+    await c.env.qesuite_db.batch([
+      c.env.qesuite_db.prepare(
+        `INSERT INTO order_payments (id, order_id, tenant_id, amount, method, reference, note, recorded_by)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+      ).bind(paymentId, id, tenantId, order.total, method, body.reference ?? null, body.note ?? null, user.sub),
+      c.env.qesuite_db.prepare(
+        `UPDATE orders SET payment_status = 'paid', updated_at = datetime('now') WHERE id = ?`
+      ).bind(id),
+    ])
+
+    return c.json({
+      success: true,
+      data: { payment_id: paymentId, reference: body.reference ?? null },
+      error: null,
+      message: 'Payment recorded',
+    })
+  } catch (err) {
+    console.error('record payment error', err)
+    return c.json({ success: false, error: 'Failed to record payment', data: null }, 500)
   }
 })
 

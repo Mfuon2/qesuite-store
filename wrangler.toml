@@ -8,6 +8,7 @@ compatibility_date = "2024-12-01"
 APP_BASE_URL = "https://store.qesuite.com"
 SMS_BASE_URL = "https://sms.textsms.co.ke/api/services/sendsms/"
 AT_SENDER_ID = "QeSuite"
+CDN_URL = "https://images.qesuite.com"
 
 [[d1_databases]]
 binding = "qesuite_db"

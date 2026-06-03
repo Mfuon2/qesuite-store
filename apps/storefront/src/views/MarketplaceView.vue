@@ -18,11 +18,21 @@
           <span class="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">⌘K</span>
         </div>
 
-        <div class="ml-auto hidden items-center gap-2 text-sm font-bold text-slate-800 md:flex">
-          <MapPinIcon class="h-5 w-5 text-slate-600" />
-          Nairobi, Kenya
-          <ChevronDownIcon class="h-4 w-4 text-slate-500" />
-        </div>
+        <button
+          class="ml-auto hidden items-center gap-1.5 text-sm font-bold text-slate-800 md:flex transition hover:text-emerald-700"
+          @click="openLocationPicker"
+        >
+          <MapPinIcon
+            class="h-5 w-5"
+            :class="locationStore.locationStatus === 'granted' ? 'text-emerald-600' : 'text-slate-400'"
+          />
+          <span class="max-w-[180px] truncate">{{ locationLabel }}</span>
+          <svg v-if="locationStore.locationStatus === 'requesting'" class="h-3.5 w-3.5 animate-spin text-slate-400" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+          </svg>
+          <ChevronDownIcon v-else class="h-4 w-4 text-slate-400" />
+        </button>
 
         <div class="hidden h-10 w-px bg-slate-200 md:block" />
 
@@ -121,7 +131,12 @@
                   <span class="shrink-0">{{ store.delivery }}</span>
                 </div>
               </div>
-              <p class="text-[11px] font-medium text-slate-500 sm:text-xs">{{ store.category }} • {{ store.area }}</p>
+              <p class="flex flex-wrap items-center gap-1.5 text-[11px] font-medium text-slate-500 sm:text-xs">
+                {{ store.category }} • {{ store.area }}
+                <span v-if="store.distanceKm !== null" class="inline-flex items-center gap-0.5 rounded-full bg-emerald-50 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700">
+                  <MapPinIcon class="h-2.5 w-2.5" />{{ formatDistance(store.distanceKm) }}
+                </span>
+              </p>
               <span :class="['mt-2 inline-flex rounded-md px-2.5 py-1 text-[11px] font-bold sm:px-3 sm:text-xs', store.offerClass]">
                 {{ store.offer }}
               </span>
@@ -129,6 +144,11 @@
           </component>
         </div>
       </section>
+
+      <!-- Ad between featured and all stores -->
+      <div class="mt-3 flex justify-center">
+        <AdUnit slot="XXXXXXXXXX" format="leaderboard" />
+      </div>
 
       <section class="mt-3 rounded-[1.35rem] bg-white/95 p-3 shadow-[0_10px_32px_rgba(15,23,42,0.035)] ring-1 ring-slate-100/80 sm:p-4">
         <div class="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -182,7 +202,12 @@
                   <span class="text-amber-500">★</span>{{ store.rating }} ({{ store.reviews }})
                   <span class="h-1 w-1 rounded-full bg-emerald-600"></span>{{ store.delivery }}
                 </p>
-                <p class="mt-1.5 text-xs font-medium text-slate-500 sm:mt-2 sm:text-sm">{{ store.category }} • {{ store.area }}</p>
+                <p class="mt-1.5 flex items-center gap-1.5 text-xs font-medium text-slate-500 sm:mt-2 sm:text-sm">
+                  {{ store.category }} • {{ store.area }}
+                  <span v-if="store.distanceKm !== null" class="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700 sm:text-xs">
+                    <MapPinIcon class="h-3 w-3" />{{ formatDistance(store.distanceKm) }}
+                  </span>
+                </p>
               </div>
             </div>
             <div class="mt-3 rounded-lg bg-gradient-to-r from-emerald-50 to-transparent px-3 py-2">
@@ -213,6 +238,11 @@
             </div>
           </component>
         </div>
+
+        <!-- Ad below the store grid -->
+        <div class="mt-4 flex justify-center">
+          <AdUnit slot="YYYYYYYYYY" format="auto" />
+        </div>
       </section>
     </main>
   </div>
@@ -227,6 +257,8 @@ import {
   ShoppingBagIcon, ShoppingCartIcon, TagIcon
 } from '@heroicons/vue/24/outline'
 import { getStores, type StoreListItem, type ProductPreview } from '@/api/storefront'
+import AdUnit from '@/components/AdUnit.vue'
+import { useStorefrontStore } from '@/stores/store'
 
 type MarketplaceStore = {
   id: string
@@ -249,6 +281,24 @@ type MarketplaceStore = {
   bannerClass: string
   products: ProductPreview[]
   demo?: boolean
+  distanceKm: number | null
+}
+
+/** Haversine distance in km between two lat/lng points */
+function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371
+  const dLat = (lat2 - lat1) * Math.PI / 180
+  const dLng = (lng2 - lng1) * Math.PI / 180
+  const a = Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+}
+
+function formatDistance(km: number | null): string | null {
+  if (km === null) return null
+  if (km < 1) return `~${Math.round(km * 1000)}m`
+  if (km < 10) return `~${km.toFixed(1)}km`
+  return `~${Math.round(km)}km`
 }
 
 const categoryFilters = [
@@ -264,9 +314,28 @@ const categoryFilters = [
 
 const visibleCategoryFilters = computed(() => categoryFilters)
 const stores = ref<StoreListItem[]>([])
+const locationStore = useStorefrontStore()
 const loading = ref(true)
 const activeCategory = ref('all')
 const searchInput = ref('')
+
+const locationLabel = computed(() => {
+  const s = locationStore.locationStatus
+  if (s === 'requesting') return 'Detecting location…'
+  if (s === 'granted' && locationStore.userAddress) {
+    return locationStore.userAddress.split(',')[0].trim()
+  }
+  if (s === 'granted') return 'Location detected'
+  if (locationStore.userAddress) return locationStore.userAddress.split(',')[0].trim()
+  return 'Set your location'
+})
+
+function openLocationPicker() {
+  // Trigger GPS if idle; if denied user sees the LocationBanner guidance
+  if (locationStore.locationStatus === 'idle' || locationStore.locationStatus === 'denied') {
+    locationStore.requestLocation()
+  }
+}
 
 const p = (name: string): ProductPreview => ({ name, image_url: null })
 
@@ -281,20 +350,31 @@ const stats = computed(() => [
   { value: storeCount.value, label: 'Stores Open', icon: ShoppingBagIcon, tone: 'bg-emerald-100 text-emerald-700' },
   { value: '24 mins', label: 'Avg. Delivery Time', icon: ClockIcon, tone: 'bg-amber-100 text-amber-700' },
   { value: '36', label: 'Offers Today', icon: TagIcon, tone: 'bg-violet-100 text-violet-700' },
-  { value: 'Nairobi, Kenya', label: 'Delivering to your area', icon: MapPinIcon, tone: 'bg-emerald-100 text-emerald-700' },
+  { value: locationLabel.value, label: 'Delivering to your area', icon: MapPinIcon, tone: 'bg-emerald-100 text-emerald-700' },
 ])
 
 const storeCount = computed(() => String(stores.value.length))
 
 const displayStores = computed(() => {
-  const fromApi = stores.value.map((store, index) => fromStoreListItem(store, index))
+  let list = stores.value.map((store, index) => fromStoreListItem(store, index))
   const query = searchInput.value.trim().toLowerCase()
-  if (!query) return fromApi
-  return fromApi.filter(store =>
-    store.name.toLowerCase().includes(query) ||
-    store.category.toLowerCase().includes(query) ||
-    store.area.toLowerCase().includes(query)
-  )
+  if (query) {
+    list = list.filter(store =>
+      store.name.toLowerCase().includes(query) ||
+      store.category.toLowerCase().includes(query) ||
+      store.area.toLowerCase().includes(query)
+    )
+  }
+  // Sort nearest-first when user location is available
+  if (locationStore.locationStatus === 'granted') {
+    list = [...list].sort((a, b) => {
+      if (a.distanceKm === null && b.distanceKm === null) return 0
+      if (a.distanceKm === null) return 1
+      if (b.distanceKm === null) return -1
+      return a.distanceKm - b.distanceKm
+    })
+  }
+  return list
 })
 
 const featuredStores = computed(() =>
@@ -336,6 +416,7 @@ function makeStore(
     offer,
     products,
     demo: slug.startsWith('demo-'),
+    distanceKm: null,
     badge,
     badgeClass: tone.includes('food') ? 'bg-orange-500' : tone.includes('pharmacy') ? 'bg-violet-500' : 'bg-emerald-600',
     bannerClass: tone.includes('food')
@@ -354,21 +435,29 @@ function makeStore(
 function fromStoreListItem(store: StoreListItem, index: number): MarketplaceStore {
   const category = categoryLabel(store.store_category)
   const fallback = demoStores[index % demoStores.length]
-  return makeStore(
-    store.slug,
-    store.name,
-    category,
-    store.address || fallback.area,
-    categoryEmoji(store.store_category),
-    fallback.logoBg,
-    (4.9 - (index % 5) * 0.1).toFixed(1),
-    90 + index * 32,
-    ['15–25 mins', '20–30 mins', '25–35 mins'][index % 3],
-    fallback.offer,
-    store.product_previews?.length ? store.product_previews : fallback.products,
-    fallback.badge,
-    { logoUrl: store.logo_url, bannerUrl: store.banner_url }
-  )
+  const uLat = locationStore.userLat
+  const uLng = locationStore.userLng
+  const distanceKm = (uLat != null && uLng != null && store.lat != null && store.lng != null)
+    ? haversineKm(uLat, uLng, store.lat, store.lng)
+    : null
+  return {
+    ...makeStore(
+      store.slug,
+      store.name,
+      category,
+      store.address || fallback.area,
+      categoryEmoji(store.store_category),
+      fallback.logoBg,
+      (4.9 - (index % 5) * 0.1).toFixed(1),
+      90 + index * 32,
+      ['15–25 mins', '20–30 mins', '25–35 mins'][index % 3],
+      fallback.offer,
+      store.product_previews?.length ? store.product_previews : fallback.products,
+      fallback.badge,
+      { logoUrl: store.logo_url, bannerUrl: store.banner_url }
+    ),
+    distanceKm,
+  }
 }
 
 function categoryEmoji(category: string) {

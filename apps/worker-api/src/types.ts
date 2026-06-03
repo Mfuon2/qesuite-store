@@ -17,6 +17,7 @@ export interface Env {
   SMS_PARTNER_ID: string
   SMS_SHORTCODE: string
   SMS_BASE_URL: string
+  GOOGLE_PLACES_KEY?: string
   WHATSAPP_TOKEN: string
   WHATSAPP_PHONE_ID: string
   APP_BASE_URL: string

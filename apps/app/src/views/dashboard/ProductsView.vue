@@ -11,6 +11,14 @@
         </div>
 
         <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <button
+            @click="showCatalogModal = true"
+            class="owner-secondary-action"
+            :disabled="productsStore.loading || !productsStore.products.length"
+          >
+            <ShareIcon class="h-4 w-4" />
+            Share catalog
+          </button>
           <label class="owner-secondary-action cursor-pointer">
             <ArrowUpTrayIcon class="h-4 w-4" />
             <span>Import CSV</span>
@@ -203,6 +211,12 @@
         @close="closeModal"
         @saved="closeModal"
       />
+      <CatalogShareModal
+        v-if="showCatalogModal"
+        :products="productsStore.products"
+        :tenant="settingsStore.tenant"
+        @close="showCatalogModal = false"
+      />
     </Teleport>
   </div>
 </template>
@@ -211,22 +225,26 @@
 import { computed, ref, watch, onMounted } from 'vue'
 import {
   PlusIcon, MagnifyingGlassIcon, ArrowUpTrayIcon, PencilIcon, TrashIcon,
-  Squares2X2Icon, ListBulletIcon, CubeIcon
+  Squares2X2Icon, ListBulletIcon, CubeIcon, ShareIcon
 } from '@heroicons/vue/24/outline'
 import ProductFormModal from '@/components/dashboard/ProductFormModal.vue'
+import CatalogShareModal from '@/components/dashboard/CatalogShareModal.vue'
 import { useProductsStore } from '@/stores/products'
 import { useCategoriesStore } from '@/stores/categories'
+import { useSettingsStore } from '@/stores/settings'
 import { useConfirm } from '@/composables/useConfirm'
 import type { Product, ProductCreate } from '@qesuite/types'
 
 const productsStore = useProductsStore()
 const categoriesStore = useCategoriesStore()
+const settingsStore = useSettingsStore()
 const { confirm } = useConfirm()
 
 const viewMode = ref<'grid' | 'list'>('grid')
 const search = ref('')
 const selectedCategory = ref('')
 const showModal = ref(false)
+const showCatalogModal = ref(false)
 const editingProduct = ref<Product | null>(null)
 const lowStockCount = computed(() => productsStore.products.filter(product => product.stock < 5).length)
 const featuredCount = computed(() => productsStore.products.filter(product => product.featured).length)
@@ -299,7 +317,8 @@ async function handleCsvImport(e: Event) {
 onMounted(async () => {
   await Promise.all([
     productsStore.fetchProducts(),
-    categoriesStore.fetchCategories()
+    categoriesStore.fetchCategories(),
+    settingsStore.tenant ? Promise.resolve() : settingsStore.fetchTenant()
   ])
 })
 </script>

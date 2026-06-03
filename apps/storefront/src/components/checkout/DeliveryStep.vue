@@ -95,18 +95,14 @@
         </div>
       </div>
 
-      <div class="relative">
-        <MapPinIcon class="absolute left-3.5 top-3.5 h-5 w-5 text-slate-400" />
-        <textarea
-          v-model="form.address"
-          :placeholder="$t('checkout.delivery.address_placeholder')"
-          rows="2"
-          class="w-full pl-10 pr-4 py-3 rounded-xl border text-sm outline-none transition-colors resize-none bg-white text-slate-950 placeholder-slate-400"
-          :class="addressError
-            ? 'border-red-400'
-            : 'border-slate-200 focus:border-emerald-500'"
-        />
-      </div>
+      <!-- Address search with Nominatim autocomplete -->
+      <AddressSearch
+        v-model="form.address"
+        :placeholder="$t('checkout.delivery.address_placeholder')"
+        :error="!!addressError"
+        country-code="ke"
+        @select="onAddressSelect"
+      />
       <p v-if="addressError" class="text-xs text-red-500">{{ addressError }}</p>
 
       <!-- Location confirmation panel (shown when GPS acquired) -->
@@ -182,6 +178,7 @@ import { useCheckoutStore } from '@/stores/checkout'
 import { useStorefrontStore } from '@/stores/store'
 import { useCartStore } from '@/stores/cart'
 import { useCart } from '@/composables/useCart'
+import AddressSearch from '@/components/AddressSearch.vue'
 
 const { t } = useI18n()
 const checkout = useCheckoutStore()
@@ -213,6 +210,16 @@ watch(() => store.locationStatus, (status) => {
     form.lng = store.userLng
   }
 }, { immediate: true })
+
+// Called when user selects a result from the Nominatim autocomplete
+function onAddressSelect(payload: { address: string; lat: number; lng: number }) {
+  form.address = payload.address
+  if (payload.lat && payload.lng) {
+    form.lat = payload.lat
+    form.lng = payload.lng
+  }
+  addressError.value = ''
+}
 
 // Fill the address text field with the reverse-geocoded address
 function applyLocationToAddress() {

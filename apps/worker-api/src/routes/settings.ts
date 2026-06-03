@@ -20,7 +20,7 @@ settings.put('/tenant', tenantGuard, async (c) => {
   try {
     const tenantId = c.get('user').tenant_id!
     const body = await c.req.json<Record<string, string | null>>()
-    const allowed = ['name', 'logo_url', 'banner_url', 'primary_color', 'accent_color', 'font_family', 'phone', 'address', 'whatsapp_number', 'store_category']
+    const allowed = ['name', 'logo_url', 'banner_url', 'primary_color', 'accent_color', 'font_family', 'phone', 'address', 'lat', 'lng', 'whatsapp_number', 'store_category']
     const fields: string[] = []
     const values: (string | null)[] = []
     for (const key of allowed) {
@@ -106,7 +106,7 @@ settings.post('/onboarding', tenantGuard, async (c) => {
       }
 
       const allowed = ['name', 'slug', 'logo_url', 'banner_url', 'primary_color', 'accent_color',
-        'font_family', 'phone', 'address', 'whatsapp_number', 'store_category']
+        'font_family', 'phone', 'address', 'lat', 'lng', 'whatsapp_number', 'store_category']
       const fields: string[] = []
       const values: unknown[] = []
       for (const key of allowed) {

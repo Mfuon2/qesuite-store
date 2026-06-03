@@ -35,6 +35,12 @@
               <span v-if="pickupEnabled" class="h-0.5 w-0.5 shrink-0 rounded-full bg-emerald-600 sm:h-1 sm:w-1"></span>
               <span v-if="pickupEnabled" class="sm:hidden">Pickup</span>
               <span v-if="pickupEnabled" class="hidden sm:inline">Pickup available</span>
+              <template v-if="distanceLabel">
+                <span class="h-0.5 w-0.5 shrink-0 rounded-full bg-emerald-600 sm:h-1 sm:w-1"></span>
+                <span class="inline-flex items-center gap-1 text-emerald-700">
+                  <MapPinIcon class="h-3 w-3 sm:h-4 sm:w-4" />{{ distanceLabel }}
+                </span>
+              </template>
             </div>
 
             <div class="mt-3 flex flex-wrap items-center gap-2 sm:mt-4 sm:gap-3">
@@ -85,7 +91,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { TruckIcon } from '@heroicons/vue/24/outline'
+import { MapPinIcon, TruckIcon } from '@heroicons/vue/24/outline'
 import { useStorefrontStore } from '@/stores/store'
 
 defineEmits<{ 'shop-now': [] }>()
@@ -100,4 +106,28 @@ const storeInitial = computed(() => storeName.value.charAt(0).toUpperCase())
 const estimatedMinutes = computed(() => store.estimatedMinutes)
 const deliveryEnabled = computed(() => store.deliveryEnabled)
 const pickupEnabled = computed(() => store.pickupEnabled)
+
+/** Haversine distance in km */
+function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371
+  const dLat = (lat2 - lat1) * Math.PI / 180
+  const dLng = (lng2 - lng1) * Math.PI / 180
+  const a = Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+}
+
+const distanceLabel = computed(() => {
+  const uLat = store.userLat
+  const uLng = store.userLng
+  const sLat = store.config?.tenant.lat
+  const sLng = store.config?.tenant.lng
+  if (uLat == null || uLng == null || sLat == null || sLng == null) return null
+  if (uLat === 0 && uLng === 0) return null  // address-only selection with no coords
+  if (sLat === 0 && sLng === 0) return null  // store geocoded to ocean/invalid
+  const km = haversineKm(uLat, uLng, sLat, sLng)
+  if (km < 1) return `~${Math.round(km * 1000)}m away`
+  if (km < 10) return `~${km.toFixed(1)}km away`
+  return `~${Math.round(km)}km away`
+})
 </script>

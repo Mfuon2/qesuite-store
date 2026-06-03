@@ -16,7 +16,7 @@
  * Legacy format (v1): "<saltHex>:<hashHex>"  — verified transparently, never created.
  */
 
-const ITERATIONS = 600_000
+const ITERATIONS = 100_000
 const SALT_BYTES = 32
 const KEY_BITS   = 256
 

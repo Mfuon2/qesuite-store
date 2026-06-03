@@ -116,10 +116,16 @@
                   <span class="admin-label">Phone</span>
                   <input v-model="tenant.phone" type="tel" placeholder="+254700000000" class="admin-input mt-2" />
                 </label>
-                <label class="block lg:col-span-2">
-                  <span class="admin-label">Store address</span>
-                  <input v-model="tenant.address" type="text" placeholder="123 Main St, Nairobi" class="admin-input mt-2" />
-                </label>
+                <div class="lg:col-span-2">
+                  <span class="admin-label block mb-2">Store location</span>
+                  <p class="mb-1.5 text-xs font-medium text-slate-400">Search and select to pin exact coordinates for the customer map.</p>
+                  <LocationSearch
+                    :model-value="tenant.address || ''"
+                    placeholder="Search store location…"
+                    @update:model-value="tenant.address = $event"
+                    @select="onLocationSelect"
+                  />
+                </div>
                 <label class="block lg:col-span-2">
                   <span class="admin-label">WhatsApp business</span>
                   <input v-model="tenant.whatsapp_number" type="tel" placeholder="+254700000000" class="admin-input mt-2" />
@@ -413,6 +419,7 @@ import {
 } from '@heroicons/vue/24/outline'
 import ImageUpload from '@/components/dashboard/ImageUpload.vue'
 import ColorPicker from '@/components/dashboard/ColorPicker.vue'
+import LocationSearch from '@/components/dashboard/LocationSearch.vue'
 import { useSettingsStore } from '@/stores/settings'
 import { apiGetUploadUrl } from '@/api/settings'
 import { beginNetworkActivity, endNetworkActivity } from '@/composables/useNetworkActivity'
@@ -470,6 +477,8 @@ const tenant = reactive({
   name: settingsStore.tenant?.name ?? '',
   phone: settingsStore.tenant?.phone ?? '',
   address: settingsStore.tenant?.address ?? '',
+  lat: (settingsStore.tenant as unknown as { lat?: number | null })?.lat ?? null as number | null,
+  lng: (settingsStore.tenant as unknown as { lng?: number | null })?.lng ?? null as number | null,
   whatsapp_number: settingsStore.tenant?.whatsapp_number ?? '',
   logo_url: settingsStore.tenant?.logo_url ?? null,
   banner_url: settingsStore.tenant?.banner_url ?? null,
@@ -477,6 +486,12 @@ const tenant = reactive({
   accent_color: settingsStore.tenant?.accent_color ?? '#0d9488',
   font_family: settingsStore.tenant?.font_family ?? 'Inter'
 })
+
+function onLocationSelect(payload: { address: string; lat: number; lng: number }) {
+  tenant.address = payload.address
+  tenant.lat = payload.lat || null
+  tenant.lng = payload.lng || null
+}
 
 const storeSettings = reactive({
   delivery_enabled: settingsStore.storeSettings?.delivery_enabled ?? true,
@@ -584,6 +599,8 @@ async function saveAll() {
       name: tenant.name,
       phone: tenant.phone || null,
       address: tenant.address || null,
+      ...(tenant.lat != null ? { lat: tenant.lat } : {}),
+      ...(tenant.lng != null ? { lng: tenant.lng } : {}),
       whatsapp_number: tenant.whatsapp_number || null,
       logo_url: tenant.logo_url,
       banner_url: tenant.banner_url,

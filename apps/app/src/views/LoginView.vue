@@ -82,7 +82,51 @@
         </section>
 
         <section class="mx-auto w-full max-w-[460px]">
-          <div class="owner-panel p-5 sm:p-6">
+          <!-- ── Store selector (replaces form when multi-store owner logs in) ── -->
+          <div v-if="auth.pendingStoreSelection" class="owner-panel p-5 sm:p-6">
+            <button
+              class="mb-4 flex items-center gap-1.5 text-xs font-semibold text-slate-400 hover:text-slate-700 transition-colors"
+              @click="auth.pendingStoreSelection = null; error = ''"
+            >
+              <ArrowLeftIcon class="h-3.5 w-3.5" /> Back
+            </button>
+            <div class="mb-5">
+              <div class="owner-eyebrow">Multiple stores</div>
+              <h1 class="owner-title">Which store?</h1>
+              <p class="owner-subtitle">Your phone number is linked to {{ auth.pendingStoreSelection.stores.length }} stores. Pick one to continue.</p>
+            </div>
+
+            <p v-if="error" class="mb-3 rounded-2xl border border-red-100 bg-red-50 px-3 py-2 text-xs font-semibold text-red-600">{{ error }}</p>
+
+            <div class="space-y-2.5">
+              <button
+                v-for="store in auth.pendingStoreSelection.stores"
+                :key="store.tenant_id"
+                :disabled="auth.loading"
+                class="group w-full flex items-center gap-4 rounded-2xl border border-slate-100 bg-white p-4 text-left shadow-sm transition-all hover:border-primary/30 hover:shadow-md active:scale-[0.98] disabled:opacity-60"
+                @click="handleSelectStore(store.tenant_id)"
+              >
+                <div
+                  class="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-xl border border-slate-100 bg-slate-50 text-lg font-black shadow-sm"
+                  :style="store.logo_url ? '' : `background-color: ${store.primary_color}20; color: ${store.primary_color}`"
+                >
+                  <img v-if="store.logo_url" :src="store.logo_url" :alt="store.name" class="h-full w-full object-cover" />
+                  <span v-else>{{ store.name.charAt(0).toUpperCase() }}</span>
+                </div>
+                <div class="min-w-0 flex-1">
+                  <p class="truncate text-sm font-bold text-slate-900">{{ store.name }}</p>
+                  <p class="truncate text-xs text-slate-400">{{ storefrontUrl }}/{{ store.slug }}</p>
+                </div>
+                <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-slate-50 group-hover:bg-primary/10 transition-colors">
+                  <span v-if="auth.loading && selectingTenantId === store.tenant_id" class="h-4 w-4 rounded-full border-2 border-slate-300 border-t-primary animate-spin" />
+                  <ChevronRightIcon v-else class="h-4 w-4 text-slate-400 group-hover:text-primary transition-colors" />
+                </div>
+              </button>
+            </div>
+          </div>
+
+          <!-- ── Normal login panel ── -->
+          <div v-else class="owner-panel p-5 sm:p-6">
             <div class="mb-5">
               <div class="owner-eyebrow">Secure sign in</div>
               <h1 class="owner-title">Welcome back</h1>
@@ -93,16 +137,16 @@
 
             <!-- Role tabs -->
             <div class="owner-segmented mb-5 grid w-full grid-cols-3">
-          <button
-            v-for="tab in tabs"
-            :key="tab.id"
+              <button
+                v-for="tab in tabs"
+                :key="tab.id"
                 class="owner-segment-button h-10 rounded-xl text-xs"
                 :class="activeTab === tab.id ? 'owner-segment-button-active' : ''"
-            @click="activeTab = tab.id; error = ''"
-          >
-            {{ tab.label }}
-          </button>
-        </div>
+                @click="activeTab = tab.id; error = ''"
+              >
+                {{ tab.label }}
+              </button>
+            </div>
 
             <!-- Owner login form -->
             <form v-if="activeTab === 'owner'" class="space-y-4" @submit.prevent="handleOwnerLogin">
@@ -216,6 +260,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { ArrowLeftIcon, ChevronRightIcon } from '@heroicons/vue/24/outline'
 import { useAuthStore } from '@/stores/auth'
 
 const auth = useAuthStore()
@@ -223,6 +268,7 @@ const router = useRouter()
 
 const activeTab = ref<'owner' | 'rider' | 'admin'>('owner')
 const error = ref('')
+const selectingTenantId = ref<string | null>(null)
 
 const ownerCredential = ref('')
 const ownerPassword = ref('')
@@ -230,6 +276,8 @@ const riderPhone = ref('')
 const riderLinkSent = ref(false)
 const adminEmail = ref('')
 const adminPassword = ref('')
+
+const storefrontUrl = (import.meta.env.VITE_STOREFRONT_URL ?? 'https://store.qesuite.com').replace(/\/$/, '')
 
 const tabs = [
   { id: 'owner', label: 'Store Owner' },
@@ -240,10 +288,26 @@ const tabs = [
 async function handleOwnerLogin() {
   error.value = ''
   const res = await auth.login(ownerCredential.value.trim(), ownerPassword.value)
+  if (!res.success) {
+    error.value = res.error || 'Login failed'
+    return
+  }
+  if ('requires_store_selection' in res && res.requires_store_selection) {
+    // Store selector screen now shows — no redirect yet
+    return
+  }
+  router.push(auth.onboardingComplete ? '/dashboard' : '/onboarding')
+}
+
+async function handleSelectStore(tenantId: string) {
+  error.value = ''
+  selectingTenantId.value = tenantId
+  const res = await auth.selectStore(tenantId)
+  selectingTenantId.value = null
   if (res.success) {
     router.push(auth.onboardingComplete ? '/dashboard' : '/onboarding')
   } else {
-    error.value = res.error || 'Login failed'
+    error.value = res.error || 'Store selection failed'
   }
 }
 

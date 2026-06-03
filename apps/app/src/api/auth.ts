@@ -15,15 +15,42 @@ export interface AuthData {
   store?: { slug: string; name?: string } | null
 }
 
+export interface StoreChoice {
+  tenant_id: string
+  user_id: string
+  name: string
+  slug: string
+  logo_url: string | null
+  primary_color: string
+}
+
+export interface StoreSelectionData {
+  requires_store_selection: true
+  selection_token: string
+  stores: StoreChoice[]
+}
+
 export interface LoginPayload {
   identifier: string
   password: string
 }
 
-export async function apiLogin(payload: LoginPayload): Promise<ApiResponse<AuthData>> {
+export async function apiLogin(
+  payload: LoginPayload
+): Promise<ApiResponse<AuthData | StoreSelectionData>> {
   return apiFetch('/api/auth/login', {
     method: 'POST',
-    body: JSON.stringify(payload)
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function apiSelectStore(
+  selectionToken: string,
+  tenantId: string
+): Promise<ApiResponse<AuthData>> {
+  return apiFetch('/api/auth/select-store', {
+    method: 'POST',
+    body: JSON.stringify({ selection_token: selectionToken, tenant_id: tenantId }),
   })
 }
 

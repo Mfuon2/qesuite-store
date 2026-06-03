@@ -13,7 +13,7 @@ storefront.get('/', async (c) => {
 
     // Only surface stores with a valid subscription (active or within trial window)
     let query = `SELECT id, name, slug, logo_url, banner_url, primary_color, accent_color,
-                        address, store_category
+                        address, lat, lng, store_category
                  FROM tenants
                  WHERE is_suspended = 0
                    AND (
@@ -71,19 +71,43 @@ storefront.get('/:slug', async (c) => {
     const slug = c.req.param('slug')
     const tenant = await c.env.qesuite_db.prepare(
       `SELECT id, name, slug, logo_url, banner_url, primary_color, accent_color,
-              font_family, phone, address, whatsapp_number, is_suspended,
+              font_family, phone, address, lat, lng, whatsapp_number, is_suspended,
               subscription_status, trial_ends_at
        FROM tenants WHERE slug = ?`
     ).bind(slug).first<{
       id: string; name: string; slug: string; logo_url: string | null
       banner_url: string | null; primary_color: string; accent_color: string
       font_family: string; phone: string | null; address: string | null
+      lat: number | null; lng: number | null
       whatsapp_number: string | null; is_suspended: number
       subscription_status: string; trial_ends_at: string | null
     }>()
 
     if (!tenant) {
       return c.json({ success: false, error: 'Store not found', data: null }, 404)
+    }
+
+    // Auto-geocode: if the tenant has an address but no coordinates, resolve once and cache
+    let tenantLat = tenant.lat
+    let tenantLng = tenant.lng
+    if ((!tenantLat || !tenantLng) && tenant.address) {
+      try {
+        const qs = new URLSearchParams({
+          q: tenant.address, format: 'json', limit: '1', countrycodes: 'ke',
+        })
+        const geo = await fetch(`https://nominatim.openstreetmap.org/search?${qs}`, {
+          headers: { 'Accept-Language': 'en', 'User-Agent': 'QeSuite/1.0' },
+        })
+        const places = await geo.json() as Array<{ lat: string; lon: string }>
+        if (places.length > 0) {
+          tenantLat = parseFloat(places[0].lat)
+          tenantLng = parseFloat(places[0].lon)
+          // Persist so we don't geocode on every request
+          await c.env.qesuite_db.prepare(
+            `UPDATE tenants SET lat = ?, lng = ? WHERE id = ?`
+          ).bind(tenantLat, tenantLng, tenant.id).run().catch(() => { /* non-fatal */ })
+        }
+      } catch { /* geocoding is best-effort */ }
     }
 
     const settings = await c.env.qesuite_db.prepare(
@@ -106,6 +130,8 @@ storefront.get('/:slug', async (c) => {
           font_family: tenant.font_family,
           phone: tenant.phone,
           address: tenant.address,
+          lat: tenantLat ?? null,
+          lng: tenantLng ?? null,
           whatsapp_number: tenant.whatsapp_number,
           is_suspended: Boolean(tenant.is_suspended),
           subscription_status: tenant.subscription_status,
@@ -274,6 +300,19 @@ storefront.post('/:slug/orders', async (c) => {
       body.delivery_address ?? null, body.delivery_lat ?? null, body.delivery_lng ?? null,
       body.payment_method, subtotal, deliveryFee, total, trackingCode, body.notes ?? null
     ).run()
+
+    // Upsert customer record — track every unique phone per tenant
+    await c.env.qesuite_db.prepare(
+      `INSERT INTO customers (id, tenant_id, name, phone, first_order_at, last_order_at, order_count, total_spend)
+       VALUES (?, ?, ?, ?, datetime('now'), datetime('now'), 1, ?)
+       ON CONFLICT(tenant_id, phone) DO UPDATE SET
+         name         = COALESCE(excluded.name, customers.name),
+         last_order_at = datetime('now'),
+         order_count  = customers.order_count + 1,
+         total_spend  = customers.total_spend + excluded.total_spend`
+    ).bind(generateId(), tenant.id, body.customer_name ?? null, body.customer_phone, total)
+      .run()
+      .catch(() => {/* customers table may not exist yet on older DBs — non-fatal */})
 
     // Insert order items and update stock
     for (const item of itemDetails) {

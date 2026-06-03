@@ -218,7 +218,9 @@ const storeIdentity = ref({
   accent_color: '#0d9488',
   font_family: 'Inter',
   phone: '',
-  address: ''
+  address: '',
+  lat: null as number | null,
+  lng: null as number | null,
 })
 
 const products = ref<ProductCreate[]>([])
@@ -262,6 +264,8 @@ async function nextStep() {
         font_family: storeIdentity.value.font_family,
         phone: storeIdentity.value.phone || null,
         address: storeIdentity.value.address || null,
+        lat: storeIdentity.value.lat ?? null,
+        lng: storeIdentity.value.lng ?? null,
         whatsapp_number: deliveryConfig.value.whatsapp_number || null
       },
       settings: {
@@ -327,6 +331,8 @@ onMounted(async () => {
       if (t.font_family)   storeIdentity.value.font_family   = t.font_family
       if (t.phone)         storeIdentity.value.phone         = t.phone
       if (t.address)       storeIdentity.value.address       = t.address
+      if ((t as { lat?: number | null }).lat != null)  storeIdentity.value.lat = (t as { lat?: number | null }).lat!
+      if ((t as { lng?: number | null }).lng != null)  storeIdentity.value.lng = (t as { lng?: number | null }).lng!
       if (t.whatsapp_number) deliveryConfig.value.whatsapp_number = t.whatsapp_number
     }
 

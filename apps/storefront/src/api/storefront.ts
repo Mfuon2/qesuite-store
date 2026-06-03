@@ -24,6 +24,8 @@ export interface StoreListItem {
   primary_color: string
   accent_color: string
   address: string | null
+  lat: number | null
+  lng: number | null
   store_category: StoreCategory
   product_previews: ProductPreview[]
 }

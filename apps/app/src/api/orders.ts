@@ -85,3 +85,13 @@ export async function apiAssignRider(orderId: string, staffId: string): Promise<
     body: JSON.stringify({ order_id: orderId, staff_id: staffId })
   })
 }
+
+export async function apiRecordPayment(
+  orderId: string,
+  payload: { reference?: string; note?: string; method?: string }
+): Promise<ApiResponse<{ payment_id: string; reference: string | null }>> {
+  return apiFetch(`/api/orders/${orderId}/payment`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}

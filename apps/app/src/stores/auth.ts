@@ -1,7 +1,8 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { setTokens, clearTokens, getAccessToken, apiFetch } from '@/api/index'
-import { apiLogin, apiRegister, apiGetMe, apiLogout } from '@/api/auth'
+import { apiLogin, apiRegister, apiGetMe, apiLogout, apiSelectStore } from '@/api/auth'
+import type { StoreChoice, StoreSelectionData } from '@/api/auth'
 import { verifyMagicLinkApi, requestMagicLinkApi } from '@/api/delivery'
 import { adminLogin, type AdminUser } from '@/api/admin'
 import { beginNetworkActivity, endNetworkActivity } from '@/composables/useNetworkActivity'
@@ -32,6 +33,9 @@ export const useAuthStore = defineStore('auth', () => {
   const token = ref<string | null>(sessionStorage.getItem('access_token'))
   const onboardingComplete = ref<boolean>(sessionStorage.getItem('onboarding_complete') === 'true')
   const loading = ref(false)
+
+  // Multi-store selection state — set when login returns requires_store_selection
+  const pendingStoreSelection = ref<StoreSelectionData | null>(null)
 
   const isAuthenticated = computed(() => !!token.value)
   const role = computed<UserRole | null>(() => {
@@ -84,28 +88,52 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       const res = await apiLogin({ identifier: credential, password })
       if (!res.success || !res.data) throw new Error(res.error || 'Login failed')
-      const { user: u, access_token } = res.data
-      user.value = { id: u.id, name: u.name, role: u.role as UserRole, tenant_id: u.tenant_id ?? null }
-      token.value = access_token
-      setTokens(access_token)
-      scheduleRefresh(access_token)
 
-      // Restore onboarding completion status from server so it persists across sessions
-      if (u.role === 'owner' && u.tenant_id) {
-        try {
-          const statusRes = await apiFetch<{ data: { complete: boolean } | null }>('/api/onboarding/status')
-          if (statusRes.data?.complete) {
-            onboardingComplete.value = true
-            sessionStorage.setItem('onboarding_complete', 'true')
-          }
-        } catch { /* ignore */ }
+      // Multi-store: backend asks us to pick a store first
+      if ('requires_store_selection' in res.data && res.data.requires_store_selection) {
+        pendingStoreSelection.value = res.data as StoreSelectionData
+        return { success: true, requires_store_selection: true }
       }
 
+      await _finalizeLogin(res.data as { access_token: string; user: AppUser & { tenant_id: string | null } })
       return { success: true }
     } catch (err: unknown) {
       return { success: false, error: err instanceof Error ? err.message : 'Login failed' }
     } finally {
       loading.value = false
+    }
+  }
+
+  async function selectStore(tenantId: string) {
+    if (!pendingStoreSelection.value) return { success: false, error: 'No pending selection' }
+    loading.value = true
+    try {
+      const res = await apiSelectStore(pendingStoreSelection.value.selection_token, tenantId)
+      if (!res.success || !res.data) throw new Error(res.error || 'Store selection failed')
+      pendingStoreSelection.value = null
+      await _finalizeLogin(res.data as { access_token: string; user: AppUser & { tenant_id: string | null } })
+      return { success: true }
+    } catch (err: unknown) {
+      return { success: false, error: err instanceof Error ? err.message : 'Store selection failed' }
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function _finalizeLogin(data: { access_token: string; user: AppUser & { tenant_id: string | null } }) {
+    const { user: u, access_token } = data
+    user.value = { id: u.id, name: u.name, role: u.role as UserRole, tenant_id: u.tenant_id ?? null }
+    token.value = access_token
+    setTokens(access_token)
+    scheduleRefresh(access_token)
+    if (u.role === 'owner' && u.tenant_id) {
+      try {
+        const statusRes = await apiFetch<{ data: { complete: boolean } | null }>('/api/onboarding/status')
+        if (statusRes.data?.complete) {
+          onboardingComplete.value = true
+          sessionStorage.setItem('onboarding_complete', 'true')
+        }
+      } catch { /* ignore */ }
     }
   }
 
@@ -233,6 +261,8 @@ export const useAuthStore = defineStore('auth', () => {
     onboardingComplete,
     loading,
     login,
+    selectStore,
+    pendingStoreSelection,
     register,
     logout,
     fetchMe,

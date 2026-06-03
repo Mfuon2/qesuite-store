@@ -9,9 +9,9 @@ const upload = new Hono<{ Bindings: Env; Variables: Variables }>()
 const MAX_SIZE_BYTES = 4 * 1024 * 1024 // 4 MB
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp']
 
-function publicImageUrl(env: Env, key: string): string {
+function publicImageUrl(env: Env, key: string, workerOrigin: string): string {
   if (env.CDN_URL) return `${env.CDN_URL}/${key}`
-  return `${env.APP_BASE_URL}/api/upload/img?key=${encodeURIComponent(key)}`
+  return `${workerOrigin}/api/upload/img?key=${encodeURIComponent(key)}`
 }
 
 // GET /api/upload/img?key=... — serve an image from R2 (dev + prod fallback)
@@ -57,12 +57,15 @@ upload.post('/image', authMiddleware, tenantGuard, async (c) => {
     const key = `${purpose}/${tenantId}/${fileId}.${ext}`
 
     const uploadToken = btoa(JSON.stringify({ key, tenant_id: tenantId, exp: Date.now() + 600_000 }))
+    // Always use the Worker's own origin so the binary PUT goes to the Worker,
+    // not to store.qesuite.com (Cloudflare Pages — static only, can't handle uploads)
+    const workerOrigin = new URL(c.req.url).origin
 
     return c.json({
       success: true,
       data: {
-        upload_url: `${c.env.APP_BASE_URL}/api/upload/r2?token=${encodeURIComponent(uploadToken)}`,
-        public_url: publicImageUrl(c.env, key),
+        upload_url: `${workerOrigin}/api/upload/r2?token=${encodeURIComponent(uploadToken)}`,
+        public_url: publicImageUrl(c.env, key, workerOrigin),
         key,
         content_type: contentType,
         expires_in: 600,
@@ -123,7 +126,7 @@ upload.put('/r2', async (c) => {
 
     return c.json({
       success: true,
-      data: { url: publicImageUrl(c.env, key), key },
+      data: { url: publicImageUrl(c.env, key, new URL(c.req.url).origin), key },
       error: null,
       message: 'Upload successful',
     })

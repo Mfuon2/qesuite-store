@@ -1,7 +1,7 @@
 <template>
   <Transition name="slide-up">
     <div
-      v-if="cartStore.itemCount > 0"
+      v-if="cartStore.itemCount > 0 && route.name !== 'checkout'"
       class="fixed bottom-0 left-0 right-0 z-40 px-4 pb-4 pb-safe pointer-events-none"
     >
       <button
@@ -30,9 +30,11 @@
 <script setup lang="ts">
 import { useCartStore } from '@/stores/cart'
 import { useCart } from '@/composables/useCart'
+import { useRoute } from 'vue-router'
 
 const cartStore = useCartStore()
 const cart = useCart()
+const route = useRoute()
 </script>
 
 <style scoped>

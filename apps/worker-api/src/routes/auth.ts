@@ -187,10 +187,68 @@ auth.post('/login', async (c) => {
     }
 
     const isEmail = identifier.includes('@')
+
+    // For phone logins, find ALL active owner accounts sharing that phone
+    // so we can detect multi-store owners before verifying the password once
+    if (!isEmail) {
+      const { results: ownerRows } = await c.env.qesuite_db.prepare(
+        `SELECT id, tenant_id, name, password_hash FROM users
+         WHERE phone = ? AND role = 'owner' AND is_active = 1`
+      ).bind(identifier).all<{
+        id: string; tenant_id: string | null; name: string; password_hash: string
+      }>()
+
+      if (ownerRows.length > 1) {
+        // Verify password against the first row (all rows for same phone share credentials)
+        const valid = await verifyPassword(password, ownerRows[0].password_hash)
+        if (!valid) {
+          return c.json({ error: 'Invalid credentials', data: null }, 401)
+        }
+
+        // Collect all stores this phone number owns
+        const tenantIds = ownerRows.map(r => r.tenant_id).filter(Boolean) as string[]
+        const placeholders = tenantIds.map(() => '?').join(', ')
+        const { results: tenants } = await c.env.qesuite_db.prepare(
+          `SELECT id, name, slug, logo_url, primary_color FROM tenants WHERE id IN (${placeholders})`
+        ).bind(...tenantIds).all<{
+          id: string; name: string; slug: string
+          logo_url: string | null; primary_color: string
+        }>()
+
+        // Issue a short-lived selection token — proves auth without granting dashboard access
+        const selectionToken = await signJWT(
+          { sub: ownerRows[0].id, tenant_id: null, role: 'owner', name: ownerRows[0].name },
+          c.env.JWT_SECRET,
+          300  // 5 minutes — enough to pick a store
+        )
+
+        return c.json({
+          success: true,
+          data: {
+            requires_store_selection: true,
+            selection_token: selectionToken,
+            stores: tenants.map(t => {
+              const userRow = ownerRows.find(r => r.tenant_id === t.id)
+              return {
+                tenant_id: t.id,
+                user_id: userRow!.id,
+                name: t.name,
+                slug: t.slug,
+                logo_url: t.logo_url,
+                primary_color: t.primary_color,
+              }
+            }),
+          },
+          error: null,
+        })
+      }
+    }
+
+    // Single-store path (email login or single phone match)
     const user = await c.env.qesuite_db.prepare(
       isEmail
         ? 'SELECT * FROM users WHERE email = ? AND is_active = 1'
-        : 'SELECT * FROM users WHERE phone = ? AND is_active = 1'
+        : "SELECT * FROM users WHERE phone = ? AND role = 'owner' AND is_active = 1"
     ).bind(identifier).first<{
       id: string; tenant_id: string | null; name: string; role: string
       password_hash: string; email: string; phone: string
@@ -229,7 +287,6 @@ auth.post('/login', async (c) => {
       path: '/',
     })
 
-    // Fetch tenant slug if applicable
     let slug: string | null = null
     if (user.tenant_id) {
       const tenant = await c.env.qesuite_db.prepare('SELECT slug FROM tenants WHERE id = ?')
@@ -250,6 +307,80 @@ auth.post('/login', async (c) => {
   } catch (err) {
     console.error('login error', err)
     return c.json({ error: 'Login failed', data: null }, 500)
+  }
+})
+
+// POST /api/auth/select-store — second step when owner has multiple stores
+auth.post('/select-store', async (c) => {
+  try {
+    const { selection_token, tenant_id } = await c.req.json<{
+      selection_token: string
+      tenant_id: string
+    }>()
+
+    if (!selection_token || !tenant_id) {
+      return c.json({ error: 'selection_token and tenant_id are required', data: null }, 400)
+    }
+
+    // Verify the selection token
+    let payload: { sub: string; role: string; name: string }
+    try {
+      payload = await verifyJWT(selection_token, c.env.JWT_SECRET) as typeof payload
+    } catch {
+      return c.json({ error: 'Selection token expired. Please log in again.', data: null }, 401)
+    }
+
+    if (payload.role !== 'owner') {
+      return c.json({ error: 'Forbidden', data: null }, 403)
+    }
+
+    // Confirm the requested tenant actually belongs to this user's phone
+    const user = await c.env.qesuite_db.prepare(
+      `SELECT u.id, u.name, u.phone, u.role
+       FROM users u
+       JOIN users src ON src.id = ? AND src.phone = u.phone
+       WHERE u.tenant_id = ? AND u.role = 'owner' AND u.is_active = 1`
+    ).bind(payload.sub, tenant_id).first<{
+      id: string; name: string; phone: string; role: string
+    }>()
+
+    if (!user) {
+      return c.json({ error: 'Store not found or access denied', data: null }, 403)
+    }
+
+    const accessToken = await signJWT(
+      { sub: user.id, tenant_id, role: 'owner', name: user.name },
+      c.env.JWT_SECRET,
+      ACCESS_TOKEN_TTL
+    )
+    const refreshToken = await signJWT(
+      { sub: user.id, tenant_id, role: 'owner', name: user.name },
+      c.env.JWT_SECRET,
+      REFRESH_TOKEN_TTL
+    )
+
+    await c.env.qesuite_db.prepare('UPDATE users SET refresh_token = ? WHERE id = ?')
+      .bind(refreshToken, user.id).run()
+
+    setCookie(c, 'refresh_token', refreshToken, {
+      httpOnly: true, secure: true, sameSite: 'Lax', maxAge: REFRESH_TOKEN_TTL, path: '/',
+    })
+
+    const tenant = await c.env.qesuite_db.prepare('SELECT slug FROM tenants WHERE id = ?')
+      .bind(tenant_id).first<{ slug: string }>()
+
+    return c.json({
+      success: true,
+      data: {
+        access_token: accessToken,
+        user: { id: user.id, name: user.name, role: 'owner', tenant_id },
+        store: tenant ? { slug: tenant.slug } : null,
+      },
+      error: null,
+    })
+  } catch (err) {
+    console.error('select-store error', err)
+    return c.json({ error: 'Store selection failed', data: null }, 500)
   }
 })
 

@@ -58,18 +58,34 @@
           <p class="text-base font-bold text-gray-900 leading-snug mb-2.5">
             {{ assignment.delivery_address ?? 'No address provided' }}
           </p>
-          <a
-            :href="navigateUrl"
-            target="_blank"
-            rel="noopener"
-            class="flex items-center justify-center gap-2.5 w-full py-3.5 bg-blue-600 active:bg-blue-700 rounded-xl text-white text-base font-bold shadow-sm transition-all active:scale-95"
-          >
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
-                d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-            </svg>
-            NAVIGATE
-          </a>
+          <!-- Navigation app buttons -->
+          <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Open navigation in</p>
+          <div class="grid grid-cols-3 gap-2">
+            <a
+              :href="googleMapsUrl"
+              target="_blank" rel="noopener"
+              class="flex flex-col items-center justify-center gap-1.5 py-3 bg-white rounded-2xl shadow-sm border border-gray-100 active:scale-95 transition-all"
+            >
+              <img src="https://maps.gstatic.com/mapfiles/maps_lite/images/4x/ic_maps_logo_192dp.png" alt="Google Maps" class="w-8 h-8 rounded-lg" />
+              <span class="text-[11px] font-bold text-gray-700">Google Maps</span>
+            </a>
+            <a
+              :href="wazeUrl"
+              target="_blank" rel="noopener"
+              class="flex flex-col items-center justify-center gap-1.5 py-3 bg-white rounded-2xl shadow-sm border border-gray-100 active:scale-95 transition-all"
+            >
+              <div class="w-8 h-8 rounded-lg bg-blue-500 flex items-center justify-center text-white font-black text-sm">W</div>
+              <span class="text-[11px] font-bold text-gray-700">Waze</span>
+            </a>
+            <a
+              :href="osmUrl"
+              target="_blank" rel="noopener"
+              class="flex flex-col items-center justify-center gap-1.5 py-3 bg-white rounded-2xl shadow-sm border border-gray-100 active:scale-95 transition-all"
+            >
+              <div class="w-8 h-8 rounded-lg bg-emerald-600 flex items-center justify-center text-white text-lg">🗺</div>
+              <span class="text-[11px] font-bold text-gray-700">OSM Maps</span>
+            </a>
+          </div>
         </div>
 
         <!-- Total -->
@@ -145,14 +161,29 @@ const assignment = computed<AssignedOrder | undefined>(
 const showFailureModal = ref(false)
 const actionLoading = ref(false)
 
-const navigateUrl = computed(() => {
+function navTarget(a: typeof assignment.value): string {
+  if (!a) return ''
+  if (a.delivery_lat != null && a.delivery_lng != null) return `${a.delivery_lat},${a.delivery_lng}`
+  return encodeURIComponent(a.delivery_address ?? '')
+}
+
+const googleMapsUrl = computed(() => {
+  const t = navTarget(assignment.value)
+  return t ? `https://maps.google.com/?q=${t}&travelmode=driving` : '#'
+})
+const wazeUrl = computed(() => {
   const a = assignment.value
   if (!a) return '#'
-  if (a.delivery_lat != null && a.delivery_lng != null) {
-    return `https://maps.google.com/?q=${a.delivery_lat},${a.delivery_lng}`
-  }
-  if (a.delivery_address) return `https://maps.google.com/?q=${encodeURIComponent(a.delivery_address)}`
-  return '#'
+  if (a.delivery_lat != null && a.delivery_lng != null)
+    return `https://waze.com/ul?ll=${a.delivery_lat},${a.delivery_lng}&navigate=yes`
+  return `https://waze.com/ul?q=${encodeURIComponent(a.delivery_address ?? '')}&navigate=yes`
+})
+const osmUrl = computed(() => {
+  const a = assignment.value
+  if (!a) return '#'
+  if (a.delivery_lat != null && a.delivery_lng != null)
+    return `https://www.openstreetmap.org/directions?to=${a.delivery_lat},${a.delivery_lng}`
+  return `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(a.delivery_address ?? '')}`
 })
 
 const statusLabel = computed(() => {

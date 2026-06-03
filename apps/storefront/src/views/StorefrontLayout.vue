@@ -117,6 +117,8 @@
       </main>
       <CartDrawer />
       <StickyCartBar />
+      <!-- Location permission banner — slides up from bottom -->
+      <LocationBanner />
     </template>
   </div>
 </template>
@@ -127,10 +129,31 @@ import { useRoute, useRouter, RouterView } from 'vue-router'
 import { ExclamationCircleIcon, LockClosedIcon } from '@heroicons/vue/24/outline'
 import { useStorefrontStore } from '@/stores/store'
 import { useCartStore } from '@/stores/cart'
+
+// ── SEO helpers ─────────────────────────────────────────────────────────────
+function setMeta(name: string, content: string) {
+  let el = document.querySelector(`meta[name="${name}"]`) as HTMLMetaElement | null
+  if (!el) { el = document.createElement('meta'); el.name = name; document.head.appendChild(el) }
+  el.content = content
+}
+function setOG(property: string, content: string) {
+  let el = document.querySelector(`meta[property="${property}"]`) as HTMLMetaElement | null
+  if (!el) { el = document.createElement('meta'); el.setAttribute('property', property); document.head.appendChild(el) }
+  el.content = content
+}
+function setJsonLd(data: object, id = 'store-jsonld') {
+  let el = document.getElementById(id) as HTMLScriptElement | null
+  if (!el) { el = document.createElement('script'); el.id = id; el.type = 'application/ld+json'; document.head.appendChild(el) }
+  el.textContent = JSON.stringify(data)
+}
+function removeJsonLd(id = 'store-jsonld') {
+  document.getElementById(id)?.remove()
+}
 import StorefrontHeader from '@/components/StorefrontHeader.vue'
 import CartDrawer from '@/components/CartDrawer.vue'
 import StickyCartBar from '@/components/StickyCartBar.vue'
 import SkeletonCard from '@/components/SkeletonCard.vue'
+import LocationBanner from '@/components/LocationBanner.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -163,17 +186,52 @@ function goToMarketplace() {
   router.replace('/')
 }
 
-onUnmounted(() => { if (redirectInterval) clearInterval(redirectInterval) })
+onUnmounted(() => {
+  if (redirectInterval) clearInterval(redirectInterval)
+  // Clean up store-specific SEO tags when navigating away
+  removeJsonLd()
+  document.title = 'QeSuite Stores'
+})
+
+function applySEO() {
+  const t = store.config?.tenant
+  if (!t) return
+  const STOREFRONT = import.meta.env.VITE_API_URL?.replace('/api', '') ?? 'https://store.qesuite.com'
+  const url = `${STOREFRONT}/${t.slug}`
+  const description = `Shop ${t.name} online — fast delivery${t.address ? ` in ${t.address}` : ''}. Browse fresh products, place your order, and track it in real time.`
+
+  document.title = `${t.name} — QeSuite`
+  setMeta('description', description)
+  setOG('og:type', 'website')
+  setOG('og:url', url)
+  setOG('og:title', `${t.name} — Shop Online`)
+  setOG('og:description', description)
+  if (t.logo_url) setOG('og:image', t.logo_url)
+  setOG('twitter:card', 'summary_large_image')
+  setOG('twitter:title', `${t.name} — Shop Online`)
+  setOG('twitter:description', description)
+
+  // JSON-LD LocalBusiness structured data
+  setJsonLd({
+    '@context': 'https://schema.org',
+    '@type': 'LocalBusiness',
+    name: t.name,
+    url,
+    image: t.logo_url ?? undefined,
+    address: t.address ? { '@type': 'PostalAddress', streetAddress: t.address } : undefined,
+    telephone: t.phone ?? undefined,
+    openingHoursSpecification: { '@type': 'OpeningHoursSpecification', dayOfWeek: ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'] },
+  })
+}
 
 onMounted(async () => {
   const s = slug.value
-  // Request location immediately — non-blocking, runs in parallel with store load
-  store.requestLocation()
   await store.fetchStore(s)
   if (store.isSuspended) {
     startRedirectCountdown()
   } else if (!store.notFound && !store.error) {
     cartStore.initCart(s)
+    applySEO()
     await Promise.all([store.fetchCategories(), store.fetchProducts()])
   }
 })

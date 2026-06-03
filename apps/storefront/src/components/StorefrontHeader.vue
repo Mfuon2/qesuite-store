@@ -94,17 +94,13 @@
               <div class="h-px flex-1 bg-slate-100" />
             </div>
 
-            <!-- Manual address input -->
-            <div class="relative">
-              <MapPinIcon class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-              <input
-                v-model="manualAddress"
-                type="text"
-                placeholder="Street, area, city…"
-                class="w-full rounded-xl border border-slate-200 py-2.5 pl-9 pr-3 text-sm text-slate-700 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10"
-                @keydown.enter="applyManualAddress"
-              />
-            </div>
+            <!-- Address autocomplete (desktop dropdown) -->
+            <AddressSearch
+              v-model="manualAddress"
+              placeholder="Street, area, city…"
+              country-code="ke"
+              @select="onAddressSelect"
+            />
             <button
               class="mt-2 w-full rounded-xl py-2.5 text-sm font-bold text-white transition active:scale-[0.98]"
               :style="{ backgroundColor: 'var(--color-primary)' }"
@@ -226,16 +222,13 @@
               <div class="h-px flex-1 bg-slate-100" />
             </div>
 
-            <div class="relative">
-              <MapPinIcon class="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-              <input
-                v-model="manualAddress"
-                type="text"
-                placeholder="Street, area, city…"
-                class="w-full rounded-2xl border border-slate-200 py-3 pl-10 pr-4 text-sm text-slate-700 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10"
-                @keydown.enter="applyManualAddress"
-              />
-            </div>
+            <!-- Address autocomplete (mobile bottom sheet) -->
+            <AddressSearch
+              v-model="manualAddress"
+              placeholder="Street, area, city…"
+              country-code="ke"
+              @select="onAddressSelect"
+            />
             <button
               class="mt-3 w-full rounded-2xl py-3.5 text-sm font-bold text-white"
               :style="{ backgroundColor: 'var(--color-primary)' }"
@@ -328,6 +321,7 @@ import {
 } from '@heroicons/vue/24/outline'
 import { useStorefrontStore } from '@/stores/store'
 import { useCartStore } from '@/stores/cart'
+import AddressSearch from '@/components/AddressSearch.vue'
 
 const storefrontStore = useStorefrontStore()
 const cartStore = useCartStore()
@@ -364,10 +358,22 @@ async function useGPS() {
   if (storefrontStore.locationStatus === 'granted') locationOpen.value = false
 }
 
+function onAddressSelect(payload: { address: string; lat: number; lng: number }) {
+  if (payload.address) {
+    storefrontStore.userAddress = payload.address
+    manualAddress.value = payload.address
+    if (payload.lat && payload.lng) {
+      // Update store coords so checkout can use them
+      storefrontStore.userLat = payload.lat
+      storefrontStore.userLng = payload.lng
+    }
+    locationOpen.value = false
+  }
+}
+
 function applyManualAddress() {
   const addr = manualAddress.value.trim()
   if (!addr) return
-  // Store as the user address without changing GPS coords
   storefrontStore.userAddress = addr
   manualAddress.value = ''
   locationOpen.value = false

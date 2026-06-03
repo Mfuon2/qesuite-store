@@ -101,9 +101,15 @@
             <label class="admin-label">Phone</label>
             <input v-model="form.phone" type="tel" placeholder="+254700000000" class="admin-input" />
           </div>
-          <div>
-            <label class="admin-label">Address</label>
-            <input v-model="form.address" type="text" placeholder="123 Main Street, Nairobi" class="admin-input" />
+          <div class="sm:col-span-2">
+            <label class="admin-label">Store Location</label>
+            <p class="mb-1.5 text-xs font-medium text-slate-400">Search and select the exact location so customers can find you on the map.</p>
+            <LocationSearch
+              :model-value="form.address"
+              placeholder="Search your store location…"
+              @update:model-value="form.address = $event"
+              @select="onLocationSelect"
+            />
           </div>
         </div>
       </section>
@@ -152,6 +158,7 @@ import { ref, computed, watch } from 'vue'
 import { CheckCircleIcon, XCircleIcon, EyeIcon } from '@heroicons/vue/24/outline'
 import ImageUpload from '@/components/dashboard/ImageUpload.vue'
 import ColorPicker from '@/components/dashboard/ColorPicker.vue'
+import LocationSearch from '@/components/dashboard/LocationSearch.vue'
 import { apiCheckSlug, apiGetUploadUrl } from '@/api/settings'
 import { beginNetworkActivity, endNetworkActivity } from '@/composables/useNetworkActivity'
 
@@ -186,7 +193,15 @@ const form = defineModel<{
   font_family: string
   phone: string
   address: string
+  lat: number | null
+  lng: number | null
 }>({ required: true })
+
+function onLocationSelect(payload: { address: string; lat: number; lng: number }) {
+  form.value.address = payload.address
+  form.value.lat = payload.lat || null
+  form.value.lng = payload.lng || null
+}
 
 const logoUploadRef = ref<InstanceType<typeof ImageUpload> | null>(null)
 const bannerUploadRef = ref<InstanceType<typeof ImageUpload> | null>(null)

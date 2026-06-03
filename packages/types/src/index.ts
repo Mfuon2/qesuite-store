@@ -33,6 +33,8 @@ export interface Tenant {
   font_family: string;
   phone: string | null;
   address: string | null;
+  lat: number | null;
+  lng: number | null;
   whatsapp_number: string | null;
   store_category: StoreCategory;
   plan: Plan;
@@ -634,13 +636,14 @@ export interface MpesaCallbackBody {
 // ─────────────────────────────────────────────────────────────
 
 export interface StorefrontConfig {
-  tenant: Pick<Tenant, 'id' | 'name' | 'slug' | 'logo_url' | 'banner_url' | 'primary_color' | 'accent_color' | 'font_family' | 'whatsapp_number' | 'phone' | 'address' | 'is_suspended' | 'subscription_status' | 'trial_ends_at'>;
+  tenant: Pick<Tenant, 'id' | 'name' | 'slug' | 'logo_url' | 'banner_url' | 'primary_color' | 'accent_color' | 'font_family' | 'whatsapp_number' | 'phone' | 'address' | 'lat' | 'lng' | 'is_suspended' | 'subscription_status' | 'trial_ends_at'>;
   settings: Pick<StoreSettings, 'delivery_enabled' | 'pickup_enabled' | 'delivery_fee' | 'estimated_delivery_minutes' | 'min_order_amount' | 'currency' | 'language'>;
 }
 
 export interface TrackOrderResponse {
-  order: Pick<Order, 'id' | 'tracking_code' | 'status' | 'payment_status' | 'customer_name' | 'customer_phone' | 'delivery_address' | 'total' | 'created_at' | 'updated_at'>;
+  order: Pick<Order, 'id' | 'tracking_code' | 'status' | 'payment_status' | 'customer_name' | 'customer_phone' | 'delivery_address' | 'delivery_lat' | 'delivery_lng' | 'total' | 'created_at' | 'updated_at'>;
   items: OrderItem[];
+  rider_location?: { lat: number; lng: number; name: string; phone: string } | null;
   assignment?: Pick<DeliveryAssignment, 'status' | 'assigned_at' | 'picked_up_at' | 'delivered_at'> & {
     rider_name?: string;
     rider_phone?: string;

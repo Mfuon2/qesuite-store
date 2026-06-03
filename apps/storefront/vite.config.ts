@@ -20,6 +20,8 @@ export default defineConfig({
         ]
       },
       workbox: {
+        skipWaiting: true,       // activate new SW immediately, no second reload needed
+        clientsClaim: true,      // take control of all open tabs instantly
         maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
         globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
         runtimeCaching: [

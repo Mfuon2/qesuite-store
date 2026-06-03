@@ -5,9 +5,7 @@
       alt=""
       class="absolute inset-0 h-full w-full object-cover object-left"
     />
-    <div class="absolute inset-0 bg-white/62 backdrop-blur-[1px]" />
-    <div class="absolute inset-0 bg-[radial-gradient(circle_at_74%_44%,rgba(255,255,255,0.96)_0,rgba(255,255,255,0.9)_26rem,rgba(255,255,255,0.48)_50rem,transparent_72rem)]" />
-    <div class="absolute inset-y-0 right-0 w-full bg-gradient-to-l from-white via-white/90 to-white/28 lg:w-[54%]" />
+    <div class="absolute inset-0 bg-white/30 backdrop-blur-[2px]" />
 
     <div class="relative mx-auto flex min-h-[calc(100vh-2.5rem)] w-full max-w-6xl flex-col">
       <header class="flex items-center justify-between py-2">
@@ -26,127 +24,127 @@
         </router-link>
       </header>
 
-      <main class="grid flex-1 items-center gap-6 py-8 lg:grid-cols-[minmax(0,1fr)_460px] lg:py-10">
-        <section class="hidden lg:block">
-          <div class="relative min-h-[560px] overflow-hidden rounded-[32px] border border-white/55 bg-white/20 p-0 shadow-[0_24px_80px_rgba(15,23,42,0.08)] backdrop-blur-2xl">
-            <div class="absolute inset-0 bg-gradient-to-br from-white/64 via-white/26 to-white/8" />
-            <div class="absolute inset-x-0 bottom-0 h-44 bg-gradient-to-t from-white/58 to-transparent" />
-            <div class="relative flex h-full min-h-[560px] flex-col justify-end p-8">
-              <div class="max-w-xl">
-                <div class="owner-eyebrow">Store operations</div>
-                <h1 class="mt-4 text-4xl font-black leading-tight tracking-tight text-slate-950">
-                  Run orders, catalog, delivery, and billing from one calm workspace.
-                </h1>
-                <p class="mt-3 max-w-lg text-sm font-medium leading-6 text-slate-500">
-                  Sign in to continue managing your store with the same polished owner-console experience across the platform.
-                </p>
-              </div>
+      <main class="flex flex-1 items-center py-8 lg:py-10">
+        <!-- ── Single combined card ───────────────────────────────────────── -->
+        <div class="relative w-full overflow-hidden rounded-[32px] border border-white/55 shadow-[0_24px_80px_rgba(15,23,42,0.10)] backdrop-blur-2xl bg-white/20 lg:grid lg:grid-cols-[minmax(0,1fr)_440px]">
 
-              <div class="mt-8 grid grid-cols-3 gap-3">
-                <div class="owner-stat-card">
-                  <div class="owner-stat-icon h-10 w-10">
-                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7h18M6 7v11a2 2 0 002 2h8a2 2 0 002-2V7M9 7V5a3 3 0 016 0v2" />
-                    </svg>
-                  </div>
-                  <div>
-                    <p class="text-sm font-black text-slate-950">Orders</p>
-                    <p class="text-xs font-medium text-slate-500">Live queue</p>
-                  </div>
-                </div>
-                <div class="owner-stat-card">
-                  <div class="owner-stat-icon h-10 w-10">
-                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4 8 4 8-4zM4 7v10l8 4 8-4V7" />
-                    </svg>
-                  </div>
-                  <div>
-                    <p class="text-sm font-black text-slate-950">Products</p>
-                    <p class="text-xs font-medium text-slate-500">Catalog</p>
-                  </div>
-                </div>
-                <div class="owner-stat-card">
-                  <div class="owner-stat-icon h-10 w-10">
-                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0zM13 16V6a1 1 0 00-1-1H4v11h9zm0 0h2m-2-5h4l3 3v2h-3" />
-                    </svg>
-                  </div>
-                  <div>
-                    <p class="text-sm font-black text-slate-950">Delivery</p>
-                    <p class="text-xs font-medium text-slate-500">Riders</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
+          <!-- Subtle inner gradients -->
+          <div class="absolute inset-0 bg-gradient-to-br from-white/60 via-white/20 to-white/5 pointer-events-none" />
+          <div class="absolute inset-x-0 bottom-0 h-48 bg-gradient-to-t from-white/40 to-transparent pointer-events-none" />
 
-        <section class="mx-auto w-full max-w-[460px]">
-          <!-- ── Store selector (replaces form when multi-store owner logs in) ── -->
-          <div v-if="auth.pendingStoreSelection" class="owner-panel p-5 sm:p-6">
-            <button
-              class="mb-4 flex items-center gap-1.5 text-xs font-semibold text-slate-400 hover:text-slate-700 transition-colors"
-              @click="auth.pendingStoreSelection = null; error = ''"
-            >
-              <ArrowLeftIcon class="h-3.5 w-3.5" /> Back
-            </button>
-            <div class="mb-5">
-              <div class="owner-eyebrow">Multiple stores</div>
-              <h1 class="owner-title">Which store?</h1>
-              <p class="owner-subtitle">Your phone number is linked to {{ auth.pendingStoreSelection.stores.length }} stores. Pick one to continue.</p>
-            </div>
-
-            <p v-if="error" class="mb-3 rounded-2xl border border-red-100 bg-red-50 px-3 py-2 text-xs font-semibold text-red-600">{{ error }}</p>
-
-            <div class="space-y-2.5">
-              <button
-                v-for="store in auth.pendingStoreSelection.stores"
-                :key="store.tenant_id"
-                :disabled="auth.loading"
-                class="group w-full flex items-center gap-4 rounded-2xl border border-slate-100 bg-white p-4 text-left shadow-sm transition-all hover:border-primary/30 hover:shadow-md active:scale-[0.98] disabled:opacity-60"
-                @click="handleSelectStore(store.tenant_id)"
-              >
-                <div
-                  class="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-xl border border-slate-100 bg-slate-50 text-lg font-black shadow-sm"
-                  :style="store.logo_url ? '' : `background-color: ${store.primary_color}20; color: ${store.primary_color}`"
-                >
-                  <img v-if="store.logo_url" :src="store.logo_url" :alt="store.name" class="h-full w-full object-cover" />
-                  <span v-else>{{ store.name.charAt(0).toUpperCase() }}</span>
-                </div>
-                <div class="min-w-0 flex-1">
-                  <p class="truncate text-sm font-bold text-slate-900">{{ store.name }}</p>
-                  <p class="truncate text-xs text-slate-400">{{ storefrontUrl }}/{{ store.slug }}</p>
-                </div>
-                <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-slate-50 group-hover:bg-primary/10 transition-colors">
-                  <span v-if="auth.loading && selectingTenantId === store.tenant_id" class="h-4 w-4 rounded-full border-2 border-slate-300 border-t-primary animate-spin" />
-                  <ChevronRightIcon v-else class="h-4 w-4 text-slate-400 group-hover:text-primary transition-colors" />
-                </div>
-              </button>
-            </div>
-          </div>
-
-          <!-- ── Normal login panel ── -->
-          <div v-else class="owner-panel p-5 sm:p-6">
-            <div class="mb-5">
-              <div class="owner-eyebrow">Secure sign in</div>
-              <h1 class="owner-title">Welcome back</h1>
-              <p class="owner-subtitle">
-                Log in to manage your store, track orders, and keep operations moving.
+          <!-- ── Left — marketing panel (desktop only) ───────────────────── -->
+          <div class="relative hidden lg:flex flex-col justify-between p-10">
+            <div class="max-w-md">
+              <div class="owner-eyebrow">Store operations</div>
+              <h1 class="mt-4 text-4xl font-black leading-tight tracking-tight text-slate-950">
+                Run orders, catalog, delivery, and billing from one calm workspace.
+              </h1>
+              <p class="mt-3 text-sm font-medium leading-6 text-slate-500">
+                Sign in to continue managing your store with the same polished owner-console experience across the platform.
               </p>
             </div>
 
-            <!-- Role tabs -->
-            <div class="owner-segmented mb-5 grid w-full grid-cols-3">
-              <button
-                v-for="tab in tabs"
-                :key="tab.id"
-                class="owner-segment-button h-10 rounded-xl text-xs"
-                :class="activeTab === tab.id ? 'owner-segment-button-active' : ''"
-                @click="activeTab = tab.id; error = ''"
-              >
-                {{ tab.label }}
-              </button>
+            <div class="mt-8 grid grid-cols-3 gap-3">
+              <div class="owner-stat-card">
+                <div class="owner-stat-icon h-10 w-10">
+                  <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7h18M6 7v11a2 2 0 002 2h8a2 2 0 002-2V7M9 7V5a3 3 0 016 0v2" />
+                  </svg>
+                </div>
+                <div>
+                  <p class="text-sm font-black text-slate-950">Orders</p>
+                  <p class="text-xs font-medium text-slate-500">Live queue</p>
+                </div>
+              </div>
+              <div class="owner-stat-card">
+                <div class="owner-stat-icon h-10 w-10">
+                  <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4 8 4 8-4zM4 7v10l8 4 8-4V7" />
+                  </svg>
+                </div>
+                <div>
+                  <p class="text-sm font-black text-slate-950">Products</p>
+                  <p class="text-xs font-medium text-slate-500">Catalog</p>
+                </div>
+              </div>
+              <div class="owner-stat-card">
+                <div class="owner-stat-icon h-10 w-10">
+                  <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0zM13 16V6a1 1 0 00-1-1H4v11h9zm0 0h2m-2-5h4l3 3v2h-3" />
+                  </svg>
+                </div>
+                <div>
+                  <p class="text-sm font-black text-slate-950">Delivery</p>
+                  <p class="text-xs font-medium text-slate-500">Riders</p>
+                </div>
+              </div>
             </div>
+          </div>
+
+          <!-- ── Right — form panel ──────────────────────────────────────── -->
+          <div class="relative border-white/40 bg-white/72 backdrop-blur-sm lg:border-l">
+
+            <!-- Store selector -->
+            <div v-if="auth.pendingStoreSelection" class="p-6 sm:p-8">
+              <button
+                class="mb-5 flex items-center gap-1.5 text-xs font-semibold text-slate-400 hover:text-slate-700 transition-colors"
+                @click="auth.pendingStoreSelection = null; error = ''"
+              >
+                <ArrowLeftIcon class="h-3.5 w-3.5" /> Back
+              </button>
+              <div class="mb-5">
+                <div class="owner-eyebrow">Multiple stores</div>
+                <h2 class="owner-title">Which store?</h2>
+                <p class="owner-subtitle">Your phone is linked to {{ auth.pendingStoreSelection.stores.length }} stores. Pick one to continue.</p>
+              </div>
+              <p v-if="error" class="mb-3 rounded-2xl border border-red-100 bg-red-50 px-3 py-2 text-xs font-semibold text-red-600">{{ error }}</p>
+              <div class="space-y-2.5">
+                <button
+                  v-for="store in auth.pendingStoreSelection.stores"
+                  :key="store.tenant_id"
+                  :disabled="auth.loading"
+                  class="group w-full flex items-center gap-4 rounded-2xl border border-slate-100 bg-white p-4 text-left shadow-sm transition-all hover:border-primary/30 hover:shadow-md active:scale-[0.98] disabled:opacity-60"
+                  @click="handleSelectStore(store.tenant_id)"
+                >
+                  <div
+                    class="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-xl border border-slate-100 bg-slate-50 text-lg font-black shadow-sm"
+                    :style="store.logo_url ? '' : `background-color: ${store.primary_color}20; color: ${store.primary_color}`"
+                  >
+                    <img v-if="store.logo_url" :src="store.logo_url" :alt="store.name" class="h-full w-full object-cover" />
+                    <span v-else>{{ store.name.charAt(0).toUpperCase() }}</span>
+                  </div>
+                  <div class="min-w-0 flex-1">
+                    <p class="truncate text-sm font-bold text-slate-900">{{ store.name }}</p>
+                    <p class="truncate text-xs text-slate-400">{{ storefrontUrl }}/{{ store.slug }}</p>
+                  </div>
+                  <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-slate-50 group-hover:bg-primary/10 transition-colors">
+                    <span v-if="auth.loading && selectingTenantId === store.tenant_id" class="h-4 w-4 rounded-full border-2 border-slate-300 border-t-primary animate-spin" />
+                    <ChevronRightIcon v-else class="h-4 w-4 text-slate-400 group-hover:text-primary transition-colors" />
+                  </div>
+                </button>
+              </div>
+            </div>
+
+            <!-- Normal login form -->
+            <div v-else class="p-6 sm:p-8">
+              <div class="mb-5">
+                <div class="owner-eyebrow">Secure sign in</div>
+                <h2 class="owner-title">Welcome back</h2>
+                <p class="owner-subtitle">Log in to manage your store, track orders, and keep operations moving.</p>
+              </div>
+
+              <!-- Role tabs -->
+              <div class="owner-segmented mb-5 grid w-full grid-cols-3">
+                <button
+                  v-for="tab in tabs"
+                  :key="tab.id"
+                  class="owner-segment-button h-10 rounded-xl text-xs"
+                  :class="activeTab === tab.id ? 'owner-segment-button-active' : ''"
+                  @click="activeTab = tab.id; error = ''"
+                >
+                  {{ tab.label }}
+                </button>
+              </div>
 
             <!-- Owner login form -->
             <form v-if="activeTab === 'owner'" class="space-y-4" @submit.prevent="handleOwnerLogin">
@@ -155,7 +153,7 @@
                 <input
                   v-model="ownerCredential"
                   type="text"
-                  placeholder="hello@store.com"
+                  placeholder="hello@store.com or +254700000000"
                   class="owner-input mt-2"
                   autocomplete="username"
                   required
@@ -182,8 +180,8 @@
                 <div class="h-px flex-1 bg-slate-200"></div>
               </div>
               <p class="text-center text-xs font-medium text-slate-500">
-                No account?
-                <router-link to="/register" class="font-bold text-primary hover:text-accent">Create one</router-link>
+                No account/Store?
+                <router-link to="/register" class="font-bold text-primary hover:text-accent">Create/Onboard your store today</router-link>
               </p>
             </form>
 
@@ -250,8 +248,9 @@
                 {{ auth.loading ? 'Signing in...' : 'Admin sign in' }}
               </button>
             </form>
-          </div>
-        </section>
+            </div><!-- /normal login form -->
+          </div><!-- /right panel -->
+        </div><!-- /combined card -->
       </main>
     </div>
   </div>

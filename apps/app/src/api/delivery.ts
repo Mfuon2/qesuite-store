@@ -26,10 +26,11 @@ export interface AssignedOrder {
 }
 
 export async function requestMagicLinkApi(phone: string): Promise<void> {
-  await apiFetch<ApiResponse<null>>('/api/auth/rider/request', {
+  const res = await apiFetch<ApiResponse<null>>('/api/auth/rider/request', {
     method: 'POST',
     body: JSON.stringify({ phone }),
   })
+  if (!res.success) throw new Error(res.error ?? 'Failed to send magic link')
 }
 
 export async function verifyMagicLinkApi(token: string): Promise<VerifyResponse> {

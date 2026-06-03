@@ -684,7 +684,23 @@ auth.post('/rider/request', async (c) => {
     ).bind(phone).first<{ id: string; name: string; phone: string; tenant_id: string }>()
 
     if (!staff) {
-      return c.json({ data: { sent: false }, error: null, message: 'If your number is registered, you will receive a link.' })
+      // Deliberately vague — don't reveal whether the number is registered
+      return c.json({ success: false, data: null, error: 'No active delivery assigned to this number.' }, 403)
+    }
+
+    // Only allow access if the rider has at least one active (undelivered) assignment
+    const activeAssignment = await c.env.qesuite_db.prepare(
+      `SELECT da.id FROM delivery_assignments da
+       WHERE da.staff_id = ? AND da.status IN ('ASSIGNED', 'PICKED_UP', 'ON_THE_WAY')
+       LIMIT 1`
+    ).bind(staff.id).first<{ id: string }>()
+
+    if (!activeAssignment) {
+      return c.json({
+        success: false,
+        data: null,
+        error: 'No active delivery assigned to you. Contact your store manager.',
+      }, 403)
     }
 
     const token = generateTrackingCode() + generateTrackingCode()
@@ -696,7 +712,7 @@ auth.post('/rider/request', async (c) => {
     const link = `${c.env.APP_BASE_URL.replace('store.', 'go.')}/auth/verify?token=${token}`
     await sendSMS(c.env, staff.phone, `Welcome to QeSuite! Access your delivery dashboard here: ${link}\nThis link expires in 30 minutes.`)
 
-    return c.json({ data: { sent: true }, error: null, message: 'Magic link sent' })
+    return c.json({ success: true, data: { sent: true }, error: null, message: 'Magic link sent' })
   } catch (err) {
     console.error('rider/request error', err)
     return c.json({ error: 'Failed to send magic link', data: null }, 500)

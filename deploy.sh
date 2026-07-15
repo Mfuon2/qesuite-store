@@ -220,29 +220,32 @@ for proj in "qesuite-go" "qesuite-store"; do
   fi
 done
 
-# Latest migrations applied?
-info "Checking latest migration (remote)..."
+# Migrations MUST be applied before the worker deploys — new code querying
+# missing columns/tables is a guaranteed 500 in production.
+info "Checking migrations (remote)..."
 MIGRATION_CHECK=$(wrangler d1 migrations list qesuite_db --remote 2>&1)
-PENDING=$(echo "$MIGRATION_CHECK" | grep -c "Not Applied" || true)
-if [[ "$PENDING" -gt 0 ]]; then
-  warn "${PENDING} migration(s) not yet applied to remote D1:"
-  echo "$MIGRATION_CHECK" | grep "Not Applied" | sed 's/^/        /'
+if echo "$MIGRATION_CHECK" | grep -q "No migrations to apply"; then
+  ok "All migrations applied"
+elif echo "$MIGRATION_CHECK" | grep -qE "Error|error"; then
+  fail "Could not read migration state from remote D1:"
+  echo "$MIGRATION_CHECK" | tail -5 | sed 's/^/      /'
+  abort "Fix wrangler auth (wrangler login) and retry — deploying without schema checks is unsafe."
+else
+  warn "Pending migration(s) on remote D1:"
+  echo "$MIGRATION_CHECK" | grep -E "\.sql" | sed 's/^/        /'
   echo ""
   read -rp "  Apply pending migrations now? [y/N] " APPLY_MIGRATIONS
-  if [[ "${APPLY_MIGRATIONS,,}" == "y" ]]; then
-    for migration_file in migrations/*.sql; do
-      filename=$(basename "$migration_file")
-      if echo "$MIGRATION_CHECK" | grep -q "$filename" && echo "$MIGRATION_CHECK" | grep "$filename" | grep -q "Not Applied"; then
-        info "Applying ${filename}..."
-        wrangler d1 execute qesuite_db --file "$migration_file" --remote 2>&1 | tail -3 | sed 's/^/      /'
-        ok "Applied: ${filename}"
-      fi
-    done
+  if [[ "$APPLY_MIGRATIONS" == "y" || "$APPLY_MIGRATIONS" == "Y" ]]; then
+    # Use `migrations apply` (NOT `d1 execute --file`) so d1_migrations is recorded
+    # and the same migration is never re-applied on the next deploy.
+    if wrangler d1 migrations apply qesuite_db --remote 2>&1 | tail -10 | sed 's/^/      /'; then
+      ok "Migrations applied"
+    else
+      abort "Migration apply failed — fix the migration before deploying."
+    fi
   else
-    warn "Skipping migrations — some features may not work until migrations are applied"
+    abort "Deploying code without its migrations causes production 500s. Apply migrations first."
   fi
-else
-  ok "All migrations applied"
 fi
 
 # ══════════════════════════════════════════════════════════════════════════
@@ -283,6 +286,20 @@ if command -v curl &>/dev/null; then
     ok "Health check passed (HTTP ${HTTP_CODE})"
   else
     warn "Health check returned HTTP ${HTTP_CODE} — may need a moment to propagate"
+  fi
+
+  # Smoke check a real DB-backed route — /health can pass while routes 500
+  # on schema drift (missing columns), so hit the public storefront API too.
+  info "Smoke check (DB-backed route)..."
+  SMOKE_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 \
+    "https://qesuite-worker-api.leemfo.workers.dev/api/storefront" 2>/dev/null || echo "000")
+  if [[ "$SMOKE_CODE" == "200" ]]; then
+    ok "Storefront API responding (HTTP ${SMOKE_CODE})"
+  else
+    fail "Storefront API returned HTTP ${SMOKE_CODE} — the deployed worker may be broken"
+    record_deploy "worker-api" "failed"
+    print_summary
+    abort "Post-deploy smoke check failed. Check schema/migrations: wrangler d1 migrations list qesuite_db --remote"
   fi
 fi
 

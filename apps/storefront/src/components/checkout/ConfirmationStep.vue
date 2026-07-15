@@ -18,11 +18,15 @@
       </div>
     </div>
 
-    <!-- M-Pesa payment status -->
+    <!-- M-Pesa payment: manual code entry (primary) or STK prompt (secondary) -->
+    <MpesaManualEntry
+      v-if="order && checkout.form.mpesaMode === 'manual'"
+      @use-stk="switchToStk"
+    />
     <MpesaPaymentFlow
-      v-if="order?.payment_method === 'mpesa'"
+      v-else-if="order"
       :status="checkout.mpesaStatus"
-      :phone="checkout.form.mpesaPhone || checkout.form.phone"
+      :phone="checkout.form.phone"
       @retry="handleMpesaRetry"
     />
 
@@ -98,6 +102,7 @@ import { useCheckoutStore } from '@/stores/checkout'
 import { useStorefrontStore } from '@/stores/store'
 import { useCart } from '@/composables/useCart'
 import MpesaPaymentFlow from './MpesaPaymentFlow.vue'
+import MpesaManualEntry from './MpesaManualEntry.vue'
 
 const checkout = useCheckoutStore()
 const store = useStorefrontStore()
@@ -121,6 +126,12 @@ function copyCode() {
 
 async function handleMpesaRetry() {
   if (!order.value) return
+  await checkout.startMpesaFlow(order.value.id)
+}
+
+async function switchToStk() {
+  if (!order.value) return
+  checkout.form.mpesaMode = 'stk'
   await checkout.startMpesaFlow(order.value.id)
 }
 </script>

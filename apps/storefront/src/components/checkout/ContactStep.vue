@@ -17,15 +17,15 @@
       <div class="relative">
         <div class="absolute left-3.5 top-1/2 -translate-y-1/2 flex items-center gap-1 text-slate-500 text-sm font-medium select-none pointer-events-none">
           <span>🇰🇪</span>
-          <span>+254</span>
           <span class="text-slate-300">|</span>
         </div>
         <input
           v-model="form.phone"
           type="tel"
-          inputmode="tel"
-          placeholder="7XX XXX XXX"
-          class="w-full pl-[84px] pr-10 py-3.5 rounded-xl border transition-colors outline-none text-sm bg-white text-slate-950 placeholder-slate-400"
+          inputmode="numeric"
+          maxlength="12"
+          placeholder="07XX XXX XXX"
+          class="w-full pl-[56px] pr-10 py-3.5 rounded-xl border transition-colors outline-none text-sm bg-white text-slate-950 placeholder-slate-400"
           :class="errors.phone
             ? 'border-red-400 focus:ring-2 focus:ring-red-300'
             : phoneValid
@@ -48,7 +48,7 @@
         <span>⚠</span> {{ errors.phone }}
       </p>
       <p v-else class="text-xs text-slate-400">
-        Enter digits only — e.g. <strong>712 345 678</strong> or <strong>0712 345 678</strong>
+        Safaricom, Airtel or Telkom — e.g. <strong>0712 345 678</strong> or <strong>0110 123 456</strong>
       </p>
     </div>
 
@@ -85,7 +85,7 @@
 import { ref, reactive } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useCheckoutStore } from '@/stores/checkout'
-import { validatePhone as validateKenyaPhone, formatPhone } from '@qesuite/shared'
+import { validateLocalPhone } from '@qesuite/shared'
 
 const { t } = useI18n()
 const checkout = useCheckoutStore()
@@ -95,8 +95,10 @@ const errors = reactive({ phone: '', name: '' })
 const phoneValid = ref(false)
 
 function onPhoneInput() {
+  // Keep only digits and spaces while typing
+  form.phone = form.phone.replace(/[^\d\s]/g, '')
   // Real-time: show green tick as soon as valid, clear error
-  const v = validateKenyaPhone(form.phone.trim())
+  const v = validateLocalPhone(form.phone.trim())
   phoneValid.value = v
   if (v) errors.phone = ''
 }
@@ -106,8 +108,8 @@ function validatePhone() {
   if (!phone) {
     errors.phone = 'Phone number is required'
     phoneValid.value = false
-  } else if (!validateKenyaPhone(phone)) {
-    errors.phone = 'Enter a valid Kenyan number (e.g. 712 345 678 or 0712 345 678)'
+  } else if (!validateLocalPhone(phone)) {
+    errors.phone = 'Enter a valid Kenyan number starting with 07 or 011 (e.g. 0712 345 678)'
     phoneValid.value = false
   } else {
     errors.phone = ''
@@ -127,9 +129,8 @@ function handleNext() {
   validatePhone()
   validateName()
   if (!errors.phone && !errors.name) {
-    // Normalize to E.164 (+254XXXXXXXXX) before proceeding so backend always gets a clean number
-    const normalized = formatPhone(form.phone.trim())
-    if (normalized) form.phone = normalized
+    // Keep the familiar 07…/01… format in the form; the API normalizes to 254… on submit
+    form.phone = form.phone.trim()
     checkout.nextStep()
   }
 }

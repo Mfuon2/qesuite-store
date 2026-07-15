@@ -48,7 +48,7 @@
       "name": "Full Name",
       "name_placeholder": "e.g. Jane Doe",
       "phone_required": "Phone number is required",
-      "phone_invalid": "Enter a valid Kenyan phone number",
+      "phone_invalid": "Enter a valid Kenyan number starting with 07 or 011",
       "name_required": "Name is required"
     },
     "delivery": {
@@ -76,7 +76,12 @@
       "mpesa_phone": "M-Pesa Phone Number",
       "mpesa_phone_hint": "We'll send an STK push to this number",
       "mpesa_phone_same": "Same as contact number",
-      "order_summary": "Order Summary"
+      "order_summary": "Order Summary",
+      "mpesa_only_note": "This store accepts M-Pesa only",
+      "mpesa_manual": "Pay and enter M-Pesa code",
+      "mpesa_manual_desc": "Pay with M-Pesa, then type the confirmation code you get by SMS",
+      "mpesa_stk": "Get an M-Pesa prompt",
+      "mpesa_stk_desc": "We will send a payment prompt to {phone}"
     },
     "confirmation": {
       "title": "Order Placed!",
@@ -128,7 +133,22 @@
     "mpesa_success": "Payment received!",
     "mpesa_failed": "Payment failed or cancelled",
     "mpesa_timeout": "Payment timed out",
-    "retry": "Retry"
+    "retry": "Retry",
+    "manual_title": "Pay with M-Pesa",
+    "manual_subtitle": "Pay first, then type the M-Pesa confirmation code below",
+    "manual_till": "Go to Lipa na M-Pesa, choose Buy Goods, enter Till Number {number}",
+    "manual_paybill": "Go to Lipa na M-Pesa, choose Pay Bill, enter Business Number {number}",
+    "manual_send_money": "Go to M-Pesa, choose Send Money, enter {number}",
+    "manual_ask_store": "Ask the store for their M-Pesa payment details",
+    "manual_account": "Enter account number {account}",
+    "manual_amount": "Enter the amount: {amount}",
+    "manual_enter_code": "Type the confirmation code from the M-Pesa SMS below",
+    "manual_code_label": "M-Pesa Confirmation Code",
+    "manual_code_invalid": "Type the 10-character code from your M-Pesa SMS (e.g. QGH7XK9L2T)",
+    "manual_submit": "Submit Code",
+    "manual_use_stk": "Want a payment prompt on your phone instead? Tap here",
+    "manual_code_received": "Code received!",
+    "manual_code_received_desc": "The store will confirm your payment shortly."
   },
   "errors": {
     "generic": "Something went wrong. Please try again.",

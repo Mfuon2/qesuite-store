@@ -73,11 +73,17 @@ settings.put('/store', tenantGuard, async (c) => {
     const tenantId = c.get('user').tenant_id!
     const body = await c.req.json<Record<string, unknown>>()
     const allowed = ['delivery_enabled', 'pickup_enabled', 'delivery_fee', 'delivery_radius_km',
-      'estimated_delivery_minutes', 'min_order_amount', 'currency', 'language', 'dark_mode_enabled', 'order_view']
+      'estimated_delivery_minutes', 'min_order_amount', 'currency', 'language', 'dark_mode_enabled', 'order_view',
+      'mpesa_payment_type', 'mpesa_payment_number', 'mpesa_account_ref']
     const fields: string[] = []
     const values: unknown[] = []
     for (const key of allowed) {
       if (key in body) { fields.push(`${key} = ?`); values.push(body[key]) }
+    }
+    // Constrain M-Pesa payment type to known values
+    if ('mpesa_payment_type' in body && body.mpesa_payment_type !== null &&
+        !['till', 'paybill', 'send_money'].includes(String(body.mpesa_payment_type))) {
+      return c.json({ success: false, error: 'Invalid mpesa_payment_type', data: null }, 400)
     }
     if (!fields.length) return c.json({ success: false, error: 'No fields to update', data: null }, 400)
     fields.push("updated_at = datetime('now')")

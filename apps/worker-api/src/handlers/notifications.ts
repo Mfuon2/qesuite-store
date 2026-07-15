@@ -127,7 +127,8 @@ async function processNotification(data: NotificationMessage, env: Env): Promise
     }
 
     case 'ORDER_STATUS_OUT_FOR_DELIVERY': {
-      if (data.customer_phone && data.slug && data.rider_name && data.rider_phone) {
+      // Rider details are optional — the customer should hear their order is on the way either way
+      if (data.customer_phone && data.slug) {
         const msg = getOutForDeliverySMS(
           data.tracking_code,
           data.rider_name,

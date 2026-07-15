@@ -122,7 +122,8 @@ storefront.get('/:slug', async (c) => {
 
     const settings = await c.env.qesuite_db.prepare(
       `SELECT delivery_enabled, pickup_enabled, delivery_fee, estimated_delivery_minutes,
-              min_order_amount, currency, language
+              min_order_amount, currency, language,
+              mpesa_payment_type, mpesa_payment_number, mpesa_account_ref
        FROM store_settings WHERE tenant_id = ?`
     ).bind(tenant.id).first<Record<string, unknown>>()
 
@@ -155,6 +156,9 @@ storefront.get('/:slug', async (c) => {
           min_order_amount: 0,
           currency: 'KES',
           language: 'en',
+          mpesa_payment_type: null,
+          mpesa_payment_number: null,
+          mpesa_account_ref: null,
         },
       },
       error: null,
@@ -222,7 +226,8 @@ storefront.get('/:slug/products', async (c) => {
   }
 })
 
-const VALID_PAYMENT_METHODS = ['pay_on_delivery', 'mpesa', 'stripe'] as const
+// M-Pesa is the only payment method offered to storefront customers
+const VALID_PAYMENT_METHODS = ['mpesa'] as const
 
 // POST /api/storefront/:slug/orders — customer places order (no auth)
 storefront.post('/:slug/orders', async (c) => {
@@ -253,6 +258,11 @@ storefront.post('/:slug/orders', async (c) => {
     if (body.customer_phone.length > 20) {
       return c.json({ success: false, error: 'Invalid phone number', data: null }, 400)
     }
+    // Strict Kenyan mobile validation — normalize to 254XXXXXXXXX for storage/SMS/M-Pesa
+    const customerPhone = normalizeKenyaPhone(body.customer_phone)
+    if (!/^254[17]\d{8}$/.test(customerPhone)) {
+      return c.json({ success: false, error: 'Enter a valid Kenyan phone number starting with 07 or 01', data: null }, 400)
+    }
     if (body.customer_name && body.customer_name.length > 120) {
       return c.json({ success: false, error: 'Name too long', data: null }, 400)
     }
@@ -277,13 +287,13 @@ storefront.post('/:slug/orders', async (c) => {
     }
 
     const tenant = await c.env.qesuite_db.prepare(
-      `SELECT t.id, t.name, t.slug, t.whatsapp_number,
+      `SELECT t.id, t.name, t.slug, t.phone, t.whatsapp_number,
               ss.delivery_fee, ss.min_order_amount, ss.delivery_enabled, ss.currency
        FROM tenants t
        LEFT JOIN store_settings ss ON ss.tenant_id = t.id
        WHERE t.slug = ? AND t.is_suspended = 0`
     ).bind(slug).first<{
-      id: string; name: string; slug: string; whatsapp_number: string | null
+      id: string; name: string; slug: string; phone: string | null; whatsapp_number: string | null
       delivery_fee: number; min_order_amount: number; delivery_enabled: number; currency: string
     }>()
 
@@ -341,7 +351,7 @@ storefront.post('/:slug/orders', async (c) => {
        delivery_fee, total, tracking_code, notes, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, 'NEW', ?, 'pending', ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
     ).bind(
-      orderId, tenant.id, body.customer_name ?? null, body.customer_phone,
+      orderId, tenant.id, body.customer_name ?? null, customerPhone,
       body.delivery_address ?? null, body.delivery_lat ?? null, body.delivery_lng ?? null,
       body.payment_method, subtotal, deliveryFee, total, trackingCode, body.notes ?? null
     ).run()
@@ -355,7 +365,7 @@ storefront.post('/:slug/orders', async (c) => {
          last_order_at = datetime('now'),
          order_count  = customers.order_count + 1,
          total_spend  = customers.total_spend + excluded.total_spend`
-    ).bind(generateId(), tenant.id, body.customer_name ?? null, body.customer_phone, total)
+    ).bind(generateId(), tenant.id, body.customer_name ?? null, customerPhone, total)
       .run()
       .catch(() => {/* customers table may not exist yet on older DBs — non-fatal */})
 
@@ -382,12 +392,14 @@ storefront.post('/:slug/orders', async (c) => {
         type: 'ORDER_CONFIRMED',
         tenant_id: tenant.id,
         order_id: orderId,
-        customer_phone: body.customer_phone,
+        customer_phone: customerPhone,
+        customer_name: body.customer_name ?? null,
         tracking_code: trackingCode,
         total,
         payment_method: body.payment_method,
         store_name: tenant.name,
-        store_slug: tenant.slug,
+        slug: tenant.slug,
+        store_phone: tenant.phone,
         whatsapp_number: tenant.whatsapp_number,
       })
     }
@@ -425,7 +437,8 @@ storefront.get('/:slug/track/:code', async (c) => {
 
     const order = await c.env.qesuite_db.prepare(
       `SELECT id, tracking_code, status, payment_status, customer_name, customer_phone,
-              delivery_address, total, delivery_fee, subtotal, created_at, updated_at
+              delivery_address, delivery_lat, delivery_lng, total, delivery_fee, subtotal,
+              created_at, updated_at
        FROM orders WHERE tracking_code = ? AND tenant_id = ?`
     ).bind(code, tenant.id).first()
 
@@ -451,12 +464,21 @@ storefront.get('/:slug/track/:code', async (c) => {
       ? o.customer_phone.slice(0, -4).replace(/\d/g, '*') + o.customer_phone.slice(-4)
       : null
 
+    // Live rider position for the tracking map while the order is on its way
+    const a = assignment as Record<string, unknown> | null
+    const rider_location =
+      o.status === 'OUT_FOR_DELIVERY' && a &&
+      typeof a.current_lat === 'number' && typeof a.current_lng === 'number'
+        ? { lat: a.current_lat, lng: a.current_lng, name: a.rider_name, phone: a.rider_phone }
+        : null
+
     return c.json({
       success: true,
       data: {
         order: { ...o, customer_phone: maskedPhone },
         items,
         assignment: assignment ?? null,
+        rider_location,
       },
       error: null,
     })
@@ -579,6 +601,66 @@ storefront.get('/:slug/mpesa/status/:orderId', async (c) => {
   } catch (err) {
     console.error('mpesa status error', err)
     return c.json({ success: false, error: 'Failed to check payment status', data: null }, 500)
+  }
+})
+
+// POST /api/storefront/:slug/mpesa/code — customer submits an M-Pesa transaction code
+// after paying manually (till/paybill/send-money). Recorded for the owner to verify;
+// does NOT mark the order as paid.
+storefront.post('/:slug/mpesa/code', async (c) => {
+  try {
+    const body = await c.req.json<{ order_id: string; phone: string; code: string }>()
+    if (!body.order_id || !body.phone || !body.code) {
+      return c.json({ success: false, error: 'order_id, phone, and code are required', data: null }, 400)
+    }
+
+    const code = body.code.trim().toUpperCase()
+    if (!/^[A-Z0-9]{10}$/.test(code)) {
+      return c.json({ success: false, error: 'Enter the 10-character M-Pesa confirmation code (e.g. QGH7XK9L2T)', data: null }, 400)
+    }
+
+    const slug = c.req.param('slug')
+    const tenant = await c.env.qesuite_db.prepare('SELECT id FROM tenants WHERE slug = ?')
+      .bind(slug).first<{ id: string }>()
+    if (!tenant) return c.json({ success: false, error: 'Store not found', data: null }, 404)
+
+    const order = await c.env.qesuite_db.prepare(
+      'SELECT id, total, customer_phone, payment_status FROM orders WHERE id = ? AND tenant_id = ?'
+    ).bind(body.order_id, tenant.id).first<{
+      id: string; total: number; customer_phone: string; payment_status: string
+    }>()
+    if (!order) return c.json({ success: false, error: 'Order not found', data: null }, 404)
+
+    // Same guard as the STK flow — the submitter must know the order's phone number
+    if (normalizeKenyaPhone(body.phone) !== normalizeKenyaPhone(order.customer_phone)) {
+      return c.json({ success: false, error: 'Phone number does not match this order', data: null }, 403)
+    }
+
+    if (order.payment_status === 'paid') {
+      return c.json({ success: true, data: { recorded: true, already_paid: true }, error: null })
+    }
+
+    // Idempotent: re-submitting the same code just confirms it was received
+    const existing = await c.env.qesuite_db.prepare(
+      'SELECT id FROM order_payments WHERE order_id = ? AND reference = ?'
+    ).bind(order.id, code).first<{ id: string }>()
+
+    if (!existing) {
+      await c.env.qesuite_db.prepare(
+        `INSERT INTO order_payments (id, order_id, tenant_id, amount, method, reference, note, recorded_by)
+         VALUES (?, ?, ?, ?, 'mpesa', ?, 'Customer-submitted M-Pesa code — pending owner verification', 'customer')`
+      ).bind(generateId(), order.id, tenant.id, order.total, code).run()
+    }
+
+    return c.json({
+      success: true,
+      data: { recorded: true, already_paid: false },
+      error: null,
+      message: 'M-Pesa code received. The store will confirm your payment shortly.',
+    })
+  } catch (err) {
+    console.error('mpesa code submit error', err)
+    return c.json({ success: false, error: 'Failed to submit M-Pesa code', data: null }, 500)
   }
 })
 

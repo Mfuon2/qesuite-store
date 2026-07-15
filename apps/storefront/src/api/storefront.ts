@@ -97,9 +97,28 @@ export async function initiateMpesa(
   return res.data
 }
 
-export async function checkMpesaStatus(orderId: string): Promise<MpesaStatusResponse> {
+export interface MpesaCodeResponse {
+  recorded: boolean
+  already_paid: boolean
+}
+
+export async function submitMpesaCode(
+  slug: string,
+  orderId: string,
+  phone: string,
+  code: string
+): Promise<MpesaCodeResponse> {
+  const res = await api.post<ApiResponse<MpesaCodeResponse>>(
+    `/storefront/${slug}/mpesa/code`,
+    { order_id: orderId, phone, code }
+  )
+  if (!res.success || !res.data) throw new Error(res.error || 'Failed to submit M-Pesa code')
+  return res.data
+}
+
+export async function checkMpesaStatus(slug: string, orderId: string): Promise<MpesaStatusResponse> {
   const res = await api.get<ApiResponse<MpesaStatusResponse>>(
-    `/storefront/mpesa/status/${orderId}`
+    `/storefront/${slug}/mpesa/status/${orderId}`
   )
   if (!res.success || !res.data) return { status: 'pending' }
   return res.data

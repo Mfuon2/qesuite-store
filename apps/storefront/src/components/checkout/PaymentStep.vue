@@ -7,63 +7,34 @@
       <p class="text-sm text-slate-500">Step 3 of 4</p>
     </div>
 
-    <!-- Payment method selection -->
+    <!-- M-Pesa is the only payment method — choose how to pay -->
+    <div class="rounded-2xl border border-emerald-200 bg-emerald-50/50 p-4 flex items-center gap-3">
+      <span class="text-2xl">📱</span>
+      <div>
+        <p class="font-bold text-slate-950">{{ $t('checkout.payment.mpesa') }}</p>
+        <p class="text-xs text-slate-500">{{ $t('checkout.payment.mpesa_only_note') }}</p>
+      </div>
+    </div>
+
     <div class="space-y-3">
-      <!-- Pay on Delivery -->
+      <!-- Primary: pay manually, enter the transaction code -->
       <PaymentOption
-        value="pay_on_delivery"
-        :selected="form.paymentMethod === 'pay_on_delivery'"
-        :title="$t('checkout.payment.pay_on_delivery')"
-        :description="$t('checkout.payment.pay_on_delivery_desc')"
-        icon="💵"
-        @select="form.paymentMethod = 'pay_on_delivery'"
+        value="manual"
+        :selected="form.mpesaMode === 'manual'"
+        :title="$t('checkout.payment.mpesa_manual')"
+        :description="$t('checkout.payment.mpesa_manual_desc')"
+        icon="🧾"
+        @select="form.mpesaMode = 'manual'"
       />
 
-      <!-- M-Pesa -->
-      <div>
-        <PaymentOption
-          value="mpesa"
-          :selected="form.paymentMethod === 'mpesa'"
-          :title="$t('checkout.payment.mpesa')"
-          :description="$t('checkout.payment.mpesa_desc')"
-          icon="📱"
-          @select="form.paymentMethod = 'mpesa'"
-        />
-        <!-- M-Pesa phone input (shown when selected) -->
-        <Transition name="expand">
-          <div v-if="form.paymentMethod === 'mpesa'" class="mt-2 px-4 space-y-2">
-            <label class="block text-xs font-semibold text-slate-700">
-              {{ $t('checkout.payment.mpesa_phone') }}
-            </label>
-            <input
-              v-model="form.mpesaPhone"
-              type="tel"
-              inputmode="tel"
-              :placeholder="form.phone || '0712 345 678'"
-              class="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm bg-white text-slate-950 placeholder-slate-400 focus:border-emerald-500 transition-colors"
-            />
-            <p class="text-xs text-slate-500">
-              {{ $t('checkout.payment.mpesa_phone_hint') }}
-            </p>
-            <button
-              class="text-xs font-medium"
-              :style="{ color: 'var(--color-primary)' }"
-              @click="form.mpesaPhone = form.phone"
-            >
-              {{ $t('checkout.payment.mpesa_phone_same') }}
-            </button>
-          </div>
-        </Transition>
-      </div>
-
-      <!-- Card Payment -->
+      <!-- Secondary: STK prompt -->
       <PaymentOption
-        value="stripe"
-        :selected="form.paymentMethod === 'stripe'"
-        :title="$t('checkout.payment.stripe')"
-        :description="$t('checkout.payment.stripe_desc')"
-        icon="💳"
-        @select="form.paymentMethod = 'stripe'"
+        value="stk"
+        :selected="form.mpesaMode === 'stk'"
+        :title="$t('checkout.payment.mpesa_stk')"
+        :description="$t('checkout.payment.mpesa_stk_desc', { phone: displayedPhone })"
+        icon="🔔"
+        @select="form.mpesaMode = 'stk'"
       />
     </div>
 
@@ -89,23 +60,17 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { useI18n } from 'vue-i18n'
 import { useCheckoutStore } from '@/stores/checkout'
+import { displayPhone } from '@qesuite/shared'
 import PaymentOption from './PaymentOption.vue'
 
-const { t } = useI18n()
 const checkout = useCheckoutStore()
 
 const form = checkout.form
+
+const displayedPhone = computed(() => displayPhone(form.phone) || form.phone)
 
 async function handlePlaceOrder() {
   await checkout.placeOrderAction()
 }
 </script>
-
-<style scoped>
-.expand-enter-active { transition: all 0.2s ease-out; }
-.expand-leave-active { transition: all 0.15s ease-in; }
-.expand-enter-from, .expand-leave-to { opacity: 0; max-height: 0; }
-.expand-enter-to, .expand-leave-from { opacity: 1; max-height: 200px; }
-</style>

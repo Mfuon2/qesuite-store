@@ -200,6 +200,22 @@ export function validatePhone(phone: string): boolean {
 }
 
 /**
+ * Validate a Kenyan phone number in strict local format as dialled:
+ * 07XX XXX XXX or 01XX XXX XXX (spaces/dashes allowed, 10 digits).
+ */
+export function validateLocalPhone(phone: string): boolean {
+  const digits = phone.replace(/[\s\-()]/g, '');
+  return APP_CONSTANTS.KENYA_LOCAL_PHONE_REGEX.test(digits);
+}
+
+/**
+ * Validate an M-Pesa transaction/receipt code (10 alphanumeric characters).
+ */
+export function validateMpesaCode(code: string): boolean {
+  return APP_CONSTANTS.MPESA_CODE_REGEX.test(code.trim().toUpperCase());
+}
+
+/**
  * Normalize any Kenya phone format to E.164 (+254XXXXXXXXX).
  * Returns null if the number is invalid.
  */

@@ -243,6 +243,10 @@ export const APP_CONSTANTS = {
   TRACKING_CODE_PREFIX: 'QS',
   // Accepts: +254724… | 254724… | 0724… | 724… (bare 9-digit) — all Kenyan prefixes (7xx, 1xx)
   KENYA_PHONE_REGEX: /^(\+?254|0)?[17]\d{8}$/,
+  // Strict local format as dialled in Kenya: 07XX XXX XXX or 01XX XXX XXX (10 digits)
+  KENYA_LOCAL_PHONE_REGEX: /^0[17]\d{8}$/,
+  // M-Pesa receipt/transaction codes: 10 alphanumeric characters (e.g. QGH7XK9L2T)
+  MPESA_CODE_REGEX: /^[A-Z0-9]{10}$/,
   SLUG_REGEX: /^[a-z0-9]+(?:-[a-z0-9]+)*$/,
 } as const;
 

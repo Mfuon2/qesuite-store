@@ -446,6 +446,18 @@ orders.put('/:id/status', authMiddleware, tenantGuard, async (c) => {
     }>()
 
     if (tenant) {
+      // Include rider details (if assigned) so the dispatch SMS can name the rider
+      let rider: { name: string; phone: string } | null = null
+      if (status === 'OUT_FOR_DELIVERY') {
+        rider = await c.env.qesuite_db.prepare(
+          `SELECT ds.name, ds.phone
+           FROM delivery_assignments da
+           JOIN delivery_staff ds ON ds.id = da.staff_id
+           WHERE da.order_id = ? AND da.status NOT IN ('FAILED')
+           ORDER BY da.assigned_at DESC LIMIT 1`
+        ).bind(id).first<{ name: string; phone: string }>()
+      }
+
       try {
         await c.env.NOTIFICATION_QUEUE.send({
           type: `ORDER_STATUS_${status}`,
@@ -456,6 +468,8 @@ orders.put('/:id/status', authMiddleware, tenantGuard, async (c) => {
           total: order.total,
           slug: tenant.slug,
           store_name: tenant.name,
+          rider_name: rider?.name,
+          rider_phone: rider?.phone,
         })
       } catch (qErr) {
         console.error('Queue enqueue failed:', qErr)

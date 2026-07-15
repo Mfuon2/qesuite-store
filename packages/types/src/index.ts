@@ -124,8 +124,13 @@ export interface StoreSettings {
   language: Language;
   dark_mode_enabled: boolean;
   order_view: OrderView;
+  mpesa_payment_type: MpesaPaymentType | null;
+  mpesa_payment_number: string | null;
+  mpesa_account_ref: string | null;
   updated_at: string;
 }
+
+export type MpesaPaymentType = 'till' | 'paybill' | 'send_money';
 
 export interface StoreSettingsUpdate {
   delivery_enabled?: boolean;
@@ -138,6 +143,9 @@ export interface StoreSettingsUpdate {
   language?: Language;
   dark_mode_enabled?: boolean;
   order_view?: OrderView;
+  mpesa_payment_type?: MpesaPaymentType | null;
+  mpesa_payment_number?: string | null;
+  mpesa_account_ref?: string | null;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -637,7 +645,7 @@ export interface MpesaCallbackBody {
 
 export interface StorefrontConfig {
   tenant: Pick<Tenant, 'id' | 'name' | 'slug' | 'logo_url' | 'banner_url' | 'primary_color' | 'accent_color' | 'font_family' | 'whatsapp_number' | 'phone' | 'address' | 'lat' | 'lng' | 'is_suspended' | 'subscription_status' | 'trial_ends_at'>;
-  settings: Pick<StoreSettings, 'delivery_enabled' | 'pickup_enabled' | 'delivery_fee' | 'estimated_delivery_minutes' | 'min_order_amount' | 'currency' | 'language'>;
+  settings: Pick<StoreSettings, 'delivery_enabled' | 'pickup_enabled' | 'delivery_fee' | 'estimated_delivery_minutes' | 'min_order_amount' | 'currency' | 'language' | 'mpesa_payment_type' | 'mpesa_payment_number' | 'mpesa_account_ref'>;
 }
 
 export interface TrackOrderResponse {

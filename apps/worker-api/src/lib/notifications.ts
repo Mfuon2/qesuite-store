@@ -30,8 +30,8 @@ export function normalizeKenyaPhone(phone: string): string {
  */
 export async function sendSMS(env: Env, phone: string, message: string): Promise<void> {
   if (!env.SMS_API_KEY || !env.SMS_PARTNER_ID) {
-    console.warn('SMS not configured — SMS_API_KEY or SMS_PARTNER_ID missing')
-    return
+    // Throw so callers log this as 'failed' instead of silently recording 'sent'
+    throw new Error('SMS not configured — SMS_API_KEY or SMS_PARTNER_ID missing')
   }
 
   const mobile = normalizeKenyaPhone(phone)
@@ -83,6 +83,9 @@ export async function sendSMS(env: Env, phone: string, message: string): Promise
 }
 
 export async function sendWhatsApp(env: Env, phone: string, message: string): Promise<void> {
+  if (!env.WHATSAPP_TOKEN || !env.WHATSAPP_PHONE_ID) {
+    throw new Error('WhatsApp not configured — WHATSAPP_TOKEN or WHATSAPP_PHONE_ID missing')
+  }
   const response = await fetch(
     `https://graph.facebook.com/v18.0/${env.WHATSAPP_PHONE_ID}/messages`,
     {
@@ -93,7 +96,7 @@ export async function sendWhatsApp(env: Env, phone: string, message: string): Pr
       },
       body: JSON.stringify({
         messaging_product: 'whatsapp',
-        to: phone,
+        to: normalizeKenyaPhone(phone),
         type: 'text',
         text: { body: message },
       }),
@@ -102,6 +105,7 @@ export async function sendWhatsApp(env: Env, phone: string, message: string): Pr
   if (!response.ok) {
     const err = await response.text()
     console.error('WhatsApp send failed:', err)
+    throw new Error(`WhatsApp delivery failed (${response.status})`)
   }
 }
 
@@ -120,15 +124,16 @@ export function getOrderConfirmedSMS(
   return `Hi! Your order #${code} from ${storeName} has been received.\nTotal: KES ${total.toLocaleString()} | Payment: ${payLabel}\nTrack your order: ${baseUrl}/${slug}/track/${code}`
 }
 
-/** Sent to the customer when the rider picks up their order. */
+/** Sent to the customer when their order is dispatched. Rider details included when known. */
 export function getOutForDeliverySMS(
   code: string,
-  riderName: string,
-  riderPhone: string,
+  riderName: string | null | undefined,
+  riderPhone: string | null | undefined,
   slug: string,
   baseUrl: string
 ): string {
-  return `Great news! Your order #${code} is on its way.\nRider: ${riderName} | Call: ${riderPhone}\nTrack live: ${baseUrl}/${slug}/track/${code}`
+  const riderLine = riderName ? `\nRider: ${riderName}${riderPhone ? ` | Call: ${riderPhone}` : ''}` : ''
+  return `Great news! Your order #${code} is on its way.${riderLine}\nTrack live: ${baseUrl}/${slug}/track/${code}`
 }
 
 /** Sent to the customer when their order has been delivered. */

@@ -44,11 +44,11 @@
     "contact": {
       "title": "Maelezo ya Mawasiliano",
       "phone": "Nambari ya Simu",
-      "phone_placeholder": "mfano: 0712 345 678",
+      "phone_placeholder": "e.g. 0712 345 678",
       "name": "Jina Kamili",
       "name_placeholder": "mfano: Jane Doe",
       "phone_required": "Nambari ya simu inahitajika",
-      "phone_invalid": "Ingiza nambari sahihi ya simu ya Kenya",
+      "phone_invalid": "Enter a valid Kenyan number starting with 07 or 011",
       "name_required": "Jina linahitajika"
     },
     "delivery": {
@@ -76,7 +76,12 @@
       "mpesa_phone": "Nambari ya M-Pesa",
       "mpesa_phone_hint": "Tutakutumia ombi la STK kwenye nambari hii",
       "mpesa_phone_same": "Sawa na nambari ya mawasiliano",
-      "order_summary": "Muhtasari wa Agizo"
+      "order_summary": "Muhtasari wa Agizo",
+      "mpesa_only_note": "This store accepts M-Pesa only",
+      "mpesa_manual": "Pay and enter M-Pesa code",
+      "mpesa_manual_desc": "Pay with M-Pesa, then type the confirmation code you get by SMS",
+      "mpesa_stk": "Get an M-Pesa prompt",
+      "mpesa_stk_desc": "We will send a payment prompt to {phone}"
     },
     "confirmation": {
       "title": "Agizo Limewekwa!",
@@ -128,7 +133,22 @@
     "mpesa_success": "Malipo yamepokelewa!",
     "mpesa_failed": "Malipo yameshindwa au kufutwa",
     "mpesa_timeout": "Malipo yamekwisha muda",
-    "retry": "Jaribu Tena"
+    "retry": "Jaribu Tena",
+    "manual_title": "Pay with M-Pesa",
+    "manual_subtitle": "Pay first, then type the M-Pesa confirmation code below",
+    "manual_till": "Go to Lipa na M-Pesa, choose Buy Goods, enter Till Number {number}",
+    "manual_paybill": "Go to Lipa na M-Pesa, choose Pay Bill, enter Business Number {number}",
+    "manual_send_money": "Go to M-Pesa, choose Send Money, enter {number}",
+    "manual_ask_store": "Ask the store for their M-Pesa payment details",
+    "manual_account": "Enter account number {account}",
+    "manual_amount": "Enter the amount: {amount}",
+    "manual_enter_code": "Type the confirmation code from the M-Pesa SMS below",
+    "manual_code_label": "M-Pesa Confirmation Code",
+    "manual_code_invalid": "Type the 10-character code from your M-Pesa SMS (e.g. QGH7XK9L2T)",
+    "manual_submit": "Submit Code",
+    "manual_use_stk": "Want a payment prompt on your phone instead? Tap here",
+    "manual_code_received": "Code received!",
+    "manual_code_received_desc": "The store will confirm your payment shortly."
   },
   "errors": {
     "generic": "Kuna tatizo. Tafadhali jaribu tena.",

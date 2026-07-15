@@ -132,8 +132,10 @@ delivery.post('/assign', authMiddleware, tenantGuard, async (c) => {
 
     // Verify order belongs to tenant
     const order = await c.env.qesuite_db.prepare(
-      "SELECT id, status FROM orders WHERE id = ? AND tenant_id = ? AND status IN ('READY','CONFIRMED','PREPARING')"
-    ).bind(order_id, tenantId).first<{ id: string; status: string }>()
+      "SELECT id, status, tracking_code, customer_phone, total FROM orders WHERE id = ? AND tenant_id = ? AND status IN ('READY','CONFIRMED','PREPARING')"
+    ).bind(order_id, tenantId).first<{
+      id: string; status: string; tracking_code: string; customer_phone: string; total: number
+    }>()
 
     if (!order) {
       return c.json({ error: 'Order not found or not in an assignable state', data: null }, 404)
@@ -172,6 +174,30 @@ delivery.post('/assign', authMiddleware, tenantGuard, async (c) => {
       )
     } catch {
       // Non-blocking
+    }
+
+    // Notify customer their order is on the way (with rider details + tracking link)
+    try {
+      const tenant = await c.env.qesuite_db.prepare(
+        'SELECT slug, name FROM tenants WHERE id = ?'
+      ).bind(tenantId).first<{ slug: string; name: string }>()
+
+      if (tenant && c.env.NOTIFICATION_QUEUE) {
+        await c.env.NOTIFICATION_QUEUE.send({
+          type: 'ORDER_STATUS_OUT_FOR_DELIVERY',
+          order_id,
+          tenant_id: tenantId,
+          tracking_code: order.tracking_code,
+          customer_phone: order.customer_phone,
+          total: order.total,
+          slug: tenant.slug,
+          store_name: tenant.name,
+          rider_name: staff.name,
+          rider_phone: staff.phone,
+        })
+      }
+    } catch (qErr) {
+      console.error('Dispatch notification enqueue failed:', qErr)
     }
 
     return c.json({

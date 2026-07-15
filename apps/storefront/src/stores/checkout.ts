@@ -3,8 +3,10 @@ import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useCartStore } from './cart'
 import { useStorefrontStore } from './store'
-import { placeOrder, initiateMpesa, checkMpesaStatus } from '@/api/storefront'
-import type { PaymentMethod, Order } from '@qesuite/types'
+import { placeOrder, initiateMpesa, checkMpesaStatus, submitMpesaCode } from '@/api/storefront'
+import type { Order } from '@qesuite/types'
+
+export type MpesaMode = 'manual' | 'stk'
 
 export interface CheckoutForm {
   // Step 1: Contact
@@ -16,9 +18,8 @@ export interface CheckoutForm {
   lat: number | null
   lng: number | null
   notes: string
-  // Step 3: Payment
-  paymentMethod: PaymentMethod
-  mpesaPhone: string
+  // Step 3: Payment — M-Pesa only; choose how to pay
+  mpesaMode: MpesaMode
 }
 
 export const useCheckoutStore = defineStore('checkout', () => {
@@ -32,11 +33,17 @@ export const useCheckoutStore = defineStore('checkout', () => {
   const error = ref<string | null>(null)
   const placedOrder = ref<Order | null>(null)
 
-  // M-Pesa polling
+  // M-Pesa STK polling
   const mpesaPolling = ref(false)
   const mpesaStatus = ref<'idle' | 'pending' | 'paid' | 'failed'>('idle')
   const mpesaMessage = ref('')
   let mpesaPollInterval: ReturnType<typeof setInterval> | null = null
+
+  // Manual M-Pesa code entry
+  const mpesaCode = ref('')
+  const codeSubmitting = ref(false)
+  const codeSubmitted = ref(false)
+  const codeError = ref<string | null>(null)
 
   const form = ref<CheckoutForm>({
     phone: '',
@@ -46,8 +53,7 @@ export const useCheckoutStore = defineStore('checkout', () => {
     lat: null,
     lng: null,
     notes: '',
-    paymentMethod: 'pay_on_delivery',
-    mpesaPhone: '',
+    mpesaMode: 'manual',
   })
 
   const isLastStep = computed(() => currentStep.value === totalSteps)
@@ -73,6 +79,10 @@ export const useCheckoutStore = defineStore('checkout', () => {
     placedOrder.value = null
     mpesaStatus.value = 'idle'
     mpesaMessage.value = ''
+    mpesaCode.value = ''
+    codeSubmitting.value = false
+    codeSubmitted.value = false
+    codeError.value = null
     stopMpesaPolling()
     form.value = {
       phone: '',
@@ -82,8 +92,7 @@ export const useCheckoutStore = defineStore('checkout', () => {
       lat: null,
       lng: null,
       notes: '',
-      paymentMethod: 'pay_on_delivery',
-      mpesaPhone: '',
+      mpesaMode: 'manual',
     }
   }
 
@@ -98,7 +107,7 @@ export const useCheckoutStore = defineStore('checkout', () => {
         delivery_address: form.value.deliveryType === 'delivery' ? form.value.address : undefined,
         delivery_lat: form.value.lat ?? undefined,
         delivery_lng: form.value.lng ?? undefined,
-        payment_method: form.value.paymentMethod,
+        payment_method: 'mpesa',
         notes: form.value.notes || undefined,
         items: cartStore.items.map((i) => ({
           product_id: i.product_id,
@@ -108,8 +117,9 @@ export const useCheckoutStore = defineStore('checkout', () => {
 
       placedOrder.value = order
 
-      // If M-Pesa, initiate STK push
-      if (form.value.paymentMethod === 'mpesa') {
+      // STK mode: fire the prompt immediately. Manual mode: the confirmation
+      // step shows payment instructions and collects the transaction code.
+      if (form.value.mpesaMode === 'stk') {
         await startMpesaFlow(order.id)
       }
 
@@ -123,7 +133,7 @@ export const useCheckoutStore = defineStore('checkout', () => {
   }
 
   async function startMpesaFlow(orderId: string) {
-    const phone = form.value.mpesaPhone || form.value.phone
+    const phone = form.value.phone
     mpesaStatus.value = 'pending'
     mpesaPolling.value = true
 
@@ -137,6 +147,26 @@ export const useCheckoutStore = defineStore('checkout', () => {
     }
   }
 
+  async function submitMpesaCodeAction() {
+    if (!placedOrder.value) return
+    codeSubmitting.value = true
+    codeError.value = null
+
+    try {
+      await submitMpesaCode(
+        storefrontStore.slug,
+        placedOrder.value.id,
+        form.value.phone,
+        mpesaCode.value.trim().toUpperCase()
+      )
+      codeSubmitted.value = true
+    } catch (err: unknown) {
+      codeError.value = (err as Error).message || 'Failed to submit M-Pesa code'
+    } finally {
+      codeSubmitting.value = false
+    }
+  }
+
   function startMpesaPolling(orderId: string) {
     let attempts = 0
     const maxAttempts = 20 // 60 seconds
@@ -144,7 +174,7 @@ export const useCheckoutStore = defineStore('checkout', () => {
     mpesaPollInterval = setInterval(async () => {
       attempts++
       try {
-        const result = await checkMpesaStatus(orderId)
+        const result = await checkMpesaStatus(storefrontStore.slug, orderId)
         if (result.status === 'paid') {
           mpesaStatus.value = 'paid'
           mpesaMessage.value = 'Payment received!'
@@ -187,6 +217,10 @@ export const useCheckoutStore = defineStore('checkout', () => {
     mpesaPolling,
     mpesaStatus,
     mpesaMessage,
+    mpesaCode,
+    codeSubmitting,
+    codeSubmitted,
+    codeError,
     isLastStep,
     isFirstStep,
     nextStep,
@@ -195,6 +229,7 @@ export const useCheckoutStore = defineStore('checkout', () => {
     reset,
     placeOrderAction,
     startMpesaFlow,
+    submitMpesaCodeAction,
     stopMpesaPolling,
     goToSuccess,
   }

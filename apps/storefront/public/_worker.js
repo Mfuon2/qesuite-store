@@ -30,6 +30,19 @@ export default {
     }
 
     // Everyone else (humans + assets) → serve the Vue SPA from Pages
-    return env.ASSETS.fetch(request)
+    const response = await env.ASSETS.fetch(request)
+
+    // Never let the SPA fallback answer for missing hashed assets: after a
+    // deploy, old chunks would get index.html with a 1-year immutable
+    // Cache-Control, permanently poisoning that URL in the browser cache.
+    if (url.pathname.startsWith('/assets/') &&
+        (response.headers.get('Content-Type') ?? '').includes('text/html')) {
+      return new Response('Not Found', {
+        status: 404,
+        headers: { 'Cache-Control': 'no-store' },
+      })
+    }
+
+    return response
   }
 }

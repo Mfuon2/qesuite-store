@@ -11,6 +11,19 @@ if ('scrollRestoration' in window.history) {
   window.history.scrollRestoration = 'manual'
 }
 
+// After a deploy, browsers running the previous version fail to lazy-load
+// old hashed chunks ("Failed to fetch dynamically imported module").
+// Reload once to pick up the fresh index.html with matching chunk names.
+window.addEventListener('vite:preloadError', (event) => {
+  event.preventDefault()
+  const key = 'chunk-reload-at'
+  const last = Number(sessionStorage.getItem(key) ?? 0)
+  if (Date.now() - last > 10_000) {
+    sessionStorage.setItem(key, String(Date.now()))
+    window.location.reload()
+  }
+})
+
 const i18n = createI18n({
   legacy: false,
   locale: localStorage.getItem('lang') || 'en',

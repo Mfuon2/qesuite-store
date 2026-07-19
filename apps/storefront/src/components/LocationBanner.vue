@@ -78,7 +78,7 @@
         <div class="min-w-0 flex-1">
           <p class="text-sm font-bold text-amber-900">Location access blocked</p>
           <p class="mt-0.5 text-xs leading-5 text-amber-700">
-            To enable: tap the 🔒 lock icon in your browser's address bar → Site settings → Allow Location.
+            To enable: tap the <LockClosedIcon class="inline h-3 w-3 -mt-0.5" /> lock icon in your browser's address bar → Site settings → Allow Location.
           </p>
           <button
             class="mt-2 text-xs font-bold text-amber-700 underline underline-offset-2"
@@ -97,7 +97,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch, onMounted } from 'vue'
-import { MapPinIcon, XMarkIcon, ExclamationTriangleIcon } from '@heroicons/vue/24/outline'
+import { MapPinIcon, XMarkIcon, ExclamationTriangleIcon, LockClosedIcon } from '@heroicons/vue/24/outline'
 import { useStorefrontStore } from '@/stores/store'
 
 const store = useStorefrontStore()

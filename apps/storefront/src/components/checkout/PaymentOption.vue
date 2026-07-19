@@ -6,7 +6,12 @@
       : 'border-slate-100 bg-white hover:border-emerald-100 hover:bg-emerald-50/40'"
     @click="$emit('select', value)"
   >
-    <span class="flex-shrink-0 text-2xl">{{ icon }}</span>
+    <span
+      class="grid h-10 w-10 flex-shrink-0 place-items-center rounded-xl"
+      :class="selected ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'"
+    >
+      <component :is="icon" class="h-5 w-5" />
+    </span>
     <div class="min-w-0 flex-1">
       <p
         class="text-sm font-extrabold"
@@ -30,12 +35,14 @@
 </template>
 
 <script setup lang="ts">
+import type { Component } from 'vue'
+
 defineProps<{
   value: string
   selected: boolean
   title: string
   description: string
-  icon: string
+  icon: Component
 }>()
 defineEmits<{ select: [value: string] }>()
 </script>

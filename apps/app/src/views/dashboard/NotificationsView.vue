@@ -203,9 +203,9 @@ interface Summary { sent?: number; failed?: number; queued?: number }
 // ── Constants ──────────────────────────────────────────────────
 const STATUS_FILTERS = [
   { value: '', label: 'All' },
-  { value: 'sent', label: '✓ Sent' },
-  { value: 'failed', label: '✗ Failed' },
-  { value: 'queued', label: '⏳ Queued' },
+  { value: 'sent', label: 'Sent' },
+  { value: 'failed', label: 'Failed' },
+  { value: 'queued', label: 'Queued' },
 ]
 const CHANNEL_FILTERS = [
   { value: '', label: 'All channels' },

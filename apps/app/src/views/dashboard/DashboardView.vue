@@ -2,7 +2,7 @@
   <div class="p-4 sm:p-6 lg:p-8">
     <section class="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
       <div>
-        <h1 class="text-2xl font-extrabold text-slate-950 sm:text-3xl">Good {{ greeting }}, {{ firstName }}! 👋</h1>
+        <h1 class="text-2xl font-extrabold text-slate-950 sm:text-3xl">Good {{ greeting }}, {{ firstName }}!</h1>
         <p class="mt-1 text-sm text-slate-500">Here's what's happening with your store today.</p>
       </div>
       <!-- Period selector — same visual, now functional -->
@@ -40,7 +40,7 @@
             <p class="mt-5 text-3xl font-extrabold">KES {{ todaySales.toLocaleString() }}</p>
             <p class="mt-3 text-sm text-white/90">{{ heroChangeTxt }}</p>
           </div>
-          <div class="absolute bottom-3 right-4 text-6xl drop-shadow-sm">🧺</div>
+          <ShoppingBagIcon class="absolute bottom-3 right-4 h-14 w-14 text-white/30 drop-shadow-sm" />
         </div>
       </template>
     </section>
@@ -190,7 +190,7 @@
           </template>
           <template v-else>
             <div v-for="product in topProducts" :key="product.name" class="flex items-center gap-3 py-3">
-              <div class="grid h-10 w-10 place-items-center rounded-xl border border-slate-100 bg-white text-2xl">{{ product.emoji }}</div>
+              <div class="grid h-10 w-10 place-items-center rounded-xl border border-slate-100 bg-white"><CubeIcon class="h-5 w-5 text-emerald-600" /></div>
               <span class="flex-1 text-sm font-semibold text-slate-800">{{ product.name }}</span>
               <span class="text-xs text-slate-500">{{ product.sold }} sold</span>
             </div>
@@ -454,20 +454,8 @@ interface RawTopProduct { product_name: string; total_quantity: number; total_re
 const productsLoading = ref(true)
 const productsData = ref<RawTopProduct[]>([])
 
-const EMOJI_MAP: [RegExp, string][] = [
-  [/tomato/i, '🍅'], [/banana/i, '🍌'], [/milk/i, '🥛'], [/bread/i, '🥖'],
-  [/oil/i, '🫙'], [/rice/i, '🍚'], [/sugar/i, '🍬'], [/flour/i, '🌾'],
-  [/egg/i, '🥚'], [/chicken/i, '🍗'], [/beef/i, '🥩'], [/fish/i, '🐟'],
-  [/onion/i, '🧅'], [/potato/i, '🥔'], [/carrot/i, '🥕'], [/water/i, '💧'],
-  [/juice/i, '🧃'], [/tea/i, '🍵'], [/coffee/i, '☕'], [/soap/i, '🧼'],
-]
-function productEmoji(name: string) {
-  return EMOJI_MAP.find(([re]) => re.test(name))?.[1] ?? '📦'
-}
-
 const topProducts = computed(() =>
   productsData.value.map(p => ({
-    emoji: productEmoji(p.product_name),
     name: p.product_name,
     sold: p.total_quantity,
   }))

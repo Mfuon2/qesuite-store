@@ -131,8 +131,9 @@
 
       <!-- Permission denied hint -->
       <div v-else-if="locationStatus === 'denied'" class="rounded-xl border border-amber-100 bg-amber-50/60 px-3 py-2.5">
-        <p class="text-xs text-amber-700">
-          📍 Location access was denied. Enable it in your browser settings, or type your address manually.
+        <p class="flex items-start gap-1.5 text-xs text-amber-700">
+          <MapPinIcon class="mt-0.5 h-3.5 w-3.5 shrink-0" />
+          <span>Location access was denied. Enable it in your browser settings, or type your address manually.</span>
         </p>
       </div>
 

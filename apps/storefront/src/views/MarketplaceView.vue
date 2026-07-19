@@ -82,7 +82,7 @@
               : 'border-slate-200/70 bg-white/90 text-slate-600 hover:border-emerald-200 hover:bg-emerald-50/70 hover:text-emerald-800'"
             @click="setCategory(cat.value)"
           >
-            <span>{{ cat.emoji }}</span>
+            <component :is="cat.icon" class="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             {{ cat.label }}
           </button>
         </div>
@@ -121,11 +121,11 @@
               <div class="mb-2 grid grid-cols-[2.65rem_minmax(0,1fr)] items-start gap-1.5 sm:grid-cols-[3rem_minmax(0,1fr)]">
                 <div class="-mt-5 grid h-9 w-9 place-items-center overflow-hidden rounded-full border-4 border-white bg-white text-lg shadow-lg sm:h-10 sm:w-10 sm:text-xl">
                   <img v-if="store.logoUrl" :src="store.logoUrl" :alt="`${store.name} logo`" class="h-full w-full object-cover" />
-                  <span v-else>{{ store.logo }}</span>
+                  <component :is="store.logo" v-else class="h-4 w-4 text-emerald-700 sm:h-5 sm:w-5" />
                 </div>
                 <div class="flex min-w-0 items-center gap-1 pt-2 text-[10px] font-bold leading-tight text-slate-500 sm:gap-1.5 sm:pt-2.5 sm:text-[11px]">
                   <p class="max-w-[5.5rem] shrink-0 truncate text-xs font-extrabold text-slate-950 group-hover:text-emerald-700 sm:max-w-[6.75rem] sm:text-sm">{{ store.name }}</p>
-                  <span class="shrink-0 text-amber-500">★</span>
+                  <StarIcon class="h-3 w-3 shrink-0 text-amber-500" />
                   <span class="shrink-0">{{ store.rating }} ({{ store.reviews }})</span>
                   <span class="h-1 w-1 shrink-0 rounded-full bg-emerald-600"></span>
                   <span class="shrink-0">{{ store.delivery }}</span>
@@ -191,7 +191,7 @@
             <div class="flex items-start gap-3 sm:gap-4">
               <div :class="['grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-full shadow-lg sm:h-14 sm:w-14', store.logoUrl ? 'bg-white' : store.logoBg]">
                 <img v-if="store.logoUrl" :src="store.logoUrl" :alt="store.name" class="h-full w-full object-cover" />
-                <span v-else class="text-2xl text-white sm:text-3xl">{{ store.logo }}</span>
+                <component :is="store.logo" v-else class="h-6 w-6 text-white sm:h-7 sm:w-7" />
               </div>
               <div class="min-w-0 flex-1">
                 <div class="flex items-start justify-between gap-2">
@@ -199,7 +199,7 @@
                   <span class="rounded-md bg-emerald-50 px-2 py-1 text-[11px] font-extrabold text-emerald-700 sm:text-xs">Open</span>
                 </div>
                 <p class="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] font-bold text-slate-500 sm:gap-2 sm:text-xs">
-                  <span class="text-amber-500">★</span>{{ store.rating }} ({{ store.reviews }})
+                  <StarIcon class="h-3 w-3 shrink-0 text-amber-500" />{{ store.rating }} ({{ store.reviews }})
                   <span class="h-1 w-1 rounded-full bg-emerald-600"></span>{{ store.delivery }}
                 </p>
                 <p class="mt-1.5 flex items-center gap-1.5 text-xs font-medium text-slate-500 sm:mt-2 sm:text-sm">
@@ -252,10 +252,13 @@
 import { computed, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import {
-  Bars3Icon, BellIcon, BuildingStorefrontIcon, ChevronDownIcon, ChevronRightIcon,
-  ClockIcon, FunnelIcon, GiftIcon, MagnifyingGlassIcon, MapPinIcon,
-  ShoppingBagIcon, ShoppingCartIcon, TagIcon
+  Bars3Icon, BeakerIcon, BellIcon, BuildingStorefrontIcon, CakeIcon, ChevronDownIcon,
+  ChevronRightIcon, ClockIcon, ComputerDesktopIcon, DevicePhoneMobileIcon,
+  EllipsisHorizontalIcon, FunnelIcon, GiftIcon, HomeIcon, MagnifyingGlassIcon,
+  MapPinIcon, PlusCircleIcon, ShoppingBagIcon, ShoppingCartIcon, SparklesIcon, TagIcon
 } from '@heroicons/vue/24/outline'
+import { StarIcon } from '@heroicons/vue/24/solid'
+import type { Component } from 'vue'
 import { getStores, type StoreListItem, type ProductPreview } from '@/api/storefront'
 import AdUnit from '@/components/AdUnit.vue'
 import { useStorefrontStore } from '@/stores/store'
@@ -266,7 +269,7 @@ type MarketplaceStore = {
   name: string
   category: string
   area: string
-  logo: string
+  logo: Component
   logoBg: string
   logoUrl?: string | null
   bannerUrl?: string | null
@@ -301,15 +304,15 @@ function formatDistance(km: number | null): string | null {
   return `~${Math.round(km)}km`
 }
 
-const categoryFilters = [
-  { value: 'all', label: 'All Stores', emoji: '🏪' },
-  { value: 'groceries', label: 'Groceries', emoji: '🛒' },
-  { value: 'food', label: 'Food', emoji: '🍔' },
-  { value: 'pharmacy', label: 'Pharmacy', emoji: '🧪' },
-  { value: 'electronics', label: 'Electronics', emoji: '📱' },
-  { value: 'beauty', label: 'Beauty', emoji: '💄' },
-  { value: 'home', label: 'Home', emoji: '🏠' },
-  { value: 'more', label: 'More', emoji: '•••' },
+const categoryFilters: { value: string; label: string; icon: Component }[] = [
+  { value: 'all', label: 'All Stores', icon: BuildingStorefrontIcon },
+  { value: 'groceries', label: 'Groceries', icon: ShoppingCartIcon },
+  { value: 'food', label: 'Food', icon: CakeIcon },
+  { value: 'pharmacy', label: 'Pharmacy', icon: BeakerIcon },
+  { value: 'electronics', label: 'Electronics', icon: DevicePhoneMobileIcon },
+  { value: 'beauty', label: 'Beauty', icon: SparklesIcon },
+  { value: 'home', label: 'Home', icon: HomeIcon },
+  { value: 'more', label: 'More', icon: EllipsisHorizontalIcon },
 ]
 
 const visibleCategoryFilters = computed(() => categoryFilters)
@@ -340,10 +343,10 @@ function openLocationPicker() {
 const p = (name: string): ProductPreview => ({ name, image_url: null })
 
 const demoStores: MarketplaceStore[] = [
-  makeStore('green-grocers', 'Green Grocers', 'Groceries', 'Westlands', '🌿', 'bg-gradient-to-br from-lime-500 to-emerald-700', '4.7', 250, '20–30 mins', 'Free delivery on orders over KES 1,000', [p('Avocado'), p('Spinach'), p('Whole Milk'), p('Banana')], 'Fast Delivery'),
-  makeStore('pharmaplus', 'PharmaPlus', 'Pharmacy', 'Kilimani', '✚', 'bg-gradient-to-br from-blue-400 to-blue-700', '4.8', 190, '15–25 mins', 'Up to 20% off selected items', [p('Tissue Paper'), p('Vitamin C'), p('Sanitizer'), p('Pain Relief')], 'Top Rated'),
-  makeStore('tasty-bites', 'Tasty Bites', 'Food', 'Upper Hill', '🍴', 'bg-gradient-to-br from-orange-400 to-orange-700', '4.6', 160, '20–30 mins', 'Free delivery on orders over KES 800', [p('Burger'), p('Noodles'), p('Fries'), p('Cold Drink')], 'Popular'),
-  makeStore('tech-world', 'Tech World', 'Electronics', 'Westlands', '🖥️', 'bg-gradient-to-br from-violet-500 to-purple-700', '4.5', 98, '25–35 mins', '5% off on all accessories', [p('Headphones'), p('Smartphone'), p('Mouse'), p('Charger')], 'Open Now'),
+  makeStore('green-grocers', 'Green Grocers', 'Groceries', 'Westlands', ShoppingCartIcon, 'bg-gradient-to-br from-lime-500 to-emerald-700', '4.7', 250, '20–30 mins', 'Free delivery on orders over KES 1,000', [p('Avocado'), p('Spinach'), p('Whole Milk'), p('Banana')], 'Fast Delivery'),
+  makeStore('pharmaplus', 'PharmaPlus', 'Pharmacy', 'Kilimani', PlusCircleIcon, 'bg-gradient-to-br from-blue-400 to-blue-700', '4.8', 190, '15–25 mins', 'Up to 20% off selected items', [p('Tissue Paper'), p('Vitamin C'), p('Sanitizer'), p('Pain Relief')], 'Top Rated'),
+  makeStore('tasty-bites', 'Tasty Bites', 'Food', 'Upper Hill', CakeIcon, 'bg-gradient-to-br from-orange-400 to-orange-700', '4.6', 160, '20–30 mins', 'Free delivery on orders over KES 800', [p('Burger'), p('Noodles'), p('Fries'), p('Cold Drink')], 'Popular'),
+  makeStore('tech-world', 'Tech World', 'Electronics', 'Westlands', ComputerDesktopIcon, 'bg-gradient-to-br from-violet-500 to-purple-700', '4.5', 98, '25–35 mins', '5% off on all accessories', [p('Headphones'), p('Smartphone'), p('Mouse'), p('Charger')], 'Open Now'),
 ]
 
 const stats = computed(() => [
@@ -389,7 +392,7 @@ function makeStore(
   name: string,
   category: string,
   area: string,
-  logo: string,
+  logo: Component,
   logoBg: string,
   rating: string,
   reviews: number,
@@ -446,7 +449,7 @@ function fromStoreListItem(store: StoreListItem, index: number): MarketplaceStor
       store.name,
       category,
       store.address || fallback.area,
-      categoryEmoji(store.store_category),
+      categoryIcon(store.store_category),
       fallback.logoBg,
       (4.9 - (index % 5) * 0.1).toFixed(1),
       90 + index * 32,
@@ -460,9 +463,9 @@ function fromStoreListItem(store: StoreListItem, index: number): MarketplaceStor
   }
 }
 
-function categoryEmoji(category: string) {
+function categoryIcon(category: string): Component {
   const match = categoryFilters.find(item => item.value === category)
-  return match?.emoji && match.emoji !== '•••' ? match.emoji : '🏪'
+  return match && match.value !== 'more' ? match.icon : BuildingStorefrontIcon
 }
 
 function categoryLabel(category: string) {

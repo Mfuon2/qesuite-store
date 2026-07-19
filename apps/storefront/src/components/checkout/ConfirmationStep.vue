@@ -45,11 +45,12 @@
           </p>
         </div>
         <button
-          class="text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
+          class="inline-flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
           :style="{ color: 'var(--color-primary)', backgroundColor: 'color-mix(in srgb, var(--color-primary) 10%, transparent)' }"
           @click="copyCode"
         >
-          {{ copied ? '✓ Copied' : 'Copy' }}
+          <CheckIcon v-if="copied" class="h-3.5 w-3.5" />
+          {{ copied ? 'Copied' : 'Copy' }}
         </button>
       </div>
 
@@ -98,6 +99,7 @@
 import { ref, computed } from 'vue'
 import { RouterLink } from 'vue-router'
 import { CheckBadgeIcon } from '@heroicons/vue/24/solid'
+import { CheckIcon } from '@heroicons/vue/24/outline'
 import { useCheckoutStore } from '@/stores/checkout'
 import { useStorefrontStore } from '@/stores/store'
 import { useCart } from '@/composables/useCart'

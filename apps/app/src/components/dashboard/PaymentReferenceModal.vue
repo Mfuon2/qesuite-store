@@ -45,7 +45,7 @@
                     : 'border-gray-200  text-gray-500  hover:border-gray-300 '
                 ]"
               >
-                <span class="text-lg leading-none">{{ m.icon }}</span>
+                <component :is="m.icon" class="h-5 w-5" />
                 {{ m.label }}
               </button>
             </div>
@@ -103,7 +103,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { BanknotesIcon, XMarkIcon, CheckIcon } from '@heroicons/vue/24/outline'
+import { BanknotesIcon, XMarkIcon, CheckIcon, DevicePhoneMobileIcon, CreditCardIcon } from '@heroicons/vue/24/outline'
 
 const props = defineProps<{
   trackingCode: string
@@ -122,9 +122,9 @@ const note = ref('')
 const loading = ref(false)
 
 const methods = [
-  { value: 'cash', label: 'Cash', icon: '💵' },
-  { value: 'mpesa', label: 'M-Pesa', icon: '📱' },
-  { value: 'card', label: 'Card', icon: '💳' },
+  { value: 'cash', label: 'Cash', icon: BanknotesIcon },
+  { value: 'mpesa', label: 'M-Pesa', icon: DevicePhoneMobileIcon },
+  { value: 'card', label: 'Card', icon: CreditCardIcon },
 ]
 
 function confirm() {

@@ -57,7 +57,11 @@
           class="flex items-start gap-3 rounded-2xl border px-4 py-3"
           :class="daysSinceActive > 13 ? 'border-red-200 bg-red-50' : daysSinceActive > 5 ? 'border-amber-200 bg-amber-50' : 'border-blue-100 bg-blue-50'"
         >
-          <span class="mt-0.5 text-lg">{{ daysSinceActive > 13 ? '🚨' : daysSinceActive > 5 ? '⚠️' : '📣' }}</span>
+          <component
+            :is="daysSinceActive > 5 ? ExclamationTriangleIcon : MegaphoneIcon"
+            class="mt-0.5 h-5 w-5 shrink-0"
+            :class="daysSinceActive > 13 ? 'text-red-600' : daysSinceActive > 5 ? 'text-amber-600' : 'text-blue-600'"
+          />
           <div class="min-w-0 flex-1">
             <p class="text-sm font-bold" :class="daysSinceActive > 13 ? 'text-red-800' : daysSinceActive > 5 ? 'text-amber-800' : 'text-blue-800'">
               Your store has been inactive for {{ daysSinceActive }} day{{ daysSinceActive !== 1 ? 's' : '' }}
@@ -95,8 +99,8 @@
                 Popular
               </span>
 
-              <div :class="['mb-3 inline-flex h-10 w-10 items-center justify-center rounded-2xl text-lg', plan.iconBg]">
-                {{ plan.emoji }}
+              <div :class="['mb-3 inline-flex h-10 w-10 items-center justify-center rounded-2xl', plan.iconBg]">
+                <component :is="plan.icon" :class="['h-5 w-5', plan.iconColor]" />
               </div>
               <p class="text-sm font-bold text-slate-950">{{ plan.name }}</p>
               <p class="mt-1 text-4xl font-black tracking-tight text-slate-950">KES {{ plan.price.toLocaleString() }}</p>
@@ -219,7 +223,10 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { ArrowRightOnRectangleIcon } from '@heroicons/vue/24/outline'
+import {
+  ArrowRightOnRectangleIcon, BoltIcon, ExclamationTriangleIcon,
+  MegaphoneIcon, RocketLaunchIcon, SparklesIcon,
+} from '@heroicons/vue/24/outline'
 import { useAuthStore } from '@/stores/auth'
 import { useSettingsStore } from '@/stores/settings'
 import { apiInitiateMpesaPayment } from '@/api/settings'
@@ -231,18 +238,18 @@ const router = useRouter()
 
 const plans = [
   {
-    id: 'starter', name: 'Starter', price: 999, popular: false, emoji: '🌱',
-    iconBg: 'bg-emerald-50',
+    id: 'starter', name: 'Starter', price: 999, popular: false, icon: SparklesIcon,
+    iconBg: 'bg-emerald-50', iconColor: 'text-emerald-600',
     features: ['Up to 100 products', 'Order management', 'Delivery team (2 riders)', 'Basic analytics'],
   },
   {
-    id: 'growth', name: 'Growth', price: 1999, popular: true, emoji: '🚀',
-    iconBg: 'bg-blue-50',
+    id: 'growth', name: 'Growth', price: 1999, popular: true, icon: RocketLaunchIcon,
+    iconBg: 'bg-blue-50', iconColor: 'text-blue-600',
     features: ['Up to 500 products', 'Everything in Starter', 'Unlimited riders', 'Advanced analytics', 'Priority support'],
   },
   {
-    id: 'pro', name: 'Pro', price: 3999, popular: false, emoji: '⚡',
-    iconBg: 'bg-violet-50',
+    id: 'pro', name: 'Pro', price: 3999, popular: false, icon: BoltIcon,
+    iconBg: 'bg-violet-50', iconColor: 'text-violet-600',
     features: ['Unlimited products', 'Everything in Growth', 'Custom domain', 'API access', 'Dedicated support'],
   },
 ]

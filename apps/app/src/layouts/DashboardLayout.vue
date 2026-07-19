@@ -14,7 +14,7 @@
 
       <div class="mx-4 mb-4 rounded-xl border border-[#d0daca]/80 bg-white/70 p-3 shadow-sm">
         <div class="flex items-center gap-3">
-          <div class="owner-brand-surface grid h-12 w-12 place-items-center rounded-xl text-2xl">🏪</div>
+          <div class="owner-brand-surface grid h-12 w-12 place-items-center rounded-xl"><BuildingStorefrontIcon class="h-6 w-6" /></div>
           <div class="min-w-0 flex-1">
             <p class="truncate text-sm font-bold text-slate-900">{{ settingsStore.tenant?.name || "Mama Mboga's" }}</p>
             <p class="mt-0.5 flex items-center gap-1.5 text-xs text-slate-500"><span class="h-2 w-2 rounded-full bg-primary"></span> Open</p>
@@ -46,7 +46,7 @@
         <!-- Plan + status row -->
         <div class="flex items-center justify-between gap-2 px-4 pt-3 pb-2">
           <div class="flex items-center gap-2 min-w-0">
-            <span class="text-base">{{ planEmoji }}</span>
+            <component :is="planIcon" class="h-4 w-4 shrink-0 text-emerald-700" />
             <div class="min-w-0">
               <p class="truncate text-sm font-extrabold text-slate-950 leading-tight">{{ settingsStore.planLabel }} Plan</p>
               <p class="text-[11px] font-semibold capitalize leading-tight" :class="statusColor">
@@ -221,7 +221,8 @@ import {
   ShoppingCartIcon, CubeIcon, TagIcon, TruckIcon, ChartBarIcon,
   Cog6ToothIcon, CreditCardIcon, BellIcon, Bars3Icon, XMarkIcon,
   ArrowRightOnRectangleIcon, MoonIcon, SunIcon, UsersIcon,
-  Squares2X2Icon, ChevronDownIcon, MagnifyingGlassIcon
+  Squares2X2Icon, ChevronDownIcon, MagnifyingGlassIcon,
+  BoltIcon, BuildingStorefrontIcon, RocketLaunchIcon, SparklesIcon, TrophyIcon
 } from '@heroicons/vue/24/outline'
 import { useAuthStore } from '@/stores/auth'
 import { useSettingsStore } from '@/stores/settings'
@@ -260,12 +261,12 @@ const newOrderCount = computed(() =>
   ordersStore.orders.filter(o => o.status === 'NEW').length
 )
 
-const planEmoji = computed(() => {
+const planIcon = computed(() => {
   const p = settingsStore.tenant?.plan
-  if (p === 'pro') return '⚡'
-  if (p === 'growth') return '🚀'
-  if (p === 'starter') return '🌱'
-  return '👑'
+  if (p === 'pro') return BoltIcon
+  if (p === 'growth') return RocketLaunchIcon
+  if (p === 'starter') return SparklesIcon
+  return TrophyIcon
 })
 
 const statusColor = computed(() => {

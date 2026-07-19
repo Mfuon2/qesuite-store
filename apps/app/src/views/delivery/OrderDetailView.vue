@@ -82,7 +82,7 @@
               target="_blank" rel="noopener"
               class="flex flex-col items-center justify-center gap-1.5 py-3 bg-white rounded-2xl shadow-sm border border-gray-100 active:scale-95 transition-all"
             >
-              <div class="w-8 h-8 rounded-lg bg-emerald-600 flex items-center justify-center text-white text-lg">🗺</div>
+              <div class="w-8 h-8 rounded-lg bg-emerald-600 flex items-center justify-center text-white"><MapIcon class="h-4 w-4" /></div>
               <span class="text-[11px] font-bold text-gray-700">OSM Maps</span>
             </a>
           </div>
@@ -103,7 +103,8 @@
           :disabled="actionLoading"
           @click="handlePickedUp"
         >
-          <span>PICKED UP ✓</span>
+          <span>PICKED UP</span>
+          <CheckIcon class="h-5 w-5" />
         </button>
 
         <button
@@ -112,7 +113,8 @@
           :disabled="actionLoading"
           @click="handleDelivered"
         >
-          <span>DELIVERED ✓</span>
+          <span>DELIVERED</span>
+          <CheckIcon class="h-5 w-5" />
         </button>
 
         <div v-else-if="assignment.assignment_status === 'DELIVERED'" class="text-center py-3">
@@ -125,11 +127,12 @@
 
         <button
           v-if="['ASSIGNED', 'PICKED_UP', 'ON_THE_WAY'].includes(assignment.assignment_status)"
-          class="w-full py-4 text-base font-bold rounded-2xl text-red-600 bg-red-50 border-2 border-red-200 active:bg-red-100 transition-all active:scale-95"
+          class="w-full py-4 text-base font-bold rounded-2xl text-red-600 bg-red-50 border-2 border-red-200 active:bg-red-100 transition-all active:scale-95 flex items-center justify-center gap-3"
           :disabled="actionLoading"
           @click="showFailureModal = true"
         >
-          CANNOT DELIVER ✗
+          <span>CANNOT DELIVER</span>
+          <XMarkIcon class="h-5 w-5" />
         </button>
       </div>
     </template>
@@ -145,6 +148,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { CheckIcon, MapIcon, XMarkIcon } from '@heroicons/vue/24/outline'
 import { useOrdersStore } from '@/stores/deliveryOrders'
 import FailureReasonModal from '@/components/delivery/FailureReasonModal.vue'
 import type { AssignedOrder } from '@/api/delivery'

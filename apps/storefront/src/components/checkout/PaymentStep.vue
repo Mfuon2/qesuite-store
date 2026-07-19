@@ -9,7 +9,9 @@
 
     <!-- M-Pesa is the only payment method — choose how to pay -->
     <div class="rounded-2xl border border-emerald-200 bg-emerald-50/50 p-4 flex items-center gap-3">
-      <span class="text-2xl">📱</span>
+      <span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-emerald-100">
+        <DevicePhoneMobileIcon class="h-5 w-5 text-emerald-700" />
+      </span>
       <div>
         <p class="font-bold text-slate-950">{{ $t('checkout.payment.mpesa') }}</p>
         <p class="text-xs text-slate-500">{{ $t('checkout.payment.mpesa_only_note') }}</p>
@@ -23,7 +25,7 @@
         :selected="form.mpesaMode === 'manual'"
         :title="$t('checkout.payment.mpesa_manual')"
         :description="$t('checkout.payment.mpesa_manual_desc')"
-        icon="🧾"
+        :icon="ClipboardDocumentCheckIcon"
         @select="form.mpesaMode = 'manual'"
       />
 
@@ -33,7 +35,7 @@
         :selected="form.mpesaMode === 'stk'"
         :title="$t('checkout.payment.mpesa_stk')"
         :description="$t('checkout.payment.mpesa_stk_desc', { phone: displayedPhone })"
-        icon="🔔"
+        :icon="BellAlertIcon"
         @select="form.mpesaMode = 'stk'"
       />
     </div>
@@ -60,6 +62,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { BellAlertIcon, ClipboardDocumentCheckIcon, DevicePhoneMobileIcon } from '@heroicons/vue/24/outline'
 import { useCheckoutStore } from '@/stores/checkout'
 import { displayPhone } from '@qesuite/shared'
 import PaymentOption from './PaymentOption.vue'

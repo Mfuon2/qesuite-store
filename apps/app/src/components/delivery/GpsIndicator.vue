@@ -23,7 +23,7 @@ const label = computed(() => {
   if (!props.isActive) return 'No GPS'
   if (!props.lastUpdate) return 'GPS'
   const diffSeconds = Math.round((Date.now() - props.lastUpdate.getTime()) / 1000)
-  if (diffSeconds < 10) return 'GPS ✓'
+  if (diffSeconds < 10) return 'GPS live'
   if (diffSeconds < 60) return `${diffSeconds}s ago`
   return `${Math.floor(diffSeconds / 60)}m ago`
 })

@@ -15,8 +15,15 @@
         {{ $t('checkout.contact.phone') }} <span class="text-red-500">*</span>
       </label>
       <div class="relative">
-        <div class="absolute left-3.5 top-1/2 -translate-y-1/2 flex items-center gap-1 text-slate-500 text-sm font-medium select-none pointer-events-none">
-          <span>🇰🇪</span>
+        <div class="absolute left-3.5 top-1/2 -translate-y-1/2 flex items-center gap-1.5 text-slate-500 text-sm font-medium select-none pointer-events-none">
+          <!-- Kenya flag -->
+          <svg viewBox="0 0 24 16" class="h-3 w-[18px] rounded-[2px]" aria-hidden="true">
+            <rect width="24" height="16" fill="#ffffff" />
+            <rect width="24" height="4.6" y="0" fill="#141414" />
+            <rect width="24" height="4.8" y="5.6" fill="#bb2026" />
+            <rect width="24" height="4.6" y="11.4" fill="#1e7c3b" />
+            <ellipse cx="12" cy="8" rx="2.6" ry="5.4" fill="#bb2026" stroke="#ffffff" stroke-width="1" />
+          </svg>
           <span class="text-slate-300">|</span>
         </div>
         <input
@@ -45,7 +52,7 @@
         </div>
       </div>
       <p v-if="errors.phone" class="text-xs text-red-500 flex items-center gap-1">
-        <span>⚠</span> {{ errors.phone }}
+        <ExclamationTriangleIcon class="h-3.5 w-3.5 shrink-0" /> {{ errors.phone }}
       </p>
       <p v-else class="text-xs text-slate-400">
         Safaricom, Airtel or Telkom — e.g. <strong>0712 345 678</strong> or <strong>0110 123 456</strong>
@@ -84,6 +91,7 @@
 <script setup lang="ts">
 import { ref, reactive } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { ExclamationTriangleIcon } from '@heroicons/vue/24/outline'
 import { useCheckoutStore } from '@/stores/checkout'
 import { validateLocalPhone } from '@qesuite/shared'
 

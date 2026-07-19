@@ -21,11 +21,27 @@ const props = withDefaults(defineProps<{
   publisherId?: string
 }>(), {
   format: 'auto',
-  publisherId: 'ca-pub-XXXXXXXXXXXXXXXX', // replace with your Publisher ID
+  // Set VITE_ADSENSE_CLIENT (e.g. ca-pub-1234567890123456) to enable ads
+  publisherId: import.meta.env.VITE_ADSENSE_CLIENT ?? '',
 })
 
-// Don't show ads in dev mode
-const enabled = computed(() => import.meta.env.PROD)
+// Only render in production with a real publisher ID and slot configured —
+// placeholder values would load a bogus script and log console errors.
+const enabled = computed(() =>
+  import.meta.env.PROD &&
+  /^ca-pub-\d+$/.test(props.publisherId) &&
+  /^\d+$/.test(props.slot)
+)
+
+// Inject the AdSense loader once, only when ads are actually enabled
+function ensureAdsScript(client: string) {
+  if (document.querySelector('script[src*="adsbygoogle.js"]')) return
+  const s = document.createElement('script')
+  s.async = true
+  s.crossOrigin = 'anonymous'
+  s.src = `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${client}`
+  document.head.appendChild(s)
+}
 
 const adStyle = computed(() => ({
   display: 'block',
@@ -35,6 +51,7 @@ const adStyle = computed(() => ({
 
 onMounted(() => {
   if (!enabled.value) return
+  ensureAdsScript(props.publisherId)
   try {
     // Push to AdSense queue — works in Vue SPA after route changes too
     (window as unknown as { adsbygoogle: unknown[] }).adsbygoogle =

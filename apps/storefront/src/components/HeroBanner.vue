@@ -25,7 +25,7 @@
             </div>
 
             <div class="flex flex-nowrap items-center gap-x-1.5 overflow-hidden whitespace-nowrap text-[9px] font-bold leading-none text-slate-600 sm:flex-wrap sm:gap-x-3 sm:gap-y-2 sm:text-sm sm:leading-normal">
-              <span class="text-emerald-700">4.8 ★</span>
+              <span class="inline-flex items-center gap-0.5 text-emerald-700">4.8 <StarIcon class="h-3 w-3 text-amber-500 sm:h-3.5 sm:w-3.5" /></span>
               <span class="h-0.5 w-0.5 shrink-0 rounded-full bg-emerald-600 sm:h-1 sm:w-1"></span>
               <span v-if="deliveryEnabled" class="sm:hidden">{{ estimatedMinutes }} min</span>
               <span v-if="deliveryEnabled" class="hidden sm:inline">{{ estimatedMinutes }} min delivery</span>
@@ -92,6 +92,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { MapPinIcon, TruckIcon } from '@heroicons/vue/24/outline'
+import { StarIcon } from '@heroicons/vue/24/solid'
 import { useStorefrontStore } from '@/stores/store'
 
 defineEmits<{ 'shop-now': [] }>()

@@ -6,7 +6,9 @@ dist/
 .wrangler/
 *.local
 .DS_Store
-bun.lock
+# bun.lock is committed — it pins every dependency (supply-chain protection).
+# package-lock.json stays ignored: bun is the package manager here; a stray
+# `npm install` shouldn't introduce a second, competing lockfile.
 package-lock.json
 work.md
 verify-admin-ui.mjs

@@ -29,7 +29,7 @@
           <div class="pointer-events-none absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-white to-transparent" />
           <div class="relative">
 
-            <!-- Store selector -->
+            <!-- Owner multi-store selector -->
             <div v-if="auth.pendingStoreSelection" class="p-6 sm:p-8">
               <button
                 class="mb-5 flex items-center gap-1.5 text-xs font-semibold text-slate-400 hover:text-slate-700 transition-colors"
@@ -69,129 +69,87 @@
               </div>
             </div>
 
-            <!-- Normal login form -->
+            <!-- Two-step login: no role picker — the backend figures out what
+                 comes next from the identifier alone. -->
             <div v-else class="p-6 sm:p-8">
               <div class="mb-5">
                 <h2 class="owner-title">Welcome back</h2>
                 <p class="owner-subtitle">Log in to manage your store, track orders, and keep operations moving.</p>
               </div>
 
-              <!-- Role tabs -->
-              <div class="owner-segmented mb-5 grid w-full grid-cols-3">
-                <button
-                  v-for="tab in tabs"
-                  :key="tab.id"
-                  class="owner-segment-button h-10 rounded-xl text-xs"
-                  :class="activeTab === tab.id ? 'owner-segment-button-active' : ''"
-                  @click="activeTab = tab.id; error = ''"
-                >
-                  {{ tab.label }}
-                </button>
-              </div>
-
-            <!-- Owner login form -->
-            <form v-if="activeTab === 'owner'" class="space-y-4" @submit.prevent="handleOwnerLogin">
-              <label class="block">
-                <span class="admin-label">Email or Phone</span>
-                <input
-                  v-model="ownerCredential"
-                  type="text"
-                  placeholder="hello@store.com or +254700000000"
-                  class="owner-input mt-2"
-                  autocomplete="username"
-                  required
-                />
-              </label>
-              <label class="block">
-                <span class="admin-label">Password</span>
-                <input
-                  v-model="ownerPassword"
-                  type="password"
-                  placeholder="Password"
-                  class="owner-input mt-2"
-                  autocomplete="current-password"
-                  required
-                />
-              </label>
-              <p v-if="error" class="rounded-2xl border border-red-100 bg-red-50 px-3 py-2 text-xs font-semibold text-red-600">{{ error }}</p>
-              <button type="submit" class="owner-primary-action mt-1 w-full justify-center" :disabled="auth.loading">
-                {{ auth.loading ? 'Signing in...' : 'Sign in' }}
-              </button>
-              <div class="flex items-center gap-3 py-1 text-xs font-medium text-slate-400">
-                <div class="h-px flex-1 bg-slate-200"></div>
-                or continue with
-                <div class="h-px flex-1 bg-slate-200"></div>
-              </div>
-              <p class="text-center text-xs font-medium text-slate-500">
-                No account/Store?
-                <router-link to="/register" class="font-bold text-primary hover:text-accent">Create/Onboard your store today</router-link>
-              </p>
-            </form>
-
-            <!-- Rider login form -->
-            <div v-else-if="activeTab === 'rider'">
-              <form v-if="!riderLinkSent" class="space-y-4" @submit.prevent="handleRiderRequest">
+              <!-- Step 1: identifier only -->
+              <form v-if="step === 'identifier'" class="space-y-4" @submit.prevent="handleContinue">
                 <label class="block">
-                  <span class="admin-label">Phone Number</span>
+                  <span class="admin-label">Email or Phone</span>
                   <input
-                    v-model="riderPhone"
-                    type="tel"
-                    placeholder="+254700000000"
+                    v-model="identifier"
+                    type="text"
+                    placeholder="you@example.com or 0712345678"
                     class="owner-input mt-2"
+                    autocomplete="username"
+                    autofocus
                     required
                   />
                 </label>
                 <p v-if="error" class="rounded-2xl border border-red-100 bg-red-50 px-3 py-2 text-xs font-semibold text-red-600">{{ error }}</p>
-                <button type="submit" class="owner-primary-action w-full justify-center" :disabled="auth.loading">
-                  {{ auth.loading ? 'Sending...' : 'Send magic link' }}
+                <button type="submit" class="owner-primary-action mt-1 w-full justify-center" :disabled="resolving">
+                  {{ resolving ? 'Checking...' : 'Continue' }}
+                </button>
+                <div class="flex items-center gap-3 py-1 text-xs font-medium text-slate-400">
+                  <div class="h-px flex-1 bg-slate-200"></div>
+                  or
+                  <div class="h-px flex-1 bg-slate-200"></div>
+                </div>
+                <p class="text-center text-xs font-medium text-slate-500">
+                  No account/Store?
+                  <router-link to="/register" class="font-bold text-primary hover:text-accent">Create/Onboard your store today</router-link>
+                </p>
+              </form>
+
+              <!-- Step 2a: password -->
+              <form v-else-if="step === 'password'" class="space-y-4" @submit.prevent="handleOwnerLogin">
+                <button
+                  type="button"
+                  class="mb-1 flex w-full items-center gap-2 rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-left"
+                  @click="backToIdentifier"
+                >
+                  <span class="min-w-0 flex-1 truncate text-xs font-semibold text-slate-700">{{ identifier }}</span>
+                  <span class="shrink-0 text-[11px] font-bold text-primary">Change</span>
+                </button>
+                <label class="block">
+                  <span class="admin-label">Password</span>
+                  <input
+                    v-model="ownerPassword"
+                    type="password"
+                    placeholder="Password"
+                    class="owner-input mt-2"
+                    autocomplete="current-password"
+                    autofocus
+                    required
+                  />
+                </label>
+                <p v-if="error" class="rounded-2xl border border-red-100 bg-red-50 px-3 py-2 text-xs font-semibold text-red-600">{{ error }}</p>
+                <button type="submit" class="owner-primary-action mt-1 w-full justify-center" :disabled="auth.loading">
+                  {{ auth.loading ? 'Signing in...' : 'Sign in' }}
                 </button>
               </form>
-              <div v-else class="owner-brand-surface rounded-[24px] border p-6 text-center">
-                <div class="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-primary shadow-sm">
-                  <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                  </svg>
+
+              <!-- Step 2b: magic link sent (rider) -->
+              <div v-else-if="step === 'magic-link-sent'">
+                <div class="owner-brand-surface rounded-[24px] border p-6 text-center">
+                  <div class="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-primary shadow-sm">
+                    <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                  <p class="text-sm font-bold text-slate-950">Check your phone</p>
+                  <p class="mt-1 text-xs font-medium text-slate-500">If that number is registered, we've sent a sign-in link by SMS.</p>
                 </div>
-                <p class="text-sm font-bold text-slate-950">Magic link sent</p>
-                <p class="mt-1 text-xs font-medium text-slate-500">Check your SMS to continue.</p>
-                <button type="button" class="mt-4 text-xs font-bold text-primary hover:text-accent" @click="riderLinkSent = false">
-                  Try a different number
+                <button type="button" class="mt-4 w-full text-center text-xs font-bold text-primary hover:text-accent" @click="backToIdentifier">
+                  Use a different account
                 </button>
               </div>
             </div>
-
-            <!-- Admin login form -->
-            <form v-else-if="activeTab === 'admin'" class="space-y-4" @submit.prevent="handleAdminLogin">
-              <label class="block">
-                <span class="admin-label">Admin Email</span>
-                <input
-                  v-model="adminEmail"
-                  type="email"
-                  placeholder="admin@qesuite.com"
-                  class="owner-input mt-2"
-                  required
-                />
-              </label>
-              <label class="block">
-                <span class="admin-label">Password</span>
-                <input
-                  v-model="adminPassword"
-                  type="password"
-                  placeholder="Password"
-                  class="owner-input mt-2"
-                  required
-                />
-              </label>
-              <p v-if="error" class="rounded-2xl border border-red-100 bg-red-50 px-3 py-2 text-xs font-semibold text-red-600">{{ error }}</p>
-              <button
-                type="submit"
-                class="owner-primary-action mt-1 w-full justify-center disabled:opacity-60"
-                :disabled="auth.loading"
-              >
-                {{ auth.loading ? 'Signing in...' : 'Admin sign in' }}
-              </button>
-            </form>
-            </div><!-- /normal login form -->
           </div>
         </section>
       </main>
@@ -208,28 +166,40 @@ import { useAuthStore } from '@/stores/auth'
 const auth = useAuthStore()
 const router = useRouter()
 
-const activeTab = ref<'owner' | 'rider' | 'admin'>('owner')
+const step = ref<'identifier' | 'password' | 'magic-link-sent'>('identifier')
 const error = ref('')
+const resolving = ref(false)
 const selectingTenantId = ref<string | null>(null)
 
-const ownerCredential = ref('')
+const identifier = ref('')
 const ownerPassword = ref('')
-const riderPhone = ref('')
-const riderLinkSent = ref(false)
-const adminEmail = ref('')
-const adminPassword = ref('')
 
 const storefrontUrl = (import.meta.env.VITE_STOREFRONT_URL ?? 'https://store.qesuite.com').replace(/\/$/, '')
 
-const tabs = [
-  { id: 'owner', label: 'Owner / Staff' },
-  { id: 'rider', label: 'Rider' },
-  { id: 'admin', label: 'Admin' },
-] as const
+async function handleContinue() {
+  error.value = ''
+  resolving.value = true
+  try {
+    const res = await auth.resolveIdentifier(identifier.value.trim())
+    if (!res.success) {
+      error.value = res.error || 'Something went wrong'
+      return
+    }
+    step.value = res.next === 'magic_link_sent' ? 'magic-link-sent' : 'password'
+  } finally {
+    resolving.value = false
+  }
+}
+
+function backToIdentifier() {
+  step.value = 'identifier'
+  ownerPassword.value = ''
+  error.value = ''
+}
 
 async function handleOwnerLogin() {
   error.value = ''
-  const res = await auth.login(ownerCredential.value.trim(), ownerPassword.value)
+  const res = await auth.login(identifier.value.trim(), ownerPassword.value)
   if (!res.success) {
     error.value = res.error || 'Login failed'
     return
@@ -250,26 +220,6 @@ async function handleSelectStore(tenantId: string) {
     router.push(auth.onboardingComplete ? '/dashboard' : '/onboarding')
   } else {
     error.value = res.error || 'Store selection failed'
-  }
-}
-
-async function handleRiderRequest() {
-  error.value = ''
-  try {
-    await auth.requestRiderLink(riderPhone.value.trim())
-    riderLinkSent.value = true
-  } catch (e: unknown) {
-    error.value = e instanceof Error ? e.message : 'Failed to send link'
-  }
-}
-
-async function handleAdminLogin() {
-  error.value = ''
-  const res = await auth.adminSignIn(adminEmail.value.trim(), adminPassword.value)
-  if (res.success) {
-    router.push('/admin/stores')
-  } else {
-    error.value = res.error || 'Login failed'
   }
 }
 </script>

@@ -2,7 +2,7 @@
   <div class="relative">
     <!-- Input -->
     <div class="relative">
-      <MapPinIcon class="absolute left-3.5 top-3.5 h-5 w-5 text-slate-400" />
+      <MapPinIcon class="absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
       <input
         ref="inputRef"
         v-model="query"
@@ -21,7 +21,7 @@
         @blur="onBlur"
       />
       <!-- Spinner / clear -->
-      <div class="absolute right-3.5 top-3.5">
+      <div class="absolute right-3.5 top-1/2 -translate-y-1/2">
         <svg v-if="loading" class="h-5 w-5 animate-spin text-slate-400" fill="none" viewBox="0 0 24 24">
           <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
           <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>

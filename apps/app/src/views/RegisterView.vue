@@ -77,13 +77,7 @@
             </div>
             <div>
               <label class="block text-xs font-medium text-gray-700  mb-1">Phone</label>
-              <input
-                v-model="form.phone"
-                type="tel"
-                placeholder="+254700000000"
-                required
-                class="w-full px-3 py-2 rounded-lg border border-gray-200  bg-gray-50  text-gray-900  placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
-              />
+              <QePhoneInput v-model="form.phone" required />
             </div>
           </div>
 
@@ -169,6 +163,7 @@
 import { ref, reactive, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { EyeIcon, EyeSlashIcon, ExclamationCircleIcon } from '@heroicons/vue/24/outline'
+import { QePhoneInput } from '@qesuite/ui'
 import { useAuthStore } from '@/stores/auth'
 import { apiCheckStoreName } from '@/api/auth'
 

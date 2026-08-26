@@ -3,6 +3,7 @@ import { Env, Variables } from '../types'
 import { authMiddleware } from '../middleware/auth'
 import { tenantGuard } from '../middleware/tenant'
 import { generateId } from '../lib/jwt'
+import { validatePhone, normalizeKenyaPhone } from '@qesuite/shared'
 
 const onboarding = new Hono<{ Bindings: Env; Variables: Variables }>()
 
@@ -84,6 +85,9 @@ onboarding.post('/step1', tenantGuard, async (c) => {
     if (!body.name) {
       return c.json({ error: 'name is required', data: null }, 400)
     }
+    if (body.phone && !validatePhone(body.phone)) {
+      return c.json({ error: 'Enter a valid Kenyan phone number, e.g. 0712345678', data: null }, 400)
+    }
 
     // Slug handling
     let slug = body.slug
@@ -109,7 +113,7 @@ onboarding.post('/step1', tenantGuard, async (c) => {
       primary_color: body.primary_color,
       accent_color: body.accent_color,
       font_family: body.font_family,
-      phone: body.phone,
+      phone: body.phone ? normalizeKenyaPhone(body.phone) : body.phone,
       address: body.address,
     }
 
@@ -250,9 +254,12 @@ onboarding.post('/step3', tenantGuard, async (c) => {
 
     // Update WhatsApp number on tenant
     if (body.whatsapp_number) {
+      if (!validatePhone(body.whatsapp_number)) {
+        return c.json({ error: 'Enter a valid Kenyan phone number, e.g. 0712345678', data: null }, 400)
+      }
       await c.env.qesuite_db.prepare(
         'UPDATE tenants SET whatsapp_number = ? WHERE id = ?'
-      ).bind(body.whatsapp_number, tenantId).run()
+      ).bind(normalizeKenyaPhone(body.whatsapp_number), tenantId).run()
     }
 
     // Invite riders
@@ -261,7 +268,9 @@ onboarding.post('/step3', tenantGuard, async (c) => {
       const { sendSMS } = await import('../lib/notifications')
       const { generateTrackingCode } = await import('../lib/jwt')
 
-      for (const phone of body.rider_phones) {
+      for (const rawPhone of body.rider_phones) {
+        if (!validatePhone(rawPhone)) continue
+        const phone = normalizeKenyaPhone(rawPhone)
         const existing = await c.env.qesuite_db.prepare(
           'SELECT id FROM delivery_staff WHERE phone = ? AND tenant_id = ?'
         ).bind(phone, tenantId).first()

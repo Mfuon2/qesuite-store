@@ -24,21 +24,45 @@
       </div>
 
       <nav class="flex-1 space-y-0.5 overflow-y-auto px-3 py-1">
-        <router-link
-          v-for="item in navItems"
-          :key="item.to"
-          :to="item.to"
-          :class="['qs-nav-link group', isActiveNav(item.to) ? 'qs-nav-link-active' : 'owner-brand-hover hover:text-primary']"
-        >
-          <component :is="item.icon" class="h-4 w-4 shrink-0" />
-          {{ item.label }}
-          <span
-            v-if="item.to === '/orders' && newOrderCount > 0"
-            class="ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-primary text-xs font-bold text-white"
+        <template v-for="entry in filteredNavStructure" :key="entry.label">
+          <router-link
+            v-if="entry.type === 'link'"
+            :to="entry.to"
+            :class="['qs-nav-link group', isActiveNav(entry.to) ? 'qs-nav-link-active' : 'owner-brand-hover hover:text-primary']"
           >
-            {{ newOrderCount > 99 ? '99+' : newOrderCount }}
-          </span>
-        </router-link>
+            <component :is="entry.icon" class="h-4 w-4 shrink-0" />
+            {{ entry.label }}
+            <span
+              v-if="entry.to === '/orders' && newOrderCount > 0"
+              class="ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-primary text-xs font-bold text-white"
+            >
+              {{ newOrderCount > 99 ? '99+' : newOrderCount }}
+            </span>
+          </router-link>
+
+          <div v-else>
+            <button
+              type="button"
+              class="qs-nav-link owner-brand-hover w-full hover:text-primary"
+              @click="inventoryGroupOpen = !inventoryGroupOpen"
+            >
+              <component :is="entry.icon" class="h-4 w-4 shrink-0" />
+              {{ entry.label }}
+              <ChevronDownIcon :class="['ml-auto h-3.5 w-3.5 shrink-0 transition-transform', inventoryGroupOpen ? 'rotate-180' : '']" />
+            </button>
+            <div v-show="inventoryGroupOpen" class="ml-3 mt-0.5 space-y-0.5 border-l border-[#d0daca]/70 pl-2.5">
+              <router-link
+                v-for="child in entry.children"
+                :key="child.to"
+                :to="child.to"
+                :class="['qs-nav-link', isActiveNav(child.to) ? 'qs-nav-link-active' : 'owner-brand-hover hover:text-primary']"
+              >
+                <component :is="child.icon" class="h-4 w-4 shrink-0" />
+                {{ child.label }}
+              </router-link>
+            </div>
+          </div>
+        </template>
       </nav>
 
       <!-- Subscription banner — always visible once tenant loads -->
@@ -111,7 +135,7 @@
 
         <div class="relative hidden w-full max-w-xl lg:block">
           <MagnifyingGlassIcon class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-          <input class="owner-input w-full border-[#d0daca] bg-white/80 pl-9 pr-10 text-slate-700 shadow-sm" placeholder="Search orders, products, customers..." />
+          <input class="owner-input w-full border-[#d0daca] bg-white/80 !pl-9 !pr-10 text-slate-700 shadow-sm" placeholder="Search orders, products, customers..." />
           <span class="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400">⌘K</span>
         </div>
 
@@ -138,7 +162,7 @@
         </div>
       </header>
 
-      <main class="flex-1 overflow-y-auto">
+      <main class="flex-1 overflow-x-hidden overflow-y-auto">
         <router-view v-slot="{ Component }">
           <Transition name="fade" mode="out-in">
             <component :is="Component" :key="route.path" />
@@ -146,9 +170,9 @@
         </router-view>
       </main>
 
-      <nav class="safe-bottom flex shrink-0 items-center border-t border-[#d0daca]/70 bg-white/95 lg:hidden">
+      <nav v-if="navItems.length" class="safe-bottom flex shrink-0 items-center border-t border-[#d0daca]/70 bg-white/95 lg:hidden">
         <router-link
-          v-for="item in mobileNavItems"
+          v-for="item in primaryNavItems"
           :key="item.to"
           :to="item.to"
           :class="['relative flex min-h-11 flex-1 flex-col items-center justify-center gap-0.5 py-1.5 transition-colors', isActiveNav(item.to) ? 'text-primary' : 'text-slate-400']"
@@ -164,8 +188,61 @@
           </div>
           <span class="text-[10px] font-semibold">{{ item.short }}</span>
         </router-link>
+
+        <button
+          v-if="overflowNavItems.length"
+          type="button"
+          class="relative flex min-h-11 flex-1 flex-col items-center justify-center gap-0.5 py-1.5 transition-colors"
+          :class="moreOpen || overflowActive ? 'text-primary' : 'text-slate-400'"
+          :aria-expanded="moreOpen"
+          @click="moreOpen = !moreOpen"
+        >
+          <EllipsisHorizontalIcon class="h-5 w-5" />
+          <span class="text-[10px] font-semibold">More</span>
+        </button>
       </nav>
     </div>
+
+    <Teleport to="body">
+      <Transition name="fade">
+        <div v-if="moreOpen" class="fixed inset-0 z-50 flex flex-col justify-end lg:hidden">
+          <div class="absolute inset-0 bg-black/45 backdrop-blur-sm" @click="moreOpen = false" />
+          <section
+            class="safe-bottom relative z-10 max-h-[70vh] overflow-y-auto rounded-t-2xl border-t border-[#d0daca]/70 bg-white p-3 shadow-2xl animate-slide-up"
+            aria-label="More menu"
+          >
+            <div class="mb-2 flex items-center justify-between px-1">
+              <div>
+                <p class="text-sm font-black text-slate-950">More</p>
+                <p class="text-xs text-slate-500">The rest of your dashboard</p>
+              </div>
+              <button type="button" class="grid h-9 w-9 place-items-center rounded-xl text-slate-400 hover:bg-slate-100 hover:text-slate-600" aria-label="Close menu" @click="moreOpen = false">
+                <XMarkIcon class="h-5 w-5" />
+              </button>
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <router-link
+                v-for="item in overflowNavItems"
+                :key="item.to"
+                :to="item.to"
+                class="relative flex min-h-14 items-center gap-3 rounded-xl border px-3 py-2.5 text-sm font-bold"
+                :class="isActiveNav(item.to) ? 'border-primary/30 bg-primary/10 text-primary' : 'border-[#d0daca]/70 bg-white text-slate-700 active:bg-slate-50'"
+                @click="moreOpen = false"
+              >
+                <component :is="item.icon" class="h-5 w-5 shrink-0" />
+                <span class="truncate">{{ item.label }}</span>
+                <span
+                  v-if="item.to === '/orders' && newOrderCount > 0"
+                  class="ml-auto flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-white"
+                >
+                  {{ newOrderCount > 9 ? '9+' : newOrderCount }}
+                </span>
+              </router-link>
+            </div>
+          </section>
+        </div>
+      </Transition>
+    </Teleport>
 
     <Teleport to="body">
       <Transition name="fade">
@@ -182,16 +259,41 @@
               </button>
             </div>
             <nav class="flex-1 space-y-0.5 overflow-y-auto px-3 py-3">
-              <router-link
-                v-for="item in navItems"
-                :key="item.to"
-                :to="item.to"
-                :class="['qs-nav-link', isActiveNav(item.to) ? 'qs-nav-link-active' : 'owner-brand-hover']"
-                @click="mobileMenuOpen = false"
-              >
-                <component :is="item.icon" class="h-5 w-5" />
-                {{ item.label }}
-              </router-link>
+              <template v-for="entry in filteredNavStructure" :key="entry.label">
+                <router-link
+                  v-if="entry.type === 'link'"
+                  :to="entry.to"
+                  :class="['qs-nav-link', isActiveNav(entry.to) ? 'qs-nav-link-active' : 'owner-brand-hover']"
+                  @click="mobileMenuOpen = false"
+                >
+                  <component :is="entry.icon" class="h-5 w-5" />
+                  {{ entry.label }}
+                </router-link>
+
+                <div v-else>
+                  <button
+                    type="button"
+                    class="qs-nav-link owner-brand-hover w-full"
+                    @click="inventoryGroupOpen = !inventoryGroupOpen"
+                  >
+                    <component :is="entry.icon" class="h-5 w-5" />
+                    {{ entry.label }}
+                    <ChevronDownIcon :class="['ml-auto h-4 w-4 shrink-0 transition-transform', inventoryGroupOpen ? 'rotate-180' : '']" />
+                  </button>
+                  <div v-show="inventoryGroupOpen" class="ml-3 mt-0.5 space-y-0.5 border-l border-[#d0daca]/70 pl-2.5">
+                    <router-link
+                      v-for="child in entry.children"
+                      :key="child.to"
+                      :to="child.to"
+                      :class="['qs-nav-link', isActiveNav(child.to) ? 'qs-nav-link-active' : 'owner-brand-hover']"
+                      @click="mobileMenuOpen = false"
+                    >
+                      <component :is="child.icon" class="h-5 w-5" />
+                      {{ child.label }}
+                    </router-link>
+                  </div>
+                </div>
+              </template>
             </nav>
             <div class="border-t border-[#d0daca]/70 p-4">
               <button class="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-medium text-red-500 transition-colors hover:bg-red-50" @click="handleLogout">
@@ -207,15 +309,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import {
   ShoppingCartIcon, CubeIcon, TagIcon, TruckIcon, ChartBarIcon,
   Cog6ToothIcon, CreditCardIcon, BellIcon, Bars3Icon, XMarkIcon,
   ArrowRightOnRectangleIcon, MoonIcon, SunIcon, UsersIcon,
-  Squares2X2Icon, MagnifyingGlassIcon,
+  Squares2X2Icon, MagnifyingGlassIcon, EllipsisHorizontalIcon,
   BoltIcon, BuildingStorefrontIcon, RocketLaunchIcon, SparklesIcon, TrophyIcon,
-  BanknotesIcon, ReceiptRefundIcon
+  BanknotesIcon, ReceiptRefundIcon, ArchiveBoxIcon, ChevronDownIcon
 } from '@heroicons/vue/24/outline'
 import { useAuthStore } from '@/stores/auth'
 import { useSettingsStore } from '@/stores/settings'
@@ -231,30 +333,87 @@ const ordersStore = useOrdersStore()
 const accessStore = useAccessStore()
 
 const mobileMenuOpen = ref(false)
+const moreOpen = ref(false)
+
+// The bottom bar can only fit a few tabs before it gets cramped, but a role
+// may have anywhere from one to ten permitted nav items. Rather than slicing
+// the list and silently dropping whatever doesn't fit, split it into a small
+// always-visible primary set plus a "More" sheet that holds everything else.
+const PRIMARY_PATHS = new Set(['/dashboard', '/orders', '/pos', '/products'])
 
 const isRestaurant = computed(() => settingsStore.tenant?.store_category === 'food')
 
-const navItems = computed(() => [
-  { to: '/dashboard', label: 'Dashboard', icon: Squares2X2Icon, permission: 'dashboard.view' },
-  { to: '/orders', label: 'Orders', icon: ShoppingCartIcon, permission: 'orders.view' },
+// Declarative source of truth: a flat entry, or a group whose children render
+// nested under a single expandable parent. Only Inventory is a group today —
+// everything else stays a plain link.
+const NAV_STRUCTURE = computed(() => [
+  { type: 'link' as const, to: '/dashboard', label: 'Dashboard', icon: Squares2X2Icon, permission: 'dashboard.view' },
+  { type: 'link' as const, to: '/orders', label: 'Orders', icon: ShoppingCartIcon, permission: 'orders.view' },
   ...(isRestaurant.value ? [
-    { to: '/pos', label: 'POS', icon: BanknotesIcon, permission: 'pos.view' },
-    { to: '/expenses', label: 'Expenses', icon: ReceiptRefundIcon, permission: 'expenses.view' },
+    { type: 'link' as const, to: '/pos', label: 'POS', icon: BanknotesIcon, permission: 'pos.view' },
+    { type: 'link' as const, to: '/expenses', label: 'Expenses', icon: ReceiptRefundIcon, permission: 'expenses.view' },
   ] : []),
-  { to: '/products', label: 'Products', icon: CubeIcon, permission: 'products.view' },
-  { to: '/categories', label: 'Categories', icon: TagIcon, permission: 'categories.view' },
-  { to: '/delivery', label: 'Delivery Team', icon: UsersIcon, permission: 'delivery.view' },
-  { to: '/analytics', label: 'Analytics', icon: ChartBarIcon, permission: 'analytics.view' },
-  { to: '/notifications', label: 'Notifications', icon: BellIcon, permission: 'notifications.view' },
-  { to: '/settings', label: 'Settings', icon: Cog6ToothIcon, permission: 'settings.view' },
-  { to: '/billing', label: 'Billing', icon: CreditCardIcon, permission: 'billing.view' },
-].filter(item => accessStore.can(item.permission)))
+  {
+    type: 'group' as const, label: 'Inventory', icon: CubeIcon,
+    children: [
+      { to: '/products', label: 'Products', icon: CubeIcon, permission: 'products.view' },
+      { to: '/categories', label: 'Categories', icon: TagIcon, permission: 'categories.view' },
+      { to: '/stock', label: 'Stock Management', icon: ArchiveBoxIcon, permission: 'products.view' },
+    ],
+  },
+  { type: 'link' as const, to: '/delivery', label: 'Delivery Team', icon: UsersIcon, permission: 'delivery.view' },
+  { type: 'link' as const, to: '/analytics', label: 'Analytics', icon: ChartBarIcon, permission: 'analytics.view' },
+  { type: 'link' as const, to: '/notifications', label: 'Notifications', icon: BellIcon, permission: 'notifications.view' },
+  { type: 'link' as const, to: '/settings', label: 'Settings', icon: Cog6ToothIcon, permission: 'settings.view' },
+  { type: 'link' as const, to: '/billing', label: 'Billing', icon: CreditCardIcon, permission: 'billing.view' },
+])
 
-const mobileNavItems = computed(() => navItems.value.slice(0, 6).map(item => ({
-  to: item.to,
-  short: item.to === '/dashboard' ? 'Home' : item.label.split(' ')[0],
-  icon: item.icon,
-})))
+// Permission-filtered, grouping intact — what the sidebar and mobile drawer render.
+const filteredNavStructure = computed(() =>
+  NAV_STRUCTURE.value
+    .map(entry => entry.type === 'group'
+      ? { ...entry, children: entry.children.filter(child => accessStore.can(child.permission)) }
+      : entry
+    )
+    .filter(entry => entry.type === 'link' ? accessStore.can(entry.permission) : entry.children.length > 0)
+)
+
+// Flattened, permission-filtered — feeds the bottom nav (primary tabs + "More"
+// overflow), which has no concept of nesting.
+const navItems = computed(() =>
+  filteredNavStructure.value.flatMap(entry => entry.type === 'group' ? entry.children : [entry])
+)
+
+const inventoryGroupOpen = ref(false)
+watch(
+  () => route.path,
+  (path) => {
+    if (path.startsWith('/products') || path.startsWith('/categories') || path.startsWith('/stock')) {
+      inventoryGroupOpen.value = true
+    }
+  },
+  { immediate: true }
+)
+
+const primaryNavItems = computed(() =>
+  navItems.value
+    .filter(item => PRIMARY_PATHS.has(item.to))
+    .map(item => ({
+      to: item.to,
+      short: item.to === '/dashboard' ? 'Home' : item.label.split(' ')[0],
+      icon: item.icon,
+    }))
+)
+
+const overflowNavItems = computed(() => navItems.value.filter(item => !PRIMARY_PATHS.has(item.to)))
+
+const overflowActive = computed(() =>
+  overflowNavItems.value.some(item => isActiveNav(item.to))
+)
+
+watch(() => route.fullPath, () => {
+  moreOpen.value = false
+})
 
 const newOrderCount = computed(() =>
   ordersStore.orders.filter(o => o.status === 'NEW').length
@@ -296,6 +455,7 @@ const pageTitles: Record<string, string> = {
   '/orders': 'Orders',
   '/products': 'Products',
   '/categories': 'Categories',
+  '/stock': 'Stock Management',
   '/delivery': 'Delivery Team',
   '/analytics': 'Analytics',
   '/notifications': 'Notifications',

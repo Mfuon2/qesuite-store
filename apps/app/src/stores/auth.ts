@@ -1,9 +1,10 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { setTokens, clearTokens, getAccessToken, apiFetch } from '@/api/index'
-import { apiLogin, apiRegister, apiGetMe, apiLogout, apiSelectStore, apiUpdateMe } from '@/api/auth'
+import { apiLogin, apiRegister, apiGetMe, apiLogout, apiSelectStore, apiUpdateMe, apiResolveIdentifier } from '@/api/auth'
 import type { StoreChoice, StoreSelectionData, UpdateProfileRequest } from '@/api/auth'
-import { verifyMagicLinkApi, requestMagicLinkApi } from '@/api/delivery'
+import { verifyMagicLinkApi, requestMagicLinkApi, selectRiderStoreApi } from '@/api/delivery'
+import type { VerifyResponse, RiderStoreSelectionData } from '@/api/delivery'
 import { adminLogin, type AdminUser } from '@/api/admin'
 import { beginNetworkActivity, endNetworkActivity } from '@/composables/useNetworkActivity'
 import type { PublicUser } from '@qesuite/types'
@@ -42,6 +43,8 @@ export const useAuthStore = defineStore('auth', () => {
 
   // Multi-store selection state — set when login returns requires_store_selection
   const pendingStoreSelection = ref<StoreSelectionData | null>(null)
+  // Same idea for a rider phone active at more than one tenant
+  const pendingRiderStoreSelection = ref<RiderStoreSelectionData | null>(null)
 
   const isAuthenticated = computed(() => !!token.value)
   const role = computed<UserRole | null>(() => {
@@ -86,6 +89,17 @@ export const useAuthStore = defineStore('auth', () => {
     } catch { /* network error, keep existing token */ }
     finally {
       endNetworkActivity(activity)
+    }
+  }
+
+  // ─── Step 1 of login: identify without asking the user their role ──
+  async function resolveIdentifier(identifier: string) {
+    try {
+      const res = await apiResolveIdentifier(identifier)
+      if (!res.success || !res.data) throw new Error(res.error || 'Something went wrong')
+      return { success: true as const, next: res.data.next }
+    } catch (err: unknown) {
+      return { success: false as const, error: err instanceof Error ? err.message : 'Something went wrong' }
     }
   }
 
@@ -204,21 +218,44 @@ export const useAuthStore = defineStore('auth', () => {
     await requestMagicLinkApi(phone)
   }
 
+  function _finalizeRiderLogin(result: VerifyResponse) {
+    token.value = result.access_token
+    user.value = {
+      id: result.user.id,
+      name: result.user.name,
+      role: 'rider',
+      tenant_id: result.user.tenant_id,
+    }
+    setTokens(result.access_token)
+  }
+
   async function verifyRiderLink(magicToken: string) {
     loading.value = true
     try {
       const result = await verifyMagicLinkApi(magicToken)
-      token.value = result.access_token
-      user.value = {
-        id: result.user.id,
-        name: result.user.name,
-        role: 'rider',
-        tenant_id: result.user.tenant_id,
+      if (!('user' in result)) {
+        pendingRiderStoreSelection.value = result
+        return { success: true, requires_store_selection: true }
       }
-      setTokens(result.access_token)
+      _finalizeRiderLogin(result)
       return { success: true }
     } catch (err: unknown) {
       return { success: false, error: err instanceof Error ? err.message : 'Verification failed' }
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function selectRiderStore(tenantId: string) {
+    if (!pendingRiderStoreSelection.value) return { success: false, error: 'No pending selection' }
+    loading.value = true
+    try {
+      const result = await selectRiderStoreApi(pendingRiderStoreSelection.value.verify_token, tenantId)
+      pendingRiderStoreSelection.value = null
+      _finalizeRiderLogin(result)
+      return { success: true }
+    } catch (err: unknown) {
+      return { success: false, error: err instanceof Error ? err.message : 'Store selection failed' }
     } finally {
       loading.value = false
     }
@@ -282,6 +319,7 @@ export const useAuthStore = defineStore('auth', () => {
     onboardingComplete,
     loading,
     ready,
+    resolveIdentifier,
     login,
     selectStore,
     pendingStoreSelection,
@@ -292,6 +330,8 @@ export const useAuthStore = defineStore('auth', () => {
     setOnboardingComplete,
     requestRiderLink,
     verifyRiderLink,
+    selectRiderStore,
+    pendingRiderStoreSelection,
     adminSignIn,
     getAccessToken,
   }

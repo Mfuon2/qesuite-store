@@ -47,7 +47,7 @@
               v-model="customPassword"
               :type="showInput ? 'text' : 'password'"
               placeholder="Min. 8 characters"
-              class="admin-input pr-10"
+              class="admin-input !pr-10"
             />
             <button
               type="button"

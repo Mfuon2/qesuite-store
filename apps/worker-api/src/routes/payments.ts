@@ -4,6 +4,7 @@ import { authMiddleware } from '../middleware/auth'
 import { tenantGuard } from '../middleware/tenant'
 import { generateId } from '../lib/jwt'
 import { nairobiCompactTimestamp } from '../lib/time'
+import { validatePhone, normalizeKenyaPhone } from '@qesuite/shared'
 
 const payments = new Hono<{ Bindings: Env; Variables: Variables }>()
 
@@ -42,6 +43,10 @@ payments.post('/mpesa/initiate', async (c) => {
       return c.json({ error: 'phone, amount, and order_id are required', data: null }, 400)
     }
 
+    if (!validatePhone(body.phone)) {
+      return c.json({ error: 'Enter a valid Kenyan phone number, e.g. 0712345678', data: null }, 400)
+    }
+
     // Validate order exists
     const order = await c.env.qesuite_db.prepare(
       "SELECT id, tenant_id FROM orders WHERE id = ? AND payment_status = 'pending'"
@@ -54,10 +59,7 @@ payments.post('/mpesa/initiate', async (c) => {
     const token = await getMpesaToken(c.env)
     const { password, timestamp } = getMpesaPassword(c.env.MPESA_SHORTCODE, c.env.MPESA_PASSKEY)
 
-    // Normalise phone: 0712345678 → 254712345678
-    const phone = body.phone.startsWith('0')
-      ? `254${body.phone.substring(1)}`
-      : body.phone.replace(/^\+/, '')
+    const phone = normalizeKenyaPhone(body.phone)
 
     const payload = {
       BusinessShortCode: c.env.MPESA_SHORTCODE,
@@ -104,7 +106,7 @@ payments.post('/mpesa/initiate', async (c) => {
          VALUES (?, 'mpesa_checkout', ?, 'STK Push initiated', 'sent', ?, datetime('now'))`
       ).bind(
         generateId(),
-        body.phone,
+        phone,
         JSON.stringify({ order_id: body.order_id, checkout_request_id: stkData.CheckoutRequestID })
       ).run().catch(() => { /* non-fatal */ })
     }
@@ -330,6 +332,11 @@ payments.post('/subscription', authMiddleware, tenantGuard, async (c) => {
       stripe_payment_method_id?: string
     }>()
 
+    if (body.payment_method === 'mpesa' && (!body.mpesa_phone || !validatePhone(body.mpesa_phone))) {
+      return c.json({ error: 'Enter a valid Kenyan phone number, e.g. 0712345678', data: null }, 400)
+    }
+    const mpesaPhone = body.mpesa_phone ? normalizeKenyaPhone(body.mpesa_phone) : null
+
     const planPrices: Record<string, number> = { starter: 999 }
     const amount = planPrices[body.plan] ?? 999
 
@@ -356,7 +363,7 @@ payments.post('/subscription', authMiddleware, tenantGuard, async (c) => {
          VALUES (?, ?, ?, ?, 'KES', 'active', ?, ?, ?, ?, datetime('now'))`
       ).bind(
         subscriptionId, tenantId, body.plan, amount, body.payment_method,
-        periodStart, periodEnd, body.mpesa_phone ?? null
+        periodStart, periodEnd, mpesaPhone
       ).run()
     }
 
@@ -372,13 +379,11 @@ payments.post('/subscription', authMiddleware, tenantGuard, async (c) => {
     ).bind(generateId(), tenantId, amount, body.payment_method).run()
 
     // If M-Pesa, trigger STK push
-    if (body.payment_method === 'mpesa' && body.mpesa_phone) {
+    if (body.payment_method === 'mpesa' && mpesaPhone) {
       try {
         const token = await getMpesaToken(c.env)
         const { password, timestamp } = getMpesaPassword(c.env.MPESA_SHORTCODE, c.env.MPESA_PASSKEY)
-        const phone = body.mpesa_phone.startsWith('0')
-          ? `254${body.mpesa_phone.substring(1)}`
-          : body.mpesa_phone.replace(/^\+/, '')
+        const phone = mpesaPhone
 
         await fetch('https://api.safaricom.co.ke/mpesa/stkpush/v1/processrequest', {
           method: 'POST',

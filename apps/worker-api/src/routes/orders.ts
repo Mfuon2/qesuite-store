@@ -4,6 +4,7 @@ import { authMiddleware } from '../middleware/auth'
 import { tenantGuard } from '../middleware/tenant'
 import { generateId, generateTrackingCode } from '../lib/jwt'
 import { businessDateDaysAgo } from '../lib/time'
+import { validatePhone, normalizeKenyaPhone } from '@qesuite/shared'
 
 const orders = new Hono<{ Bindings: Env; Variables: Variables }>()
 
@@ -115,6 +116,10 @@ orders.post('/', async (c) => {
 
     // Length and type guards
     if (body.customer_phone.length > 20) return c.json({ error: 'Invalid phone number', data: null }, 400)
+    if (!validatePhone(body.customer_phone)) {
+      return c.json({ error: 'Enter a valid Kenyan phone number, e.g. 0712345678', data: null }, 400)
+    }
+    body.customer_phone = normalizeKenyaPhone(body.customer_phone)
     if (body.customer_name && body.customer_name.length > 120) return c.json({ error: 'Name too long', data: null }, 400)
     if (body.delivery_address && body.delivery_address.length > 500) return c.json({ error: 'Address too long', data: null }, 400)
     if (body.notes && body.notes.length > 500) return c.json({ error: 'Notes too long', data: null }, 400)

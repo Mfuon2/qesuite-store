@@ -47,13 +47,11 @@
         <div>
           <label class="admin-label">Category</label>
           <div class="flex gap-2">
-            <select
+            <QeSelect
               v-model="form.category_id"
-              class="owner-select flex-1"
-            >
-              <option value="">No category</option>
-              <option v-for="cat in categories" :key="cat.id" :value="cat.id">{{ cat.name }}</option>
-            </select>
+              class="flex-1"
+              :options="categoryOptions"
+            />
           </div>
         </div>
 
@@ -134,8 +132,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { XMarkIcon } from '@heroicons/vue/24/outline'
+import { QeSelect } from '@qesuite/ui'
 import ImageUpload from './ImageUpload.vue'
 import { useProductsStore } from '@/stores/products'
 import { useCategoriesStore } from '@/stores/categories'
@@ -153,6 +152,10 @@ const imageRef = ref<InstanceType<typeof ImageUpload> | null>(null)
 const saving = ref(false)
 const uploading = ref(false)
 const categories = ref(categoriesStore.categories)
+const categoryOptions = computed(() => [
+  { value: '', label: 'No category' },
+  ...categories.value.map((cat) => ({ value: cat.id, label: cat.name })),
+])
 
 const form = reactive({
   name: props.product?.name || '',

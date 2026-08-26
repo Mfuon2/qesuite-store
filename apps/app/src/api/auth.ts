@@ -35,6 +35,17 @@ export interface LoginPayload {
   password: string
 }
 
+export interface ResolveData {
+  next: 'password' | 'magic_link_sent'
+}
+
+export async function apiResolveIdentifier(identifier: string): Promise<ApiResponse<ResolveData>> {
+  return apiFetch('/api/auth/resolve', {
+    method: 'POST',
+    body: JSON.stringify({ identifier }),
+  })
+}
+
 export async function apiLogin(
   payload: LoginPayload
 ): Promise<ApiResponse<AuthData | StoreSelectionData>> {

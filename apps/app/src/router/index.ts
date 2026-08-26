@@ -19,6 +19,13 @@ const router = createRouter({
       meta: { public: true }
     },
     {
+      // Not linked anywhere in the public UI — reached only by direct URL.
+      path: '/admin/login',
+      name: 'admin-login',
+      component: () => import('@/views/AdminLoginView.vue'),
+      meta: { public: true }
+    },
+    {
       path: '/accept-invite',
       name: 'accept-invite',
       component: () => import('@/views/AcceptInviteView.vue'),
@@ -49,6 +56,7 @@ const router = createRouter({
         { path: 'orders/:id', name: 'order-detail', component: () => import('@/views/dashboard/OrderDetailView.vue'), meta: { permission: 'orders.view' } },
         { path: 'products', name: 'products', component: () => import('@/views/dashboard/ProductsView.vue'), meta: { permission: 'products.view' } },
         { path: 'categories', name: 'categories', component: () => import('@/views/dashboard/CategoriesView.vue'), meta: { permission: 'categories.view' } },
+        { path: 'stock', name: 'stock', component: () => import('@/views/dashboard/StockManagementView.vue'), meta: { permission: 'products.view' } },
         { path: 'delivery', name: 'delivery-team', component: () => import('@/views/dashboard/DeliveryTeamView.vue'), meta: { permission: 'delivery.view' } },
         { path: 'pos', name: 'pos', component: () => import('@/views/dashboard/SalesTerminalView.vue'), meta: { permission: 'pos.view' } },
         { path: 'expenses', name: 'expenses', component: () => import('@/views/dashboard/ExpensesView.vue'), meta: { permission: 'expenses.view' } },

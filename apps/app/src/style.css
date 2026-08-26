@@ -77,7 +77,7 @@
   }
 
   .owner-search-icon {
-    @apply pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400;
+    @apply pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-slate-400;
   }
 
   .owner-input {
@@ -90,6 +90,11 @@
 
   .owner-search-input {
     @apply owner-input pl-9;
+    /* @apply doesn't reliably respect source order when two applied
+       utilities touch the same property (owner-input's own px-3 vs pl-9
+       here) — Tailwind merges by its internal utility order, not the order
+       written. Setting it again as a plain declaration guarantees this wins. */
+    padding-left: 2.75rem !important;
   }
 
   .owner-select {

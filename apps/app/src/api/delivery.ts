@@ -8,6 +8,15 @@ export interface VerifyResponse {
   user: { id: string; name: string; tenant_id: string }
 }
 
+// The same phone can be an active rider at more than one store — the backend
+// returns this instead of VerifyResponse when the magic link matched multiple
+// tenants, mirroring the owner multi-store selection flow.
+export interface RiderStoreSelectionData {
+  requires_store_selection: true
+  verify_token: string
+  stores: { tenant_id: string; name: string; slug: string; logo_url: string | null; primary_color: string }[]
+}
+
 export interface AssignedOrder {
   assignment_id: string
   assignment_status: string
@@ -33,12 +42,21 @@ export async function requestMagicLinkApi(phone: string): Promise<void> {
   if (!res.success) throw new Error(res.error ?? 'Failed to send magic link')
 }
 
-export async function verifyMagicLinkApi(token: string): Promise<VerifyResponse> {
-  const res = await apiFetch<ApiResponse<VerifyResponse>>(
+export async function verifyMagicLinkApi(token: string): Promise<VerifyResponse | RiderStoreSelectionData> {
+  const res = await apiFetch<ApiResponse<VerifyResponse | RiderStoreSelectionData>>(
     '/api/auth/rider/verify',
     { method: 'POST', body: JSON.stringify({ token }) }
   )
   if (!res.success || !res.data) throw new Error(res.error || 'Verification failed')
+  return res.data
+}
+
+export async function selectRiderStoreApi(verifyToken: string, tenantId: string): Promise<VerifyResponse> {
+  const res = await apiFetch<ApiResponse<VerifyResponse>>(
+    '/api/auth/rider/select-store',
+    { method: 'POST', body: JSON.stringify({ token: verifyToken, tenant_id: tenantId }) }
+  )
+  if (!res.success || !res.data) throw new Error(res.error || 'Store selection failed')
   return res.data
 }
 

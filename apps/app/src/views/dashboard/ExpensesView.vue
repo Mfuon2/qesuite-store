@@ -88,9 +88,7 @@
             <form class="space-y-3 p-4" @submit.prevent="handleSubmit">
               <label class="block">
                 <span class="admin-label">Category</span>
-                <select v-model="form.category" class="owner-select mt-1.5">
-                  <option v-for="(meta, key) in EXPENSE_CATEGORIES" :key="key" :value="key">{{ meta.label }}</option>
-                </select>
+                <QeSelect v-model="form.category" class="mt-1.5" size="sm" :options="expenseCategoryOptions" />
               </label>
 
               <label class="block">
@@ -105,7 +103,7 @@
                 </label>
                 <label class="block">
                   <span class="admin-label">Expense date</span>
-                  <input v-model="form.expense_date" type="date" class="owner-input mt-1.5" />
+                  <QeDatePicker v-model="form.expense_date" size="sm" class="mt-1.5" />
                 </label>
               </div>
 
@@ -127,6 +125,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { PlusIcon, TrashIcon, ReceiptRefundIcon, DocumentTextIcon, XMarkIcon } from '@heroicons/vue/24/outline'
+import { QeSelect, QeDatePicker } from '@qesuite/ui'
 import { EXPENSE_CATEGORIES, todayNairobi } from '@qesuite/shared'
 import { useExpensesStore } from '@/stores/expenses'
 import { useSettingsStore } from '@/stores/settings'
@@ -152,6 +151,10 @@ const form = ref<{ category: ExpenseCategory; description: string; amount: numbe
 })
 
 const canSubmit = computed(() => !!form.value.amount && form.value.amount > 0 && !!form.value.expense_date)
+
+const expenseCategoryOptions = computed(() =>
+  Object.entries(EXPENSE_CATEGORIES).map(([value, meta]) => ({ value, label: meta.label }))
+)
 
 function resetForm() {
   form.value = { category: 'supplies', description: '', amount: null, expense_date: todayNairobi() }

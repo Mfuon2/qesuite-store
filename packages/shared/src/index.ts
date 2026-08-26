@@ -269,6 +269,37 @@ export function displayPhone(phone: string): string {
   return local.replace(/^(0\d{3})(\d{3})(\d{3})$/, '$1 $2 $3');
 }
 
+/**
+ * Normalize any Kenyan phone input to the bare wire format used by SMS
+ * gateways and the M-Pesa Daraja API: 254XXXXXXXXX (no + sign). This is the
+ * single canonical storage/dispatch format — every route that persists a
+ * phone number or hands one to an SMS/WhatsApp/M-Pesa call should normalize
+ * through this function so storage, SMS, and payments never drift apart.
+ *
+ * Unlike formatPhone(), this is a permissive mechanical transform (always
+ * returns a string, never null) — pair it with validatePhone() at input
+ * boundaries to reject genuinely invalid numbers before they're stored.
+ *
+ * Handles all common input forms:
+ *   724814117   → 254724814117   (9-digit, 7-prefix, no leading 0)
+ *   0724814117  → 254724814117   (10-digit, leading 0)
+ *   1124814117  → 2541124814117  (10-digit, 1-prefix, no leading 0)
+ *   01124814117 → 2541124814117  (11-digit, leading 0 on 1-prefix)
+ *   +254724…    → 254724…        (already international, strip +)
+ *   254724…     → 254724…        (already normalized)
+ */
+export function normalizeKenyaPhone(phone: string): string {
+  // Strip every non-digit character (spaces, +, dashes, parens, dots)
+  let d = phone.replace(/\D/g, '');
+
+  // Already has country code
+  if (d.startsWith('254')) return d;
+
+  // Strip any number of leading zeros, then prepend 254
+  d = d.replace(/^0+/, '');
+  return '254' + d;
+}
+
 // ─────────────────────────────────────────────────────────────
 // Order helpers
 // ─────────────────────────────────────────────────────────────

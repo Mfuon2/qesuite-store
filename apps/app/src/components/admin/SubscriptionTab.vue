@@ -167,9 +167,7 @@
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
           <div>
             <label class="block text-xs font-semibold text-slate-500 mb-1">Plan</label>
-            <select v-model="activateForm.plan" class="admin-input text-sm">
-              <option v-for="p in plans" :key="p.value" :value="p.value">{{ p.label }}</option>
-            </select>
+            <QeSelect v-model="activateForm.plan" :options="plans" />
           </div>
           <div>
             <label class="block text-xs font-semibold text-slate-500 mb-1">Amount (KES)</label>
@@ -177,21 +175,11 @@
           </div>
           <div>
             <label class="block text-xs font-semibold text-slate-500 mb-1">Period</label>
-            <select v-model.number="activateForm.period_months" class="admin-input text-sm">
-              <option :value="1">1 month</option>
-              <option :value="3">3 months</option>
-              <option :value="6">6 months</option>
-              <option :value="12">12 months</option>
-            </select>
+            <QeSelect v-model="activateForm.period_months" :options="periodMonths" />
           </div>
           <div>
             <label class="block text-xs font-semibold text-slate-500 mb-1">Payment method</label>
-            <select v-model="activateForm.payment_method" class="admin-input text-sm">
-              <option value="manual">Manual</option>
-              <option value="mpesa">M-Pesa</option>
-              <option value="bank_transfer">Bank Transfer</option>
-              <option value="card">Card</option>
-            </select>
+            <QeSelect v-model="activateForm.payment_method" :options="paymentMethods" />
           </div>
         </div>
         <div class="flex gap-2">
@@ -214,9 +202,7 @@
         <div v-if="showBillingEdit" class="grid grid-cols-2 sm:grid-cols-3 gap-3">
           <div>
             <label class="block text-xs font-semibold text-slate-500 mb-1">Plan</label>
-            <select v-model="billingForm.plan" class="admin-input text-sm">
-              <option v-for="p in plans" :key="p.value" :value="p.value">{{ p.label }}</option>
-            </select>
+            <QeSelect v-model="billingForm.plan" :options="plans" />
           </div>
           <div>
             <label class="block text-xs font-semibold text-slate-500 mb-1">Amount (KES)</label>
@@ -224,20 +210,15 @@
           </div>
           <div>
             <label class="block text-xs font-semibold text-slate-500 mb-1">Payment method</label>
-            <select v-model="billingForm.payment_method" class="admin-input text-sm">
-              <option value="manual">Manual</option>
-              <option value="mpesa">M-Pesa</option>
-              <option value="bank_transfer">Bank Transfer</option>
-              <option value="card">Card</option>
-            </select>
+            <QeSelect v-model="billingForm.payment_method" :options="paymentMethods" />
           </div>
           <div>
             <label class="block text-xs font-semibold text-slate-500 mb-1">Period start</label>
-            <input v-model="billingForm.current_period_start" type="date" class="admin-input text-sm" />
+            <QeDatePicker v-model="billingForm.current_period_start" />
           </div>
           <div>
             <label class="block text-xs font-semibold text-slate-500 mb-1">Period end</label>
-            <input v-model="billingForm.current_period_end" type="date" class="admin-input text-sm" />
+            <QeDatePicker v-model="billingForm.current_period_end" />
           </div>
           <div class="flex items-end">
             <button class="admin-btn-primary text-sm w-full" :disabled="saving" @click="handleUpdateBilling">
@@ -303,11 +284,7 @@
           <div class="rounded-xl border border-slate-100 bg-slate-50/60 p-3">
             <p class="text-xs font-bold text-slate-600 mb-2">Set end date</p>
             <div class="flex gap-1.5">
-              <input
-                v-model="trialEndDate"
-                type="date"
-                class="admin-input text-sm flex-1"
-              />
+              <QeDatePicker v-model="trialEndDate" class="flex-1" />
               <button
                 class="admin-btn-primary text-xs px-2"
                 :disabled="saving || !trialEndDate"
@@ -344,21 +321,11 @@
           </div>
           <div>
             <label class="block text-xs font-semibold text-slate-500 mb-1">Status</label>
-            <select v-model="paymentForm.status" class="admin-input text-sm">
-              <option value="paid">Paid</option>
-              <option value="pending">Pending</option>
-              <option value="failed">Failed</option>
-              <option value="refunded">Refunded</option>
-            </select>
+            <QeSelect v-model="paymentForm.status" :options="paymentStatuses" />
           </div>
           <div>
             <label class="block text-xs font-semibold text-slate-500 mb-1">Method</label>
-            <select v-model="paymentForm.payment_method" class="admin-input text-sm">
-              <option value="manual">Manual</option>
-              <option value="mpesa">M-Pesa</option>
-              <option value="bank_transfer">Bank Transfer</option>
-              <option value="card">Card</option>
-            </select>
+            <QeSelect v-model="paymentForm.payment_method" :options="paymentMethods" />
           </div>
           <div class="sm:col-span-2">
             <label class="block text-xs font-semibold text-slate-500 mb-1">Reference / Notes</label>
@@ -442,6 +409,7 @@
 import { ref, computed, onMounted, reactive } from 'vue'
 import { formatDate as fmtDate, formatTime } from '@/composables/useDateFormat'
 import { parseAppTimestamp } from '@qesuite/shared'
+import { QeSelect, QeDatePicker } from '@qesuite/ui'
 import ConfirmModal from './ConfirmModal.vue'
 import {
   getStoreSubscription, updateStoreSubscription, activateStoreSubscription,
@@ -456,6 +424,27 @@ const plans = [
   { value: 'starter', label: 'Starter' },
   { value: 'growth', label: 'Growth' },
   { value: 'pro', label: 'Pro' },
+]
+
+const paymentMethods = [
+  { value: 'manual', label: 'Manual' },
+  { value: 'mpesa', label: 'M-Pesa' },
+  { value: 'bank_transfer', label: 'Bank Transfer' },
+  { value: 'card', label: 'Card' },
+]
+
+const paymentStatuses = [
+  { value: 'paid', label: 'Paid' },
+  { value: 'pending', label: 'Pending' },
+  { value: 'failed', label: 'Failed' },
+  { value: 'refunded', label: 'Refunded' },
+]
+
+const periodMonths = [
+  { value: 1, label: '1 month' },
+  { value: 3, label: '3 months' },
+  { value: 6, label: '6 months' },
+  { value: 12, label: '12 months' },
 ]
 
 const loading = ref(true)

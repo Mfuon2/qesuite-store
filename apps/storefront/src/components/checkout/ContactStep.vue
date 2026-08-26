@@ -29,8 +29,8 @@
         <input
           v-model="form.phone"
           type="tel"
-          inputmode="numeric"
-          maxlength="12"
+          inputmode="tel"
+          maxlength="17"
           placeholder="07XX XXX XXX"
           class="w-full pl-[56px] pr-10 py-3.5 rounded-xl border transition-colors outline-none text-sm bg-white text-slate-950 placeholder-slate-400"
           :class="errors.phone
@@ -93,7 +93,7 @@ import { ref, reactive } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ExclamationTriangleIcon } from '@heroicons/vue/24/outline'
 import { useCheckoutStore } from '@/stores/checkout'
-import { validateLocalPhone } from '@qesuite/shared'
+import { validatePhone as isValidKenyanPhone, displayPhone } from '@qesuite/shared'
 
 const { t } = useI18n()
 const checkout = useCheckoutStore()
@@ -103,10 +103,11 @@ const errors = reactive({ phone: '', name: '' })
 const phoneValid = ref(false)
 
 function onPhoneInput() {
-  // Keep only digits and spaces while typing
-  form.phone = form.phone.replace(/[^\d\s]/g, '')
+  // Keep digits, spaces, and a leading + while typing — accepts 07xx local
+  // format as well as +254/254 international format (e.g. pasted from contacts)
+  form.phone = form.phone.replace(/[^\d\s+]/g, '')
   // Real-time: show green tick as soon as valid, clear error
-  const v = validateLocalPhone(form.phone.trim())
+  const v = isValidKenyanPhone(form.phone.trim())
   phoneValid.value = v
   if (v) errors.phone = ''
 }
@@ -116,12 +117,16 @@ function validatePhone() {
   if (!phone) {
     errors.phone = 'Phone number is required'
     phoneValid.value = false
-  } else if (!validateLocalPhone(phone)) {
-    errors.phone = 'Enter a valid Kenyan number starting with 07 or 011 (e.g. 0712 345 678)'
+  } else if (!isValidKenyanPhone(phone)) {
+    errors.phone = 'Enter a valid Kenyan number starting with 07 or 01 (e.g. 0712 345 678)'
     phoneValid.value = false
   } else {
     errors.phone = ''
     phoneValid.value = true
+    // Normalize to the familiar local display format regardless of how it
+    // was typed (0712…, +254712…, or 254712…) — the API re-normalizes to
+    // 254… on submit, but the form itself should show one consistent shape.
+    form.phone = displayPhone(phone).replace(/\s+/g, ' ')
   }
 }
 

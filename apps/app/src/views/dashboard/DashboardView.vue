@@ -112,7 +112,7 @@
           </template>
           <p v-else class="absolute inset-0 grid place-items-center text-xs text-slate-400">No sales or expenses in this period</p>
           <div class="absolute inset-x-0 bottom-0 grid grid-cols-7 text-center text-xs font-medium text-slate-500">
-            <span v-for="day in days" :key="day">{{ day }}</span>
+            <span v-for="(day, i) in days" :key="i">{{ day }}</span>
           </div>
         </div>
         <p class="mt-1 text-[10px] leading-4 text-slate-400">Estimated variance uses only the expenses recorded in the app.</p>

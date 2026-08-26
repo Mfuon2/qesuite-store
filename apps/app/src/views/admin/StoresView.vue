@@ -42,7 +42,7 @@
           v-model="searchInput"
           type="search"
           placeholder="Search by name, slug, phone..."
-          class="admin-input pl-9"
+          class="admin-input !pl-9"
           @input="handleSearch"
         />
       </div>
@@ -147,13 +147,13 @@
       <div class="flex flex-wrap items-center justify-between gap-4 border-t border-slate-100/80 bg-white/80 px-4 py-3">
         <div class="flex items-center gap-2 text-sm text-slate-500">
           <span class="whitespace-nowrap">Rows per page:</span>
-          <select
-            :value="stores.limit"
-            class="admin-select py-1.5"
-            @change="onPageSizeChange"
-          >
-            <option v-for="n in [10, 25, 50, 100]" :key="n" :value="n">{{ n }}</option>
-          </select>
+          <QeSelect
+            :model-value="stores.limit"
+            size="sm"
+            class="!w-20"
+            :options="pageSizeOptions"
+            @update:model-value="onPageSizeChange"
+          />
         </div>
 
         <Pagination
@@ -199,6 +199,7 @@
 <script setup lang="ts">
 import { ref, onMounted, h } from 'vue'
 import { useRouter } from 'vue-router'
+import { QeSelect } from '@qesuite/ui'
 import { useStoresStore, type AdminStore, type StoreFilter } from '@/stores/stores'
 import { useDebounce } from '@/composables/useDebounce'
 import { useAdminAction } from '@/composables/useAdminAction'
@@ -234,8 +235,10 @@ function handleSearch() {
   debounce(() => stores.setSearch(searchInput.value))
 }
 
-function onPageSizeChange(e: Event) {
-  stores.setLimit(Number((e.target as HTMLSelectElement).value))
+const pageSizeOptions = [10, 25, 50, 100].map((n) => ({ value: n, label: String(n) }))
+
+function onPageSizeChange(value: string | number | null) {
+  stores.setLimit(Number(value))
 }
 
 function goToStore(id: string) {

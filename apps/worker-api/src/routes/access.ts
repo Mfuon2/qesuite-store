@@ -1,5 +1,5 @@
 import { Context, Hono } from 'hono'
-import { ALL_ACCESS_PERMISSIONS, ACCESS_PERMISSION_GROUPS, ACCESS_PRESETS } from '@qesuite/shared'
+import { ALL_ACCESS_PERMISSIONS, ACCESS_PERMISSION_GROUPS, ACCESS_PRESETS, validatePhone, normalizeKenyaPhone } from '@qesuite/shared'
 import type { Env, Variables } from '../types'
 import { authMiddleware } from '../middleware/auth'
 import { tenantGuard } from '../middleware/tenant'
@@ -217,15 +217,19 @@ access.put('/members/:id', async (c) => {
     }>()
     const name = body.name?.trim()
     const email = body.email?.trim().toLowerCase()
-    const phone = body.phone?.trim() || null
+    const rawPhone = body.phone?.trim() || null
     const jobTitle = body.job_title?.trim() || null
     if (!name || name.length > MAX_NAME) return c.json({ success: false, error: 'A valid name is required', data: null }, 400)
     if (!email || email.length > MAX_EMAIL || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return c.json({ success: false, error: 'A valid email is required', data: null }, 400)
     }
-    if ((phone?.length ?? 0) > MAX_PHONE || (jobTitle?.length ?? 0) > MAX_JOB_TITLE) {
+    if ((rawPhone?.length ?? 0) > MAX_PHONE || (jobTitle?.length ?? 0) > MAX_JOB_TITLE) {
       return c.json({ success: false, error: 'Phone or job title is too long', data: null }, 400)
     }
+    if (rawPhone && !validatePhone(rawPhone)) {
+      return c.json({ success: false, error: 'Enter a valid Kenyan phone number, e.g. 0712345678', data: null }, 400)
+    }
+    const phone = rawPhone ? normalizeKenyaPhone(rawPhone) : null
     const duplicate = await c.env.qesuite_db.prepare(
       'SELECT id FROM users WHERE LOWER(email) = LOWER(?) AND id != ? AND is_active = 1 LIMIT 1'
     ).bind(email, targetId).first()
@@ -301,15 +305,19 @@ access.post('/invitations', async (c) => {
     }>()
     const name = body.name?.trim()
     const email = body.email?.trim().toLowerCase()
-    const phone = body.phone?.trim() || null
+    const rawPhone = body.phone?.trim() || null
     const jobTitle = body.job_title?.trim() || null
     if (!name || name.length > MAX_NAME) return c.json({ success: false, error: 'A valid name is required', data: null }, 400)
     if (!email || email.length > MAX_EMAIL || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return c.json({ success: false, error: 'A valid email is required', data: null }, 400)
     }
-    if ((phone?.length ?? 0) > MAX_PHONE || (jobTitle?.length ?? 0) > MAX_JOB_TITLE) {
+    if ((rawPhone?.length ?? 0) > MAX_PHONE || (jobTitle?.length ?? 0) > MAX_JOB_TITLE) {
       return c.json({ success: false, error: 'Phone or job title is too long', data: null }, 400)
     }
+    if (rawPhone && !validatePhone(rawPhone)) {
+      return c.json({ success: false, error: 'Enter a valid Kenyan phone number, e.g. 0712345678', data: null }, 400)
+    }
+    const phone = rawPhone ? normalizeKenyaPhone(rawPhone) : null
     const existing = await c.env.qesuite_db.prepare(
       `SELECT id FROM users WHERE LOWER(email) = LOWER(?) AND is_active = 1
        UNION ALL

@@ -1,27 +1,5 @@
 import { Env } from '../types'
-
-/**
- * Normalize any Kenyan phone input to 254XXXXXXXXX (no + sign).
- *
- * Handles all common input forms:
- *   724814117   → 254724814117   (9-digit, 7-prefix, no leading 0)
- *   0724814117  → 254724814117   (10-digit, leading 0)
- *   1124814117  → 2541124814117  (10-digit, 1-prefix, no leading 0)
- *   01124814117 → 2541124814117  (11-digit, leading 0 on 1-prefix)
- *   +254724…    → 254724…        (already international, strip +)
- *   254724…     → 254724…        (already normalized)
- */
-export function normalizeKenyaPhone(phone: string): string {
-  // Strip every non-digit character (spaces, +, dashes, parens, dots)
-  let d = phone.replace(/\D/g, '')
-
-  // Already has country code
-  if (d.startsWith('254')) return d
-
-  // Strip any number of leading zeros, then prepend 254
-  d = d.replace(/^0+/, '')
-  return '254' + d
-}
+import { normalizeKenyaPhone } from '@qesuite/shared'
 
 /**
  * Send an SMS via TextSMS Kenya.

@@ -1,7 +1,8 @@
 import { Hono } from 'hono'
 import { Env, Variables } from '../types'
 import { generateId, generateTrackingCode } from '../lib/jwt'
-import { sendSMS, sendWhatsApp, normalizeKenyaPhone, getOrderConfirmedSMS, getNewOrderSMS } from '../lib/notifications'
+import { sendSMS, sendWhatsApp, getOrderConfirmedSMS, getNewOrderSMS } from '../lib/notifications'
+import { normalizeKenyaPhone, validatePhone } from '@qesuite/shared'
 import { nairobiCompactTimestamp } from '../lib/time'
 
 const storefront = new Hono<{ Bindings: Env; Variables: Variables }>()
@@ -260,10 +261,10 @@ storefront.post('/:slug/orders', async (c) => {
       return c.json({ success: false, error: 'Invalid phone number', data: null }, 400)
     }
     // Strict Kenyan mobile validation — normalize to 254XXXXXXXXX for storage/SMS/M-Pesa
-    const customerPhone = normalizeKenyaPhone(body.customer_phone)
-    if (!/^254[17]\d{8}$/.test(customerPhone)) {
+    if (!validatePhone(body.customer_phone)) {
       return c.json({ success: false, error: 'Enter a valid Kenyan phone number starting with 07 or 01', data: null }, 400)
     }
+    const customerPhone = normalizeKenyaPhone(body.customer_phone)
     if (body.customer_name && body.customer_name.length > 120) {
       return c.json({ success: false, error: 'Name too long', data: null }, 400)
     }

@@ -92,10 +92,7 @@
       </div>
 
       <div class="flex flex-wrap items-center gap-2">
-        <select v-model="selectedCategory" class="owner-select">
-          <option value="">All categories</option>
-          <option v-for="cat in categoriesStore.categories" :key="cat.id" :value="cat.id">{{ cat.name }}</option>
-        </select>
+        <QeSelect v-model="selectedCategory" class="!w-auto" :options="categoryFilterOptions" />
         <div class="owner-segmented" aria-label="Product view">
           <button
             @click="viewMode = 'grid'"
@@ -290,6 +287,7 @@ import {
   Squares2X2Icon, ListBulletIcon, CubeIcon, ShareIcon,
   AdjustmentsHorizontalIcon, XMarkIcon
 } from '@heroicons/vue/24/outline'
+import { QeSelect } from '@qesuite/ui'
 import ProductFormModal from '@/components/dashboard/ProductFormModal.vue'
 import CatalogShareModal from '@/components/dashboard/CatalogShareModal.vue'
 import { useProductsStore } from '@/stores/products'
@@ -308,6 +306,10 @@ const { confirm } = useConfirm()
 const viewMode = ref<'grid' | 'list'>('grid')
 const search = ref('')
 const selectedCategory = ref('')
+const categoryFilterOptions = computed(() => [
+  { value: '', label: 'All categories' },
+  ...categoriesStore.categories.map((cat) => ({ value: cat.id, label: cat.name })),
+])
 const showModal = ref(false)
 const showCatalogModal = ref(false)
 const showMobileActions = ref(false)

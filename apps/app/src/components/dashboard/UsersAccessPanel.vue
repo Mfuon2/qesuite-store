@@ -3,7 +3,7 @@
     <div class="flex shrink-0 flex-wrap items-center gap-2 border-b border-slate-100 px-3 py-2">
       <div class="relative min-w-48 flex-1">
         <MagnifyingGlassIcon class="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-        <input v-model="search" class="owner-input !min-h-8 !rounded-lg !py-1.5 pl-8 !text-xs" placeholder="Search people or invitations" />
+        <input v-model="search" class="owner-input !min-h-8 !rounded-lg !py-1.5 !pl-8 !text-xs" placeholder="Search people or invitations" />
       </div>
       <div class="flex rounded-lg bg-slate-100 p-0.5 text-[11px] font-bold">
         <button type="button" class="rounded-md px-2.5 py-1.5" :class="listFilter === 'all' ? 'bg-white text-slate-950 shadow-sm' : 'text-slate-500'" @click="listFilter = 'all'">All {{ totalCount }}</button>
@@ -17,7 +17,7 @@
 
     <div v-if="accessStore.loading && !accessStore.catalog" class="grid h-80 place-items-center text-xs text-slate-500 xl:h-auto xl:min-h-0 xl:flex-1">Loading access controls…</div>
     <div v-else class="grid h-[min(68vh,700px)] min-h-[470px] md:grid-cols-[260px_minmax(0,1fr)] xl:h-auto xl:min-h-0 xl:flex-1">
-      <aside class="overflow-y-auto border-b border-slate-100 bg-slate-50/60 md:border-b-0 md:border-r">
+      <aside class="min-w-0 overflow-y-auto border-b border-slate-100 bg-slate-50/60 md:border-b-0 md:border-r">
         <button
           v-for="member in filteredMembers"
           :key="member.id"

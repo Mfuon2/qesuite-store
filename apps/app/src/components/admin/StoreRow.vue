@@ -33,7 +33,7 @@
 
     <!-- Status -->
     <td class="table-td">
-      <StatusBadge :status="store.subscription_status" :suspended="store.is_suspended" />
+      <StatusBadge :status="store.subscription_status" :suspended="!!store.is_suspended" />
     </td>
 
     <!-- Trial expiry -->

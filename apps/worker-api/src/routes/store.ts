@@ -2,6 +2,7 @@ import { Hono } from 'hono'
 import { Env, Variables } from '../types'
 import { authMiddleware } from '../middleware/auth'
 import { tenantGuard } from '../middleware/tenant'
+import { validatePhone, normalizeKenyaPhone } from '@qesuite/shared'
 
 const store = new Hono<{ Bindings: Env; Variables: Variables }>()
 
@@ -116,6 +117,14 @@ store.put('/', authMiddleware, tenantGuard, async (c) => {
     }>()
 
     const tenantId = user.tenant_id!
+
+    for (const field of ['phone', 'whatsapp_number'] as const) {
+      const val = body[field]
+      if (val && !validatePhone(val)) {
+        return c.json({ error: 'Enter a valid Kenyan phone number, e.g. 0712345678', data: null }, 400)
+      }
+      if (val) body[field] = normalizeKenyaPhone(val)
+    }
 
     // Update tenant branding fields
     const tenantFields: string[] = []

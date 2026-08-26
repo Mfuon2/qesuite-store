@@ -2,6 +2,8 @@ import { Hono } from 'hono'
 import { Env, Variables } from '../types'
 import { authMiddleware } from '../middleware/auth'
 import { tenantGuard } from '../middleware/tenant'
+import { sendSMS } from '../lib/notifications'
+import { validatePhone, normalizeKenyaPhone } from '@qesuite/shared'
 
 const settings = new Hono<{ Bindings: Env; Variables: Variables }>()
 
@@ -46,6 +48,14 @@ settings.put('/tenant', tenantGuard, async (c) => {
           if (key === 'lat'  && (n < -90  || n > 90))  val = null
           if (key === 'lng'  && (n < -180 || n > 180)) val = null
         }
+      }
+      // Normalize contact numbers to the canonical wire format (254XXXXXXXXX)
+      // so storage, SMS, and WhatsApp all agree on the same string.
+      if ((key === 'phone' || key === 'whatsapp_number') && val) {
+        if (!validatePhone(val as string)) {
+          return c.json({ success: false, error: 'Enter a valid Kenyan phone number, e.g. 0712345678', data: null }, 400)
+        }
+        val = normalizeKenyaPhone(val as string)
       }
       fields.push(`${key} = ?`); values.push(val)
     }
@@ -139,7 +149,15 @@ settings.post('/onboarding', tenantGuard, async (c) => {
       const fields: string[] = []
       const values: unknown[] = []
       for (const key of allowed) {
-        if (key in body.tenant) { fields.push(`${key} = ?`); values.push(body.tenant[key]) }
+        if (!(key in body.tenant)) continue
+        let val = body.tenant[key]
+        if ((key === 'phone' || key === 'whatsapp_number') && val) {
+          if (!validatePhone(val as string)) {
+            return c.json({ success: false, error: 'Enter a valid Kenyan phone number, e.g. 0712345678', data: null }, 400)
+          }
+          val = normalizeKenyaPhone(val as string)
+        }
+        fields.push(`${key} = ?`); values.push(val)
       }
       if (fields.length) {
         values.push(tenantId)
@@ -197,9 +215,11 @@ settings.post('/onboarding', tenantGuard, async (c) => {
     // Invite riders via magic link SMS
     if (body.rider_phones && Array.isArray(body.rider_phones) && body.rider_phones.length > 0) {
       const { generateId, generateTrackingCode } = await import('../lib/jwt')
-      const { sendSMS } = await import('../lib/notifications')
 
-      for (const phone of body.rider_phones) {
+      for (const rawPhone of body.rider_phones) {
+        if (!validatePhone(rawPhone)) continue
+        const phone = normalizeKenyaPhone(rawPhone)
+
         const existing = await c.env.qesuite_db.prepare(
           'SELECT id FROM delivery_staff WHERE phone = ? AND tenant_id = ?'
         ).bind(phone, tenantId).first()

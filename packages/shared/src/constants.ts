@@ -1,4 +1,4 @@
-import type { OrderStatus, Plan, PlanDetails, Currency } from '@qesuite/types';
+import type { OrderStatus, Plan, PlanDetails, Currency, StoreCategory } from '@qesuite/types';
 
 // ─────────────────────────────────────────────────────────────
 // Order status metadata
@@ -180,6 +180,108 @@ export function storeFontStack(fontFamily?: string | null): string {
     return `'${fontFamily}', sans-serif`;
   }
   return "'Inter', sans-serif";
+}
+
+// ─────────────────────────────────────────────────────────────
+// Product category icons — curated per business type so the picker only
+// shows icons that actually make sense for what the store sells.
+//
+// `value` is a Heroicons (24/outline) component name — plain string, no
+// framework/icon-package dependency here. The app resolves it to an actual
+// icon component for rendering (see CATEGORY_ICON_COMPONENTS in the app).
+// ─────────────────────────────────────────────────────────────
+
+export const CATEGORY_ICON_PRESETS: Record<StoreCategory, { value: string; label: string }[]> = {
+  groceries: [
+    { value: 'SparklesIcon', label: 'Fresh produce' },
+    { value: 'CakeIcon', label: 'Bakery' },
+    { value: 'BeakerIcon', label: 'Beverages' },
+    { value: 'CubeIcon', label: 'Pantry & dry goods' },
+    { value: 'FireIcon', label: 'Hot & prepared' },
+    { value: 'ArchiveBoxIcon', label: 'Frozen & bulk' },
+    { value: 'ShoppingBagIcon', label: 'Packaged goods' },
+    { value: 'HomeIcon', label: 'Household' },
+  ],
+  food: [
+    { value: 'FireIcon', label: 'Hot mains' },
+    { value: 'CakeIcon', label: 'Desserts' },
+    { value: 'BeakerIcon', label: 'Drinks' },
+    { value: 'SparklesIcon', label: 'Specials' },
+    { value: 'ShoppingBagIcon', label: 'Takeaway' },
+    { value: 'HeartIcon', label: 'Chef favorites' },
+    { value: 'ClipboardDocumentListIcon', label: 'Combos & meals' },
+    { value: 'GiftIcon', label: 'Kids menu' },
+  ],
+  fashion: [
+    { value: 'ShoppingBagIcon', label: "Women's wear" },
+    { value: 'BriefcaseIcon', label: "Men's wear" },
+    { value: 'GiftIcon', label: 'Kids' },
+    { value: 'SwatchIcon', label: 'Accessories' },
+    { value: 'SparklesIcon', label: 'Jewelry' },
+    { value: 'StarIcon', label: 'New arrivals' },
+  ],
+  electronics: [
+    { value: 'DevicePhoneMobileIcon', label: 'Phones' },
+    { value: 'ComputerDesktopIcon', label: 'Computers' },
+    { value: 'TvIcon', label: 'TVs & displays' },
+    { value: 'SpeakerWaveIcon', label: 'Audio' },
+    { value: 'DeviceTabletIcon', label: 'Tablets' },
+    { value: 'CameraIcon', label: 'Cameras' },
+    { value: 'PuzzlePieceIcon', label: 'Gaming' },
+    { value: 'BoltIcon', label: 'Chargers & accessories' },
+  ],
+  pharmacy: [
+    { value: 'BeakerIcon', label: 'Medicine' },
+    { value: 'ShieldCheckIcon', label: 'First aid & safety' },
+    { value: 'HeartIcon', label: 'Health & wellness' },
+    { value: 'SparklesIcon', label: 'Personal care' },
+    { value: 'GiftIcon', label: 'Baby care' },
+    { value: 'SunIcon', label: 'Vitamins & supplements' },
+    { value: 'HomeIcon', label: 'Home health devices' },
+  ],
+  beauty: [
+    { value: 'SparklesIcon', label: 'Makeup' },
+    { value: 'ScissorsIcon', label: 'Hair care' },
+    { value: 'HeartIcon', label: 'Skincare' },
+    { value: 'BeakerIcon', label: 'Bath & body' },
+    { value: 'StarIcon', label: 'Nails' },
+  ],
+  home: [
+    { value: 'HomeIcon', label: 'Furniture' },
+    { value: 'HomeModernIcon', label: 'Decor' },
+    { value: 'WrenchScrewdriverIcon', label: 'Hardware & tools' },
+    { value: 'FireIcon', label: 'Kitchenware' },
+    { value: 'ArchiveBoxIcon', label: 'Storage & organization' },
+    { value: 'SparklesIcon', label: 'Cleaning' },
+  ],
+  sports: [
+    { value: 'FireIcon', label: 'Fitness' },
+    { value: 'SunIcon', label: 'Outdoor' },
+    { value: 'ShoppingBagIcon', label: 'Apparel' },
+    { value: 'StarIcon', label: 'Team sports' },
+    { value: 'ShieldCheckIcon', label: 'Protective gear' },
+    { value: 'CubeIcon', label: 'Equipment' },
+  ],
+  other: [
+    { value: 'ShoppingBagIcon', label: 'General' },
+    { value: 'ArchiveBoxIcon', label: 'Miscellaneous' },
+    { value: 'StarIcon', label: 'Featured' },
+    { value: 'GiftIcon', label: 'Gifts' },
+  ],
+};
+
+/**
+ * Icon options for a category picker: the business's own vertical first,
+ * plus the generic "other" set appended so there's always a fallback icon
+ * for a category that doesn't fit the vertical (e.g. "Sale items").
+ */
+export function categoryIconOptions(storeCategory: StoreCategory): { value: string; label: string }[] {
+  const specific = CATEGORY_ICON_PRESETS[storeCategory] ?? CATEGORY_ICON_PRESETS.other;
+  if (storeCategory === 'other') return specific;
+  const extras = CATEGORY_ICON_PRESETS.other.filter(
+    generic => !specific.some(item => item.value === generic.value)
+  );
+  return [...specific, ...extras];
 }
 
 // ─────────────────────────────────────────────────────────────

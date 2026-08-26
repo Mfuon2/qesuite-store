@@ -82,7 +82,8 @@
           </div>
 
           <div class="owner-brand-surface flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-xs font-black text-primary ring-1">
-            {{ cat.icon || cat.name.charAt(0).toUpperCase() }}
+            <component :is="resolveCategoryIcon(cat.icon)" v-if="resolveCategoryIcon(cat.icon)" class="h-4 w-4" />
+            <span v-else>{{ cat.name.charAt(0).toUpperCase() }}</span>
           </div>
 
           <div class="min-w-0 flex-1">
@@ -139,8 +140,8 @@
                 <input v-model="form.name" type="text" maxlength="100" placeholder="Category name" required class="owner-input mt-1.5" />
               </label>
               <label class="block">
-                <span class="admin-label">Icon text</span>
-                <input v-model="form.icon" type="text" maxlength="12" placeholder="Optional emoji or short text" class="owner-input mt-1.5" />
+                <span class="admin-label">Icon</span>
+                <QeSelect v-model="form.icon" class="mt-1.5" placeholder="No icon" :options="iconOptions" />
               </label>
 
               <div class="flex justify-end gap-2 border-t border-slate-100 pt-3">
@@ -162,16 +163,47 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, reactive, onMounted } from 'vue'
-import { PlusIcon, PencilIcon, TrashIcon, TagIcon, ChevronUpIcon, ChevronDownIcon, EyeIcon, EyeSlashIcon, XMarkIcon } from '@heroicons/vue/24/outline'
+import { computed, ref, reactive, onMounted, type Component } from 'vue'
+import {
+  PlusIcon, PencilIcon, TrashIcon, TagIcon, ChevronUpIcon, ChevronDownIcon, EyeIcon, EyeSlashIcon, XMarkIcon,
+  SparklesIcon, CakeIcon, BeakerIcon, CubeIcon, FireIcon, ArchiveBoxIcon, ShoppingBagIcon, HomeIcon, HeartIcon,
+  ClipboardDocumentListIcon, GiftIcon, BriefcaseIcon, SwatchIcon, StarIcon, DevicePhoneMobileIcon,
+  ComputerDesktopIcon, TvIcon, SpeakerWaveIcon, DeviceTabletIcon, CameraIcon, PuzzlePieceIcon, BoltIcon,
+  ShieldCheckIcon, SunIcon, ScissorsIcon, HomeModernIcon, WrenchScrewdriverIcon,
+} from '@heroicons/vue/24/outline'
+import { QeSelect } from '@qesuite/ui'
+import { categoryIconOptions } from '@qesuite/shared'
 import { useCategoriesStore } from '@/stores/categories'
 import { useAccessStore } from '@/stores/access'
+import { useSettingsStore } from '@/stores/settings'
 import { useConfirm } from '@/composables/useConfirm'
 import type { Category } from '@qesuite/types'
 
 const categoriesStore = useCategoriesStore()
 const accessStore = useAccessStore()
+const settingsStore = useSettingsStore()
 const { confirm } = useConfirm()
+
+// Maps the Heroicons component-name strings stored in CATEGORY_ICON_PRESETS
+// (see @qesuite/shared) to the actual imported icon components.
+const CATEGORY_ICON_COMPONENTS: Record<string, Component> = {
+  SparklesIcon, CakeIcon, BeakerIcon, CubeIcon, FireIcon, ArchiveBoxIcon, ShoppingBagIcon, HomeIcon, HeartIcon,
+  ClipboardDocumentListIcon, GiftIcon, BriefcaseIcon, SwatchIcon, StarIcon, DevicePhoneMobileIcon,
+  ComputerDesktopIcon, TvIcon, SpeakerWaveIcon, DeviceTabletIcon, CameraIcon, PuzzlePieceIcon, BoltIcon,
+  ShieldCheckIcon, SunIcon, ScissorsIcon, HomeModernIcon, WrenchScrewdriverIcon,
+}
+
+function resolveCategoryIcon(iconName: string | null | undefined): Component | undefined {
+  return iconName ? CATEGORY_ICON_COMPONENTS[iconName] : undefined
+}
+
+const iconOptions = computed(() =>
+  categoryIconOptions(settingsStore.tenant?.store_category ?? 'other').map(opt => ({
+    value: opt.value,
+    label: opt.label,
+    icon: CATEGORY_ICON_COMPONENTS[opt.value],
+  }))
+)
 
 const showForm = ref(false)
 const editingId = ref<string | null>(null)

@@ -62,17 +62,13 @@
         <Transition name="fade">
           <div v-if="showCancelDropdown" class="mt-3 p-3 bg-red-50  rounded-xl border border-red-200 ">
             <p class="text-xs font-medium text-red-700  mb-2">Cancellation reason</p>
-            <select
+            <QeSelect
               v-model="cancelReason"
-              class="w-full px-3 py-2 text-sm rounded-lg border border-red-200  bg-white  text-gray-900  focus:outline-none focus:ring-2 focus:ring-red-400/50 mb-2"
-            >
-              <option value="">Select reason</option>
-              <option value="Customer requested">Customer requested</option>
-              <option value="Out of stock">Out of stock</option>
-              <option value="Unable to deliver">Unable to deliver</option>
-              <option value="Payment failed">Payment failed</option>
-              <option value="Other">Other</option>
-            </select>
+              tone="danger"
+              placeholder="Select reason"
+              class="mb-2"
+              :options="cancelReasonOptions"
+            />
             <button
               @click="handleCancel"
               :disabled="!cancelReason"
@@ -255,6 +251,7 @@ import {
   CubeIcon, DocumentTextIcon, TruckIcon, XCircleIcon, ChatBubbleLeftIcon,
   BanknotesIcon, CheckCircleIcon
 } from '@heroicons/vue/24/outline'
+import { QeSelect } from '@qesuite/ui'
 import StatusBadge from '@/components/dashboard/StatusBadge.vue'
 import AssignRiderModal from '@/components/dashboard/AssignRiderModal.vue'
 import PackingSlipModal from '@/components/dashboard/PackingSlipModal.vue'
@@ -271,6 +268,14 @@ const ordersStore = useOrdersStore()
 const accessStore = useAccessStore()
 
 const orderId = route.params.id as string
+
+const cancelReasonOptions = [
+  { value: 'Customer requested', label: 'Customer requested' },
+  { value: 'Out of stock', label: 'Out of stock' },
+  { value: 'Unable to deliver', label: 'Unable to deliver' },
+  { value: 'Payment failed', label: 'Payment failed' },
+  { value: 'Other', label: 'Other' },
+]
 const showAssignModal = ref(false)
 const showPaymentModal = ref(false)
 

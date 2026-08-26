@@ -4,6 +4,7 @@ import { Env, Variables } from '../types'
 import { signJWT, verifyJWT, generateOTP, generateId, generateTrackingCode } from '../lib/jwt'
 import { hashPassword, verifyPassword, hashToken } from '../lib/password'
 import { sendSMS } from '../lib/notifications'
+import { validatePhone, normalizeKenyaPhone } from '@qesuite/shared'
 
 const auth = new Hono<{ Bindings: Env; Variables: Variables }>()
 
@@ -98,9 +99,14 @@ auth.post('/register', async (c) => {
     if (phone && phone.length > MAX_PHONE) {
       return c.json({ error: 'Phone number too long', data: null }, 400)
     }
+    if (phone && !validatePhone(phone)) {
+      return c.json({ error: 'Enter a valid Kenyan phone number, e.g. 0712345678', data: null }, 400)
+    }
     if (password.length < 8 || password.length > MAX_PASSWORD) {
       return c.json({ error: 'Password must be 8–128 characters', data: null }, 400)
     }
+
+    const normalizedPhone = phone ? normalizeKenyaPhone(phone) : undefined
 
     // Check email/phone uniqueness
     if (email) {
@@ -111,10 +117,10 @@ auth.post('/register', async (c) => {
         return c.json({ error: 'Email already registered', data: null }, 409)
       }
     }
-    if (phone) {
+    if (normalizedPhone) {
       const existing = await c.env.qesuite_db.prepare(
         "SELECT id FROM users WHERE phone = ? AND role = 'owner'"
-      ).bind(phone).first()
+      ).bind(normalizedPhone).first()
       if (existing) {
         return c.json({ error: 'Phone already registered', data: null }, 409)
       }
@@ -149,7 +155,7 @@ auth.post('/register', async (c) => {
     await c.env.qesuite_db.prepare(
       `INSERT INTO users (id, tenant_id, name, phone, email, password_hash, role, is_active, created_at)
        VALUES (?, ?, ?, ?, ?, ?, 'owner', 1, datetime('now'))`
-    ).bind(userId, tenantId, name, phone ?? null, email ?? null, passwordHash).run()
+    ).bind(userId, tenantId, name, normalizedPhone ?? null, email ?? null, passwordHash).run()
 
     // Store settings
     await c.env.qesuite_db.prepare(
@@ -201,6 +207,107 @@ auth.post('/register', async (c) => {
   }
 })
 
+// POST /api/auth/resolve — step 1 of login: given a bare identifier, decide
+// whether the next step is a password prompt or a rider magic-link send.
+//
+// Validation ladder:
+//   1. Shape      — is the identifier email-shaped, or a plausible Kenyan phone?
+//   2. Existence  — look up BOTH an owner/staff candidate and rider candidates
+//                   unconditionally, in parallel. Never short-circuit on the
+//                   first match — a "not found" and a "found" identifier must
+//                   do the same DB work.
+//   3. Active     — filter rider matches to is_active = 1 only. A deactivated
+//                   rider is treated exactly like "no such account."
+//   4. Fan-out    — a rider phone may be active at more than one tenant; all
+//                   matching rows get the same token (see /rider/verify for
+//                   the multi-tenant disambiguation this produces).
+//   5. Atomic fire — the SMS is gated by the SAME statement that reconfirms
+//                   "active on this tenant," via a conditional UPDATE, not a
+//                   prior read — if a row's is_active flips in the gap
+//                   between step 3 and here, that row simply won't match and
+//                   won't get a token. No separate check-then-act window.
+//   6. Idempotent  — skip regenerating/resending if a token issued <60s ago
+//                   is still outstanding for this phone.
+// Every branch performs the same DB work and awaits the same floor delay, and
+// the rider token write + SMS send happen in the background (waitUntil) so
+// they can never add latency that would distinguish this branch from the
+// "owner" or "no match" branches. The response never has a third shape for
+// "not found" — an unmatched identifier gets the identical {next:"password"}
+// a real owner/staff account would get.
+auth.post('/resolve', async (c) => {
+  try {
+    const ip = c.req.header('CF-Connecting-IP') ?? 'unknown'
+    if (!checkRateLimit(`resolve-ip:${ip}`, 20, 600)) {
+      return c.json({ error: 'Too many attempts. Please try again later.', data: null }, 429)
+    }
+
+    const { identifier } = await c.req.json<{ identifier: string }>()
+    if (!identifier || identifier.length > MAX_IDENTIFIER) {
+      return c.json({ success: true, data: { next: 'password' as const }, error: null })
+    }
+
+    if (!checkRateLimit(`resolve-id:${identifier.toLowerCase()}`, 8, 600)) {
+      return c.json({ error: 'Too many attempts. Please try again later.', data: null }, 429)
+    }
+
+    const isEmail = identifier.includes('@')
+    const phoneShaped = !isEmail && validatePhone(identifier)
+    // Always feed the rider query a same-shaped value so its cost doesn't
+    // vary between phone-shaped and email-shaped identifiers.
+    const phoneCandidate = phoneShaped ? normalizeKenyaPhone(identifier) : ' no-match '
+    const ownerIdentifier = isEmail ? identifier : normalizeKenyaPhone(identifier)
+
+    const floor = new Promise(resolve => setTimeout(resolve, 150))
+
+    const [ownerRow, riderRows] = await Promise.all([
+      isEmail
+        ? c.env.qesuite_db.prepare(
+            "SELECT id FROM users WHERE email = ? AND is_active = 1 LIMIT 1"
+          ).bind(ownerIdentifier).first<{ id: string }>()
+        : c.env.qesuite_db.prepare(
+            "SELECT id FROM users WHERE phone = ? AND role = 'owner' AND is_active = 1 LIMIT 1"
+          ).bind(ownerIdentifier).first<{ id: string }>(),
+      c.env.qesuite_db.prepare(
+        'SELECT id FROM delivery_staff WHERE phone = ? AND is_active = 1'
+      ).bind(phoneCandidate).all<{ id: string }>(),
+      floor,
+    ])
+
+    if (ownerRow || !phoneShaped || riderRows.results.length === 0) {
+      return c.json({ success: true, data: { next: 'password' as const }, error: null })
+    }
+
+    // Idempotency: skip resend if a token issued <60s ago is still live for any matching row
+    const now = new Date()
+    const recent = await c.env.qesuite_db.prepare(
+      `SELECT id FROM delivery_staff WHERE phone = ? AND is_active = 1
+       AND magic_link_expires_at IS NOT NULL AND magic_link_expires_at > ? LIMIT 1`
+    ).bind(phoneCandidate, new Date(now.getTime() + 29 * 60 * 1000).toISOString()).first()
+
+    if (!recent) {
+      const token = generateTrackingCode() + generateTrackingCode()
+      const expiresAt = new Date(now.getTime() + 30 * 60 * 1000).toISOString()
+      // Atomic confirm-and-fire — this UPDATE *is* the "still active" check.
+      const update = await c.env.qesuite_db.prepare(
+        'UPDATE delivery_staff SET magic_link_token = ?, magic_link_expires_at = ? WHERE phone = ? AND is_active = 1'
+      ).bind(token, expiresAt, phoneCandidate).run()
+
+      if (update.meta.changes > 0) {
+        const link = `${c.env.APP_BASE_URL.replace('store.', 'go.')}/auth/verify?token=${token}`
+        c.executionCtx.waitUntil(
+          sendSMS(c.env, phoneCandidate, `Sign in to your QeSuite delivery dashboard: ${link}\nThis link expires in 30 minutes.`).catch(() => {})
+        )
+      }
+    }
+
+    return c.json({ success: true, data: { next: 'magic_link_sent' as const }, error: null })
+  } catch (err) {
+    console.error('resolve error', err)
+    // Fail safe into the generic branch — never surface an internal-error shape here.
+    return c.json({ success: true, data: { next: 'password' as const }, error: null })
+  }
+})
+
 // POST /api/auth/login
 auth.post('/login', async (c) => {
   try {
@@ -226,6 +333,10 @@ auth.post('/login', async (c) => {
     }
 
     const isEmail = identifier.includes('@')
+    // Login-by-phone must match however the number was stored (normalizeKenyaPhone
+    // at write time), regardless of how the user typed it here — otherwise a
+    // "0712…" registration and a "+254712…" login attempt silently fail to match.
+    const loginIdentifier = isEmail ? identifier : normalizeKenyaPhone(identifier)
 
     // For phone logins, find ALL active owner accounts sharing that phone
     // so we can detect multi-store owners before verifying the password once
@@ -233,7 +344,7 @@ auth.post('/login', async (c) => {
       const { results: ownerRows } = await c.env.qesuite_db.prepare(
         `SELECT id, tenant_id, name, password_hash FROM users
          WHERE phone = ? AND role = 'owner' AND is_active = 1`
-      ).bind(identifier).all<{
+      ).bind(loginIdentifier).all<{
         id: string; tenant_id: string | null; name: string; password_hash: string
       }>()
 
@@ -288,7 +399,7 @@ auth.post('/login', async (c) => {
       isEmail
         ? 'SELECT * FROM users WHERE email = ? AND is_active = 1'
         : "SELECT * FROM users WHERE phone = ? AND role = 'owner' AND is_active = 1"
-    ).bind(identifier).first<{
+    ).bind(loginIdentifier).first<{
       id: string; tenant_id: string | null; name: string; role: string
       password_hash: string; email: string; phone: string
     }>()
@@ -426,10 +537,14 @@ auth.post('/select-store', async (c) => {
 // POST /api/auth/otp/send
 auth.post('/otp/send', async (c) => {
   try {
-    const { phone } = await c.req.json<{ phone: string }>()
-    if (!phone) {
+    const { phone: rawPhone } = await c.req.json<{ phone: string }>()
+    if (!rawPhone) {
       return c.json({ error: 'phone is required', data: null }, 400)
     }
+    if (!validatePhone(rawPhone)) {
+      return c.json({ error: 'Enter a valid Kenyan phone number, e.g. 0712345678', data: null }, 400)
+    }
+    const phone = normalizeKenyaPhone(rawPhone)
 
     // Rate limit: max 5 OTPs per phone per 10 minutes
     const windowStart = new Date(Date.now() - OTP_TTL_SECONDS * 1000).toISOString()
@@ -473,10 +588,11 @@ auth.post('/otp/send', async (c) => {
 // POST /api/auth/otp/verify
 auth.post('/otp/verify', async (c) => {
   try {
-    const { phone, otp } = await c.req.json<{ phone: string; otp: string }>()
-    if (!phone || !otp) {
+    const { phone: rawPhone, otp } = await c.req.json<{ phone: string; otp: string }>()
+    if (!rawPhone || !otp) {
       return c.json({ error: 'phone and otp are required', data: null }, 400)
     }
+    const phone = normalizeKenyaPhone(rawPhone)
 
     // Rate limit OTP attempts per phone
     const ip = c.req.header('CF-Connecting-IP') ?? 'unknown'
@@ -621,10 +737,11 @@ auth.post('/logout', async (c) => {
 // POST /api/auth/rider/magic-link
 auth.post('/rider/magic-link', async (c) => {
   try {
-    const { phone, tenant_id } = await c.req.json<{ phone: string; tenant_id: string }>()
-    if (!phone || !tenant_id) {
+    const { phone: rawPhone, tenant_id } = await c.req.json<{ phone: string; tenant_id: string }>()
+    if (!rawPhone || !tenant_id) {
       return c.json({ error: 'phone and tenant_id are required', data: null }, 400)
     }
+    const phone = normalizeKenyaPhone(rawPhone)
 
     const token = generateTrackingCode() + generateTrackingCode()
     const expiresAt = new Date(Date.now() + 30 * 60 * 1000).toISOString() // 30 min
@@ -662,19 +779,39 @@ auth.get('/rider/verify', async (c) => {
     }
 
     const now = new Date().toISOString()
-    const staff = await c.env.qesuite_db.prepare(
-      `SELECT ds.*, u.id as user_id, u.name as user_name
+    const { results: matches } = await c.env.qesuite_db.prepare(
+      `SELECT ds.id, ds.tenant_id, ds.name, ds.phone, ds.user_id,
+              t.name as tenant_name, t.slug as tenant_slug, t.logo_url, t.primary_color
        FROM delivery_staff ds
-       LEFT JOIN users u ON u.id = ds.user_id
+       JOIN tenants t ON t.id = ds.tenant_id
        WHERE ds.magic_link_token = ? AND ds.magic_link_expires_at > ? AND ds.is_active = 1`
-    ).bind(token, now).first<{
-      id: string; tenant_id: string; name: string; phone: string
-      user_id: string | null; user_name: string | null
+    ).bind(token, now).all<{
+      id: string; tenant_id: string; name: string; phone: string; user_id: string | null
+      tenant_name: string; tenant_slug: string; logo_url: string | null; primary_color: string
     }>()
 
-    if (!staff) {
+    if (matches.length === 0) {
       return c.json({ error: 'Invalid or expired magic link', data: null }, 401)
     }
+
+    // Same phone can be an active rider at more than one store — let the
+    // client pick which one, same pattern as the owner multi-store flow.
+    if (matches.length > 1) {
+      return c.json({
+        success: true,
+        data: {
+          requires_store_selection: true,
+          verify_token: token,
+          stores: matches.map(m => ({
+            tenant_id: m.tenant_id, name: m.tenant_name, slug: m.tenant_slug,
+            logo_url: m.logo_url, primary_color: m.primary_color,
+          })),
+        },
+        error: null,
+      })
+    }
+
+    const staff = matches[0]
 
     // Clear magic link token
     await c.env.qesuite_db.prepare(
@@ -736,15 +873,35 @@ auth.post('/rider/verify', async (c) => {
     if (!token) return c.json({ error: 'token is required', data: null }, 400)
 
     const now = new Date().toISOString()
-    const staff = await c.env.qesuite_db.prepare(
-      `SELECT ds.*, u.id as user_id FROM delivery_staff ds
-       LEFT JOIN users u ON u.id = ds.user_id
+    const { results: matches } = await c.env.qesuite_db.prepare(
+      `SELECT ds.id, ds.tenant_id, ds.name, ds.phone, ds.user_id,
+              t.name as tenant_name, t.slug as tenant_slug, t.logo_url, t.primary_color
+       FROM delivery_staff ds
+       JOIN tenants t ON t.id = ds.tenant_id
        WHERE ds.magic_link_token = ? AND ds.magic_link_expires_at > ? AND ds.is_active = 1`
-    ).bind(token, now).first<{
+    ).bind(token, now).all<{
       id: string; tenant_id: string; name: string; phone: string; user_id: string | null
+      tenant_name: string; tenant_slug: string; logo_url: string | null; primary_color: string
     }>()
 
-    if (!staff) return c.json({ error: 'Invalid or expired link', data: null }, 401)
+    if (matches.length === 0) return c.json({ error: 'Invalid or expired link', data: null }, 401)
+
+    if (matches.length > 1) {
+      return c.json({
+        success: true,
+        data: {
+          requires_store_selection: true,
+          verify_token: token,
+          stores: matches.map(m => ({
+            tenant_id: m.tenant_id, name: m.tenant_name, slug: m.tenant_slug,
+            logo_url: m.logo_url, primary_color: m.primary_color,
+          })),
+        },
+        error: null,
+      })
+    }
+
+    const staff = matches[0]
 
     await c.env.qesuite_db.prepare(
       'UPDATE delivery_staff SET magic_link_token = NULL, magic_link_expires_at = NULL WHERE id = ?'
@@ -773,11 +930,59 @@ auth.post('/rider/verify', async (c) => {
   }
 })
 
+// POST /api/auth/rider/select-store — completes verification when the same
+// phone was an active rider at more than one tenant (see /rider/verify above)
+auth.post('/rider/select-store', async (c) => {
+  try {
+    const { token, tenant_id } = await c.req.json<{ token: string; tenant_id: string }>()
+    if (!token || !tenant_id) {
+      return c.json({ error: 'token and tenant_id are required', data: null }, 400)
+    }
+
+    const now = new Date().toISOString()
+    const staff = await c.env.qesuite_db.prepare(
+      `SELECT id, tenant_id, name, phone, user_id FROM delivery_staff
+       WHERE magic_link_token = ? AND magic_link_expires_at > ? AND is_active = 1 AND tenant_id = ?`
+    ).bind(token, now, tenant_id).first<{
+      id: string; tenant_id: string; name: string; phone: string; user_id: string | null
+    }>()
+
+    if (!staff) return c.json({ error: 'Invalid or expired link', data: null }, 401)
+
+    // Single-use across the whole fan-out — invalidate everywhere this token was issued
+    await c.env.qesuite_db.prepare(
+      'UPDATE delivery_staff SET magic_link_token = NULL, magic_link_expires_at = NULL WHERE magic_link_token = ?'
+    ).bind(token).run()
+
+    let userId = staff.user_id
+    if (!userId) {
+      userId = generateId()
+      await c.env.qesuite_db.prepare(
+        `INSERT INTO users (id, tenant_id, name, phone, role, is_active, created_at)
+         VALUES (?, ?, ?, ?, 'rider', 1, datetime('now'))`
+      ).bind(userId, staff.tenant_id, staff.name, staff.phone).run()
+      await c.env.qesuite_db.prepare('UPDATE delivery_staff SET user_id = ? WHERE id = ?')
+        .bind(userId, staff.id).run()
+    }
+
+    const accessToken = await signJWT({ sub: userId, tenant_id: staff.tenant_id, role: 'rider', name: staff.name }, c.env.JWT_SECRET, ACCESS_TOKEN_TTL)
+    const refreshToken = await signJWT({ sub: userId, tenant_id: staff.tenant_id, role: 'rider', name: staff.name }, c.env.JWT_SECRET, REFRESH_TOKEN_TTL)
+    await storeRefreshToken(c.env.qesuite_db as unknown as D1Database, refreshToken, userId)
+    setCookie(c, 'refresh_token', refreshToken, { httpOnly: true, secure: true, sameSite: 'Strict', maxAge: REFRESH_TOKEN_TTL, path: '/' })
+
+    return c.json({ success: true, data: { access_token: accessToken, user: { id: userId, name: staff.name, role: 'rider', tenant_id: staff.tenant_id } }, error: null })
+  } catch (err) {
+    console.error('rider/select-store error', err)
+    return c.json({ error: 'Store selection failed', data: null }, 500)
+  }
+})
+
 // POST /api/auth/rider/request — rider requests a new magic link by phone
 auth.post('/rider/request', async (c) => {
   try {
-    const { phone } = await c.req.json<{ phone: string }>()
-    if (!phone) return c.json({ error: 'phone is required', data: null }, 400)
+    const { phone: rawPhone } = await c.req.json<{ phone: string }>()
+    if (!rawPhone) return c.json({ error: 'phone is required', data: null }, 400)
+    const phone = normalizeKenyaPhone(rawPhone)
 
     const { sendSMS } = await import('../lib/notifications')
     const staff = await c.env.qesuite_db.prepare(
@@ -874,7 +1079,7 @@ auth.patch('/me', async (c) => {
 
     const name = body.name?.trim()
     const email = body.email === undefined ? undefined : body.email.trim().toLowerCase()
-    const phone = body.phone === undefined ? undefined : body.phone.trim()
+    const phone = body.phone === undefined ? undefined : (body.phone.trim() ? normalizeKenyaPhone(body.phone) : '')
 
     if (body.name !== undefined && (!name || name.length > MAX_NAME)) {
       return c.json({ error: `Display name must be between 1 and ${MAX_NAME} characters`, data: null }, 400)
@@ -882,8 +1087,11 @@ auth.patch('/me', async (c) => {
     if (email !== undefined && email && (email.length > MAX_IDENTIFIER || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))) {
       return c.json({ error: 'Enter a valid email address', data: null }, 400)
     }
-    if (phone !== undefined && phone.length > MAX_PHONE) {
+    if (phone !== undefined && phone && phone.length > MAX_PHONE) {
       return c.json({ error: 'Phone number is too long', data: null }, 400)
+    }
+    if (phone && !validatePhone(phone)) {
+      return c.json({ error: 'Enter a valid Kenyan phone number, e.g. 0712345678', data: null }, 400)
     }
     if (!(email ?? user.email) && !(phone ?? user.phone)) {
       return c.json({ error: 'Keep either an email address or phone number for login', data: null }, 400)

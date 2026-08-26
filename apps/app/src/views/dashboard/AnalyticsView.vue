@@ -1,25 +1,25 @@
 <template>
   <div class="owner-page">
     <!-- Header + date range -->
-    <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
-      <h2 class="text-base font-bold text-gray-900 ">Analytics</h2>
-      <div class="flex items-center gap-2 flex-wrap">
-        <div class="flex rounded-xl border border-gray-200  overflow-hidden text-sm">
+    <div class="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+      <h2 class="text-base font-bold text-gray-900">Analytics</h2>
+      <div class="flex min-w-0 flex-col gap-1.5 sm:flex-row sm:items-center">
+        <div class="scrollbar-hide -mx-1 flex max-w-full shrink-0 overflow-x-auto rounded-xl border border-gray-200 p-0.5 text-sm sm:mx-0">
           <button
             v-for="r in ranges"
             :key="r.value"
             @click="setRange(r.value)"
-            :class="['px-3 py-2 font-medium transition-colors', analyticsStore.dateRange === r.value ? 'bg-primary text-white' : 'text-gray-500  hover:bg-gray-50 ']"
+            :class="['shrink-0 rounded-lg px-2 py-1.5 text-xs font-medium transition-colors sm:px-3 sm:py-2 sm:text-sm', analyticsStore.dateRange === r.value ? 'bg-primary text-white' : 'text-gray-500 hover:bg-gray-50']"
           >
             {{ r.label }}
           </button>
         </div>
         <!-- Custom date range -->
-        <template v-if="analyticsStore.dateRange === 'custom'">
-          <input type="date" v-model="customFrom" class="px-3 py-2 text-sm rounded-xl border border-gray-200  bg-white  text-gray-900  focus:outline-none focus:ring-2 focus:ring-primary/50" />
-          <input type="date" v-model="customTo" class="px-3 py-2 text-sm rounded-xl border border-gray-200  bg-white  text-gray-900  focus:outline-none focus:ring-2 focus:ring-primary/50" />
-          <button @click="applyCustom" class="px-3 py-2 text-sm bg-primary text-white rounded-xl hover:opacity-90">Apply</button>
-        </template>
+        <div v-if="analyticsStore.dateRange === 'custom'" class="grid min-w-0 grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] items-center gap-1.5 sm:flex">
+          <QeDatePicker v-model="customFrom" size="sm" class="!w-full sm:!w-40" />
+          <QeDatePicker v-model="customTo" size="sm" class="!w-full sm:!w-40" />
+          <button @click="applyCustom" class="shrink-0 rounded-xl bg-primary px-2.5 py-1.5 text-xs text-white hover:opacity-90 sm:px-3 sm:py-2 sm:text-sm">Apply</button>
+        </div>
       </div>
     </div>
 
@@ -128,11 +128,7 @@
           </div>
           <div class="mt-2 grid grid-cols-[minmax(0,1fr)_112px] gap-2 sm:mt-0 sm:flex sm:shrink-0">
             <input v-model="employeeSearch" class="owner-input !min-h-8 min-w-0 !rounded-lg !py-1.5 !text-xs sm:w-40" placeholder="Find employee" />
-            <select v-model="employeeSort" class="owner-input !min-h-8 min-w-0 !rounded-lg !py-1.5 !text-xs sm:w-32">
-              <option value="revenue">Revenue</option>
-              <option value="sales">Sales</option>
-              <option value="completion">Completion</option>
-            </select>
+            <QeSelect v-model="employeeSort" size="sm" class="!w-full sm:!w-32" :options="employeeSortOptions" />
           </div>
         </div>
         <div class="max-h-64 overflow-auto">
@@ -198,10 +194,16 @@
       />
     </div>
 
-    <!-- Charts grid -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
+    <!-- Breakdown cards: swipeable on mobile, 4-column grid on desktop -->
+    <div
+      ref="breakdownScroller"
+      class="scrollbar-hide -mx-3 flex snap-x snap-mandatory gap-3 overflow-x-auto px-3 pb-1 sm:-mx-4 sm:px-4 md:mx-0 md:grid md:grid-cols-4 md:overflow-visible md:px-0 md:pb-0"
+      role="region"
+      aria-label="Expense, payment, and product breakdowns"
+      @scroll.passive="updateActiveBreakdown"
+    >
       <!-- Expense mix -->
-      <div class="rounded-xl border border-gray-100 bg-white p-3.5">
+      <div class="w-[82vw] max-w-[19rem] min-w-0 shrink-0 snap-center rounded-xl border border-gray-100 bg-white p-3.5 md:w-auto md:max-w-none">
         <h3 class="mb-2 text-xs font-semibold text-gray-700">Where expenses went</h3>
         <div v-if="analyticsStore.loading" class="skeleton h-36 rounded-lg" />
         <div v-else-if="financial?.by_category.length" class="space-y-2">
@@ -219,12 +221,12 @@
       </div>
 
       <!-- Payment methods donut -->
-      <div class="bg-white  rounded-xl border border-gray-100  p-3.5">
+      <div class="w-[82vw] max-w-[19rem] min-w-0 shrink-0 snap-center rounded-xl border border-gray-100 bg-white p-3.5 md:w-auto md:max-w-none">
         <h3 class="text-xs font-semibold text-gray-700  mb-2">Payment Methods</h3>
         <div v-if="analyticsStore.loading" class="skeleton h-36 rounded-lg" />
-        <div v-else-if="paymentChartData" class="flex items-center gap-4">
-          <Doughnut :data="paymentChartData" :options="doughnutOptions" class="max-h-36 max-w-[144px]" />
-          <div class="flex-1 space-y-1.5">
+        <div v-else-if="paymentChartData" class="flex min-w-0 items-center gap-3">
+          <Doughnut :data="paymentChartData" :options="doughnutOptions" class="max-h-36 max-w-[136px] shrink-0" />
+          <div class="min-w-0 flex-1 space-y-1.5">
             <div v-for="(method, i) in analyticsStore.paymentMethods" :key="method.method" class="flex items-center justify-between text-xs">
               <div class="flex items-center gap-1.5">
                 <div class="w-2.5 h-2.5 rounded-full" :style="{ backgroundColor: paymentColors[i % paymentColors.length] }" />
@@ -238,7 +240,7 @@
       </div>
 
       <!-- Top products by revenue -->
-      <div class="bg-white  rounded-xl border border-gray-100  p-3.5">
+      <div class="w-[82vw] max-w-[19rem] min-w-0 shrink-0 snap-center rounded-xl border border-gray-100 bg-white p-3.5 md:w-auto md:max-w-none">
         <h3 class="text-xs font-semibold text-gray-700  mb-2">Top Products by Revenue</h3>
         <div v-if="analyticsStore.loading" class="skeleton h-36 rounded-lg" />
         <Bar v-else-if="topRevenueChartData" :data="topRevenueChartData" :options="horizontalBarOptions" class="max-h-40" />
@@ -246,18 +248,35 @@
       </div>
 
       <!-- Top products by volume -->
-      <div class="bg-white  rounded-xl border border-gray-100  p-3.5">
+      <div class="w-[82vw] max-w-[19rem] min-w-0 shrink-0 snap-center rounded-xl border border-gray-100 bg-white p-3.5 md:w-auto md:max-w-none">
         <h3 class="text-xs font-semibold text-gray-700  mb-2">Top Products by Volume</h3>
         <div v-if="analyticsStore.loading" class="skeleton h-36 rounded-lg" />
         <Bar v-else-if="topVolumeChartData" :data="topVolumeChartData" :options="horizontalBarOptions" class="max-h-40" />
         <p v-else class="text-center text-gray-400 py-10 text-xs">No data</p>
       </div>
+    </div>
 
-      <!-- Peak hours -->
-      <div class="lg:col-span-2 bg-white  rounded-xl border border-gray-100  p-3.5">
-        <h3 class="text-xs font-semibold text-gray-700  mb-2">Peak Sales Hours</h3>
+    <div class="mt-2 mb-3 flex items-center justify-center gap-1.5 md:hidden" aria-label="Breakdown carousel pages">
+      <button
+        v-for="i in 4"
+        :key="i"
+        type="button"
+        :class="[
+          'h-1.5 rounded-full transition-all duration-200',
+          activeBreakdown === i - 1 ? 'w-5 bg-primary' : 'w-1.5 bg-slate-300'
+        ]"
+        :aria-label="`Show breakdown card ${i} of 4`"
+        :aria-current="activeBreakdown === i - 1 ? 'true' : undefined"
+        @click="scrollToBreakdown(i - 1)"
+      />
+    </div>
+
+    <!-- Peak hours -->
+    <div class="-mx-3 overflow-x-auto px-3 sm:-mx-4 sm:px-4 md:mx-0 md:overflow-visible md:px-0">
+      <div class="min-w-[680px] rounded-xl border border-gray-100 bg-white p-3.5 md:min-w-0">
+        <h3 class="text-xs font-semibold text-gray-700 mb-2">Peak Sales Hours</h3>
         <div v-if="analyticsStore.loading" class="skeleton h-36 rounded-lg" />
-        <Bar v-else-if="peakHoursChartData" :data="peakHoursChartData" :options="barOptions" class="max-h-40" />
+        <Bar v-else-if="peakHoursChartData" :data="peakHoursChartData" :options="barOptions" class="h-40 max-h-40" />
         <p v-else class="text-center text-gray-400 py-10 text-xs">No data</p>
       </div>
     </div>
@@ -275,6 +294,7 @@ import {
   BanknotesIcon, ShoppingCartIcon, CheckCircleIcon, XCircleIcon,
   CurrencyDollarIcon, ReceiptRefundIcon, ScaleIcon,
 } from '@heroicons/vue/24/outline'
+import { QeSelect, QeDatePicker } from '@qesuite/ui'
 import KpiCard from '@/components/dashboard/KpiCard.vue'
 import { useAnalyticsStore } from '@/stores/analytics'
 import { useAccessStore } from '@/stores/access'
@@ -283,6 +303,12 @@ import type { DateRange } from '@/stores/analytics'
 import { EXPENSE_CATEGORIES } from '@qesuite/shared'
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, Title, Tooltip, Legend, Filler)
+
+const employeeSortOptions = [
+  { value: 'revenue', label: 'Revenue' },
+  { value: 'sales', label: 'Sales' },
+  { value: 'completion', label: 'Completion' },
+]
 
 const analyticsStore = useAnalyticsStore()
 const accessStore = useAccessStore()
@@ -299,6 +325,12 @@ const {
   scrollToIndex: scrollToReport,
 } = useSnapCarousel()
 const reportCount = computed(() => accessStore.can('analytics.view_employees') ? 2 : 1)
+const {
+  scroller: breakdownScroller,
+  activeIndex: activeBreakdown,
+  updateActiveIndex: updateActiveBreakdown,
+  scrollToIndex: scrollToBreakdown,
+} = useSnapCarousel()
 
 const ranges = [
   { value: 'today' as DateRange, label: 'Today' },

@@ -3,7 +3,7 @@ import { Env, Variables } from '../types'
 import { authMiddleware } from '../middleware/auth'
 import { tenantGuard } from '../middleware/tenant'
 import { generateId } from '../lib/jwt'
-import { normalizeKenyaPhone } from '../lib/notifications'
+import { normalizeKenyaPhone, validatePhone } from '@qesuite/shared'
 import { nairobiCompactTimestamp } from '../lib/time'
 
 const billing = new Hono<{ Bindings: Env; Variables: Variables }>()
@@ -222,11 +222,12 @@ billing.post('/mpesa', async (c) => {
     const tenantId = c.get('user').tenant_id!
     const { phone } = await c.req.json<{ phone: string }>()
     if (!phone) return c.json({ success: false, error: 'phone is required', data: null }, 400)
+    if (!validatePhone(phone)) {
+      return c.json({ success: false, error: 'Enter a valid Kenyan phone number, e.g. 0712345678', data: null }, 400)
+    }
 
     // Normalize to 254XXXXXXXXX for Safaricom API
-    // Handles: +254724… | 254724… | 0724… | 724… (bare 9-digit)
     const normalizedPhone = normalizeKenyaPhone(phone)
-    // else assume already starts with 254
     const timestamp = nairobiCompactTimestamp()
     const password = btoa(`${c.env.MPESA_SHORTCODE}${c.env.MPESA_PASSKEY}${timestamp}`)
 

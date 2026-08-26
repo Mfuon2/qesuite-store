@@ -21,18 +21,42 @@
       </div>
     </section>
 
-    <!-- KPI Cards -->
-    <section class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-      <KpiCard
-        v-for="kpi in kpiCards"
-        :key="kpi.label"
-        :label="kpi.label"
-        :value="kpi.value"
-        :sub="kpi.sub"
-        :icon="kpi.icon"
-        :color="kpi.color"
-        :loading="metricsStore.loading"
-      />
+    <!-- KPI Cards: swipeable on mobile, grid from sm+ -->
+    <section>
+      <div
+        ref="kpiScroller"
+        class="scrollbar-hide -mx-3 flex snap-x snap-mandatory gap-3 overflow-x-auto px-3 pb-1 sm:-mx-4 sm:px-4 sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 sm:pb-0 lg:grid-cols-3 xl:grid-cols-6"
+        role="region"
+        aria-label="Platform metrics"
+        @scroll.passive="updateActiveKpi"
+      >
+        <KpiCard
+          v-for="kpi in kpiCards"
+          :key="kpi.label"
+          class="w-[82vw] max-w-[19rem] shrink-0 snap-center sm:w-auto sm:max-w-none"
+          :label="kpi.label"
+          :value="kpi.value"
+          :sub="kpi.sub"
+          :icon="kpi.icon"
+          :color="kpi.color"
+          :loading="metricsStore.loading"
+        />
+      </div>
+
+      <div class="mt-2 flex items-center justify-center gap-1.5 sm:hidden" aria-label="Metrics carousel pages">
+        <button
+          v-for="i in kpiCards.length"
+          :key="i"
+          type="button"
+          :class="[
+            'h-1.5 rounded-full transition-all duration-200',
+            activeKpi === i - 1 ? 'w-5 bg-primary' : 'w-1.5 bg-slate-300'
+          ]"
+          :aria-label="`Show metric ${i} of ${kpiCards.length}`"
+          :aria-current="activeKpi === i - 1 ? 'true' : undefined"
+          @click="scrollToKpi(i - 1)"
+        />
+      </div>
     </section>
 
     <!-- Charts row -->
@@ -109,6 +133,7 @@ import {
 import { useMetricsStore } from '@/stores/metrics'
 import KpiCard from '@/components/admin/KpiCard.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
+import { useSnapCarousel } from '@/composables/useSnapCarousel'
 
 ChartJS.register(
   CategoryScale, LinearScale, PointElement, LineElement,
@@ -116,6 +141,12 @@ ChartJS.register(
 )
 
 const metricsStore = useMetricsStore()
+const {
+  scroller: kpiScroller,
+  activeIndex: activeKpi,
+  updateActiveIndex: updateActiveKpi,
+  scrollToIndex: scrollToKpi,
+} = useSnapCarousel()
 
 const periods = [
   { value: '7d' as const, label: '7d' },

@@ -42,7 +42,7 @@
               </button>
               <div class="flex items-center gap-2 flex-wrap">
                 <h1 class="owner-title !mt-0 truncate">{{ stores.currentStore.name }}</h1>
-                <StatusBadge :status="stores.currentStore.subscription_status" :suspended="stores.currentStore.is_suspended" />
+                <StatusBadge :status="stores.currentStore.subscription_status" :suspended="!!stores.currentStore.is_suspended" />
               </div>
               <p class="text-xs font-medium text-slate-500">
                 {{ stores.currentStore.slug }}
@@ -222,7 +222,7 @@
                 </div>
                 <div>
                   <label class="block text-xs font-semibold text-slate-500 mb-1">Phone</label>
-                  <input v-model="profileForm.owner_phone" type="tel" class="admin-input text-sm" placeholder="+254700000000" />
+                  <QePhoneInput v-model="profileForm.owner_phone" />
                 </div>
                 <div>
                   <label class="block text-xs font-semibold text-slate-500 mb-1">Email</label>
@@ -255,11 +255,11 @@
                 </div>
                 <div>
                   <label class="block text-xs font-semibold text-slate-500 mb-1">Store phone</label>
-                  <input v-model="profileForm.phone" type="tel" class="admin-input text-sm" placeholder="+254700000000" />
+                  <QePhoneInput v-model="profileForm.phone" />
                 </div>
                 <div>
                   <label class="block text-xs font-semibold text-slate-500 mb-1">WhatsApp number</label>
-                  <input v-model="profileForm.whatsapp_number" type="tel" class="admin-input text-sm" placeholder="+254700000000" />
+                  <QePhoneInput v-model="profileForm.whatsapp_number" />
                 </div>
                 <div class="sm:col-span-2">
                   <label class="block text-xs font-semibold text-slate-500 mb-1">Address</label>
@@ -267,15 +267,11 @@
                 </div>
                 <div>
                   <label class="block text-xs font-semibold text-slate-500 mb-1">Category</label>
-                  <select v-model="profileForm.store_category" class="admin-input text-sm">
-                    <option v-for="cat in storeCategories" :key="cat.value" :value="cat.value">{{ cat.label }}</option>
-                  </select>
+                  <QeSelect v-model="profileForm.store_category" :options="storeCategories" />
                 </div>
                 <div>
                   <label class="block text-xs font-semibold text-slate-500 mb-1">Font</label>
-                  <select v-model="profileForm.font_family" class="admin-input text-sm">
-                    <option v-for="f in fonts" :key="f" :value="f" :style="{ fontFamily: storeFontStack(f) }">{{ f }}</option>
-                  </select>
+                  <QeSelect v-model="profileForm.font_family" :options="fontOptions" />
                 </div>
               </div>
             </div>
@@ -350,7 +346,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
+import { QeSelect, QePhoneInput } from '@qesuite/ui'
 import { formatDate } from '@/composables/useDateFormat'
 import { useRoute, useRouter } from 'vue-router'
 import { useStoresStore } from '@/stores/stores'
@@ -395,6 +392,9 @@ const storeCategories = [
 ]
 
 const fonts = STORE_FONTS
+const fontOptions = computed(() =>
+  fonts.map((font) => ({ value: font, label: font, style: { fontFamily: storeFontStack(font) } }))
+)
 
 const profileForm = reactive({
   owner_name: '',

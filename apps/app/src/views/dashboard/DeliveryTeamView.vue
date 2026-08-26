@@ -72,14 +72,8 @@
 
         <div class="grid grid-cols-1 gap-3 lg:grid-cols-3">
           <input v-model="editForm.name" type="text" placeholder="Full name" required class="owner-input" />
-          <input v-model="editForm.phone" type="tel" placeholder="+254700000000" required class="owner-input" />
-          <select v-model="editForm.vehicle_type" class="owner-select w-full">
-            <option value="">Vehicle type</option>
-            <option value="motorcycle">Motorcycle</option>
-            <option value="bicycle">Bicycle</option>
-            <option value="car">Car</option>
-            <option value="on_foot">On Foot</option>
-          </select>
+          <QePhoneInput v-model="editForm.phone" required />
+          <QeSelect v-model="editForm.vehicle_type" :options="vehicleTypeOptions" />
         </div>
 
         <div class="mt-3 flex justify-end gap-2">
@@ -116,14 +110,8 @@
 
         <div class="grid grid-cols-1 gap-3 lg:grid-cols-3">
           <input v-model="newRider.name" type="text" placeholder="Full name" required class="owner-input" />
-          <input v-model="newRider.phone" type="tel" placeholder="+254700000000" required class="owner-input" />
-          <select v-model="newRider.vehicle_type" class="owner-select w-full">
-            <option value="">Vehicle type</option>
-            <option value="motorcycle">Motorcycle</option>
-            <option value="bicycle">Bicycle</option>
-            <option value="car">Car</option>
-            <option value="on_foot">On Foot</option>
-          </select>
+          <QePhoneInput v-model="newRider.phone" required />
+          <QeSelect v-model="newRider.vehicle_type" :options="vehicleTypeOptions" />
         </div>
 
         <div class="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -221,6 +209,7 @@
 
 <script setup lang="ts">
 import { computed, ref, onMounted } from 'vue'
+import { QeSelect, QePhoneInput } from '@qesuite/ui'
 import { timeAgo } from '@/composables/useDateFormat'
 import { PlusIcon, PhoneIcon, TruckIcon, UserPlusIcon, LinkIcon, InformationCircleIcon, CheckCircleIcon, NoSymbolIcon, PencilIcon } from '@heroicons/vue/24/outline'
 import { apiGetDeliveryStaff, apiCreateDeliveryStaff, apiUpdateDeliveryStaff, apiSendMagicLink } from '@/api/delivery'
@@ -281,6 +270,13 @@ const ridersWithLocation = computed(() => riders.value.filter(rider => rider.loc
 
 const vehicleLabels: Record<VehicleType, string> = { bicycle: 'Bicycle', motorcycle: 'Motorcycle', car: 'Car', on_foot: 'On Foot' }
 function vehicleLabel(v: VehicleType | null) { return v ? vehicleLabels[v] : '' }
+const vehicleTypeOptions = [
+  { value: '', label: 'Vehicle type' },
+  { value: 'motorcycle', label: 'Motorcycle' },
+  { value: 'bicycle', label: 'Bicycle' },
+  { value: 'car', label: 'Car' },
+  { value: 'on_foot', label: 'On Foot' },
+]
 
 async function loadRiders() {
   loading.value = true

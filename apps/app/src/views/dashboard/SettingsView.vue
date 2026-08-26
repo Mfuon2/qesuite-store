@@ -21,7 +21,7 @@
           </div>
 
           <button
-            v-if="activeTab !== 'access' && accessStore.can('settings.edit')"
+            v-if="isDesktop && activeTab !== 'access' && accessStore.can('settings.edit')"
             @click="saveAll"
             :disabled="settingsStore.saving"
             class="owner-primary-action !min-h-9 shrink-0 !rounded-xl !px-3 !py-2 !text-xs"
@@ -43,14 +43,34 @@
         ? 'xl:min-h-0 xl:flex-1 xl:grid-cols-[220px_minmax(0,1fr)]'
         : 'xl:grid-cols-[220px_minmax(0,1fr)_320px]'"
     >
-      <aside class="xl:sticky xl:top-24 xl:self-start">
-        <div class="scrollbar-hide flex gap-1 overflow-x-auto rounded-2xl bg-white/80 p-1.5 shadow-sm xl:block xl:overflow-visible">
+      <!-- Mobile/tablet: settings sections as tappable tiles, each opening a modal -->
+      <div class="grid grid-cols-2 gap-2 xl:hidden">
+        <button
+          v-for="tab in visibleTabs"
+          :key="tab.id"
+          type="button"
+          class="qs-card-soft flex flex-col items-start gap-2 rounded-2xl p-3 text-left transition active:scale-[0.98]"
+          @click="openMobileSection(tab.id)"
+        >
+          <span class="owner-brand-surface flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-primary">
+            <component :is="tab.icon" class="h-4 w-4" />
+          </span>
+          <span class="min-w-0">
+            <span class="block text-sm font-bold text-slate-950">{{ tab.label }}</span>
+            <span class="mt-0.5 block truncate text-[11px] text-slate-500">{{ tab.description }}</span>
+          </span>
+        </button>
+      </div>
+
+      <!-- Desktop: sticky sidebar nav, sections shown inline -->
+      <aside class="hidden min-w-0 xl:block xl:sticky xl:top-24 xl:self-start">
+        <div class="flex flex-col gap-1 rounded-2xl bg-white/80 p-1.5 shadow-sm">
           <button
             v-for="tab in visibleTabs"
             :key="tab.id"
             @click="activeTab = tab.id"
             :class="[
-              'flex w-auto shrink-0 items-center gap-2 rounded-xl px-2.5 py-2 text-left transition xl:w-full',
+              'flex w-full shrink-0 items-center gap-2 rounded-xl px-2.5 py-2 text-left transition',
               activeTab === tab.id
                 ? 'owner-brand-active bg-primary text-white'
                 : 'owner-brand-hover text-slate-600 hover:text-slate-950'
@@ -67,15 +87,15 @@
               <component :is="tab.icon" class="h-4 w-4" />
             </span>
             <span class="min-w-0">
-              <span class="block text-xs font-bold xl:text-sm">{{ tab.label }}</span>
-              <span :class="['hidden truncate text-[11px] xl:block', activeTab === tab.id ? 'text-white/72' : 'text-slate-400']">
+              <span class="block text-sm font-bold">{{ tab.label }}</span>
+              <span :class="['block truncate text-[11px]', activeTab === tab.id ? 'text-white/72' : 'text-slate-400']">
                 {{ tab.description }}
               </span>
             </span>
           </button>
         </div>
 
-        <div class="qs-card-soft mt-3 hidden rounded-2xl p-3 xl:block">
+        <div class="qs-card-soft mt-3 rounded-2xl p-3">
           <p class="text-sm font-bold text-slate-950">Setup health</p>
           <div class="mt-3 space-y-2">
             <div class="flex items-center justify-between text-xs font-semibold">
@@ -92,20 +112,42 @@
         </div>
       </aside>
 
+      <!-- Mobile: dim backdrop behind the section modal -->
+      <div
+        v-if="!isDesktop && mobileSectionOpen"
+        class="fixed inset-0 z-40 bg-slate-950/45 backdrop-blur-sm"
+        @click="closeMobileSection"
+      />
+
       <main class="min-w-0" :class="activeTab === 'access' ? 'xl:flex xl:min-h-0 xl:flex-col' : ''">
+      <Teleport to="body" :disabled="isDesktop">
         <div
+          v-if="isDesktop || mobileSectionOpen"
           class="qs-card-soft overflow-hidden rounded-2xl sm:rounded-[22px]"
-          :class="activeTab === 'access' ? 'xl:flex xl:min-h-0 xl:flex-1 xl:flex-col' : ''"
+          :class="[
+            activeTab === 'access' ? 'xl:flex xl:min-h-0 xl:flex-1 xl:flex-col' : '',
+            !isDesktop ? 'safe-bottom fixed inset-x-3 inset-y-16 z-50 flex flex-col animate-slide-up' : '',
+          ]"
         >
-          <div class="shrink-0 border-b border-slate-100 px-4 py-2.5">
+          <button
+            v-if="!isDesktop"
+            type="button"
+            class="absolute right-3 top-3 z-10 grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-white/80 text-slate-400 backdrop-blur transition hover:bg-slate-100 hover:text-slate-600"
+            aria-label="Close"
+            @click="closeMobileSection"
+          >
+            <XMarkIcon class="h-4 w-4" />
+          </button>
+
+          <div class="shrink-0 border-b border-slate-100 px-4 py-2.5" :class="!isDesktop ? 'pr-14' : ''">
             <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-              <div>
+              <div class="min-w-0">
                 <p class="text-xs font-bold uppercase tracking-[0.2em] text-primary">{{ activeTabMeta.kicker }}</p>
                 <h2 class="mt-0.5 text-lg font-bold text-slate-950">{{ activeTabMeta.title }}</h2>
                 <p class="mt-0.5 text-xs leading-5 text-slate-500">{{ activeTabMeta.detail }}</p>
               </div>
               <button
-                class="owner-secondary-action !min-h-8 !rounded-xl !px-3 !py-1.5 !text-xs"
+                class="owner-secondary-action !min-h-8 shrink-0 !rounded-xl !px-3 !py-1.5 !text-xs"
                 @click="activeTab = 'branding'"
                 v-if="activeTab !== 'branding' && activeTab !== 'access'"
               >
@@ -115,7 +157,7 @@
           </div>
 
           <div
-            class="p-3"
+            class="flex-1 overflow-y-auto p-3"
             :class="[
               activeTab === 'access' ? 'xl:flex xl:min-h-0 xl:flex-1 xl:flex-col' : '',
               activeTab !== 'access' && !accessStore.can('settings.edit') ? 'pointer-events-none opacity-70' : '',
@@ -129,13 +171,11 @@
                 </label>
                 <label class="block">
                   <span class="admin-label">Store contact phone</span>
-                  <input v-model="tenant.phone" type="tel" placeholder="+254700000000" class="admin-input mt-2" />
+                  <QePhoneInput v-model="tenant.phone" class="mt-2" />
                 </label>
                 <label class="block">
                   <span class="admin-label">Business type</span>
-                  <select v-model="tenant.store_category" class="admin-input mt-2">
-                    <option v-for="cat in businessTypes" :key="cat.value" :value="cat.value">{{ cat.label }}</option>
-                  </select>
+                  <QeSelect v-model="tenant.store_category" class="mt-2" :options="businessTypes" />
                 </label>
                 <div class="md:col-span-2">
                   <span class="admin-label block mb-2">Store location</span>
@@ -148,7 +188,7 @@
                 </div>
                 <label class="block">
                   <span class="admin-label">WhatsApp business</span>
-                  <input v-model="tenant.whatsapp_number" type="tel" placeholder="+254700000000" class="admin-input mt-2" />
+                  <QePhoneInput v-model="tenant.whatsapp_number" class="mt-2" />
                 </label>
               </div>
 
@@ -173,7 +213,7 @@
                   </label>
                   <label class="block">
                     <span class="admin-label">Login phone</span>
-                    <input v-model="personal.phone" type="tel" maxlength="20" placeholder="+254700000000" class="admin-input mt-2" />
+                    <QePhoneInput v-model="personal.phone" class="mt-2" />
                   </label>
                 </div>
               </div>
@@ -209,11 +249,7 @@
                 </div>
                 <label class="block lg:col-span-2">
                   <span class="admin-label">Store font</span>
-                  <select v-model="tenant.font_family" class="admin-input mt-2" @change="applyPreview">
-                    <option v-for="font in fonts" :key="font" :value="font" :style="{ fontFamily: storeFontStack(font) }">
-                      {{ font }}
-                    </option>
-                  </select>
+                  <QeSelect v-model="tenant.font_family" class="mt-2" :options="fontOptions" @change="applyPreview" />
                   <p v-if="tenant.font_family === 'Segoe UI'" class="mt-1.5 text-[11px] font-medium text-slate-400">
                     Uses Segoe UI on supported devices and the closest system font elsewhere.
                   </p>
@@ -345,10 +381,7 @@
               <div class="grid gap-3 lg:grid-cols-2">
                 <label class="block">
                   <span class="admin-label">Language</span>
-                  <select v-model="storeSettings.language" class="admin-input mt-2">
-                    <option value="en">English</option>
-                    <option value="sw">Swahili</option>
-                  </select>
+                  <QeSelect v-model="storeSettings.language" class="mt-2" :options="languageOptions" />
                 </label>
                 <button
                   type="button"
@@ -371,10 +404,26 @@
               <UsersAccessPanel />
             </section>
           </div>
+
+          <div v-if="!isDesktop && activeTab !== 'access'" class="safe-bottom shrink-0 border-t border-slate-100 bg-white/95 p-3">
+            <button
+              @click="saveAll"
+              :disabled="settingsStore.saving"
+              class="owner-primary-action w-full justify-center"
+            >
+              <svg v-if="settingsStore.saving" class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+              </svg>
+              <CheckIcon v-else class="h-4 w-4" />
+              Save changes
+            </button>
+          </div>
         </div>
+      </Teleport>
       </main>
 
-      <aside v-show="activeTab !== 'access'" class="xl:sticky xl:top-24 xl:self-start">
+      <aside v-show="activeTab !== 'access'" class="min-w-0 xl:sticky xl:top-24 xl:self-start">
         <div class="mb-2 flex items-center gap-2 text-xs font-bold text-slate-500">
           <EyeIcon class="h-4 w-4" />
           Storefront preview
@@ -441,7 +490,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, watch } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted, watch } from 'vue'
 import {
   AdjustmentsHorizontalIcon,
   BuildingStorefrontIcon,
@@ -455,8 +504,10 @@ import {
   SunIcon,
   TruckIcon,
   UserCircleIcon,
-  UsersIcon
+  UsersIcon,
+  XMarkIcon
 } from '@heroicons/vue/24/outline'
+import { QeSelect, QePhoneInput } from '@qesuite/ui'
 import ImageUpload from '@/components/dashboard/ImageUpload.vue'
 import ColorPicker from '@/components/dashboard/ColorPicker.vue'
 import LocationSearch from '@/components/dashboard/LocationSearch.vue'
@@ -475,6 +526,13 @@ const authStore = useAuthStore()
 const accessStore = useAccessStore()
 const { showToast } = useToast()
 const fonts = STORE_FONTS
+const fontOptions = computed(() =>
+  fonts.map((font) => ({ value: font, label: font, style: { fontFamily: storeFontStack(font) } }))
+)
+const languageOptions = [
+  { value: 'en', label: 'English' },
+  { value: 'sw', label: 'Swahili' },
+]
 
 // Mirrors the category list offered during onboarding (StoreIdentityStep.vue) so an
 // owner can revisit and change their business type at any time after signup.
@@ -544,6 +602,26 @@ type TabId = typeof tabs[number]['id']
 
 const activeTab = ref<TabId>('store')
 const visibleTabs = computed(() => tabs.filter(tab => tab.id !== 'access' || authStore.role === 'owner'))
+
+// Below xl, sections open as a modal (tapped from a tile grid) instead of
+// swapping inline next to a sidebar — there's no room for both on mobile.
+const DESKTOP_QUERY = '(min-width: 1280px)'
+const desktopMedia = window.matchMedia(DESKTOP_QUERY)
+const isDesktop = ref(desktopMedia.matches)
+const mobileSectionOpen = ref(false)
+
+function onDesktopMediaChange(e: MediaQueryListEvent) {
+  isDesktop.value = e.matches
+}
+
+function openMobileSection(tabId: TabId) {
+  activeTab.value = tabId
+  mobileSectionOpen.value = true
+}
+
+function closeMobileSection() {
+  mobileSectionOpen.value = false
+}
 
 const tenant = reactive({
   name: settingsStore.tenant?.name ?? '',
@@ -730,6 +808,11 @@ async function saveAll() {
 onMounted(async () => {
   // Fetch fresh data from the server; the watches above sync the form reactively
   await Promise.all([settingsStore.fetchTenant(), settingsStore.fetchStoreSettings(), authStore.fetchMe()])
+  desktopMedia.addEventListener('change', onDesktopMediaChange)
+})
+
+onUnmounted(() => {
+  desktopMedia.removeEventListener('change', onDesktopMediaChange)
 })
 </script>
 

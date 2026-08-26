@@ -5,6 +5,7 @@ import { tenantGuard } from '../middleware/tenant'
 import { riderMiddleware } from '../middleware/auth'
 import { generateId, generateTrackingCode } from '../lib/jwt'
 import { sendSMS } from '../lib/notifications'
+import { validatePhone, normalizeKenyaPhone } from '@qesuite/shared'
 
 const delivery = new Hono<{ Bindings: Env; Variables: Variables }>()
 
@@ -26,11 +27,15 @@ delivery.post('/staff', authMiddleware, tenantGuard, async (c) => {
     if (!body.name || !body.phone) {
       return c.json({ error: 'name and phone are required', data: null }, 400)
     }
+    if (!validatePhone(body.phone)) {
+      return c.json({ error: 'Enter a valid Kenyan phone number, e.g. 0712345678', data: null }, 400)
+    }
+    const phone = normalizeKenyaPhone(body.phone)
 
     // Check for existing rider with same phone in this tenant
     const existing = await c.env.qesuite_db.prepare(
       'SELECT id FROM delivery_staff WHERE phone = ? AND tenant_id = ?'
-    ).bind(body.phone, tenantId).first()
+    ).bind(phone, tenantId).first()
 
     if (existing) {
       return c.json({ error: 'A rider with this phone already exists', data: null }, 409)
@@ -44,13 +49,13 @@ delivery.post('/staff', authMiddleware, tenantGuard, async (c) => {
       `INSERT INTO delivery_staff (id, tenant_id, name, phone, vehicle_type, is_active,
         magic_link_token, magic_link_expires_at, created_at)
        VALUES (?, ?, ?, ?, ?, 1, ?, ?, datetime('now'))`
-    ).bind(id, tenantId, body.name, body.phone, body.vehicle_type ?? null, magicToken, expiresAt).run()
+    ).bind(id, tenantId, body.name, phone, body.vehicle_type ?? null, magicToken, expiresAt).run()
 
     // Send magic link SMS
     const link = `${c.env.APP_BASE_URL.replace('store.', 'go.')}/verify?token=${magicToken}`
     await sendSMS(
       c.env,
-      body.phone,
+      phone,
       `Hi ${body.name}! You have been invited as a delivery rider on QeSuite. Access your dashboard here: ${link}\nThis link expires in 30 minutes.`
     )
 
@@ -408,10 +413,14 @@ delivery.put('/staff/:id', authMiddleware, tenantGuard, async (c) => {
       .bind(id, tenantId).first()
     if (!staff) return c.json({ error: 'Rider not found', data: null }, 404)
 
+    if (body.phone !== undefined && !validatePhone(body.phone)) {
+      return c.json({ error: 'Enter a valid Kenyan phone number, e.g. 0712345678', data: null }, 400)
+    }
+
     const fields: string[] = []
     const values: unknown[] = []
     if (body.name !== undefined) { fields.push('name = ?'); values.push(body.name) }
-    if (body.phone !== undefined) { fields.push('phone = ?'); values.push(body.phone) }
+    if (body.phone !== undefined) { fields.push('phone = ?'); values.push(normalizeKenyaPhone(body.phone)) }
     if (body.vehicle_type !== undefined) { fields.push('vehicle_type = ?'); values.push(body.vehicle_type) }
     if (body.is_active !== undefined) { fields.push('is_active = ?'); values.push(body.is_active) }
 

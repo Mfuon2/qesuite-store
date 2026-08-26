@@ -1,14 +1,14 @@
 <template>
   <div class="relative">
     <div class="relative">
-      <MapPinIcon class="absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
+      <MapPinIcon class="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
       <input
         ref="inputRef"
         v-model="query"
         type="text"
         :placeholder="placeholder"
         autocomplete="off"
-        class="admin-input pl-9"
+        class="admin-input !pl-9 !pr-9"
         @input="onInput"
         @keydown.down.prevent="moveDown"
         @keydown.up.prevent="moveUp"
@@ -16,7 +16,7 @@
         @keydown.escape="close"
         @blur="onBlur"
       />
-      <div class="absolute right-3 top-2.5">
+      <div class="absolute right-3 top-1/2 -translate-y-1/2">
         <svg v-if="loading" class="h-4 w-4 animate-spin text-slate-400" fill="none" viewBox="0 0 24 24">
           <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
           <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>

@@ -30,7 +30,7 @@
           v-model="searchInput"
           type="search"
           placeholder="Search by store, reference..."
-          class="admin-input pl-9"
+          class="admin-input !pl-9"
           @input="handleSearch"
         />
       </div>

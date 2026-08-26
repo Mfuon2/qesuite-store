@@ -59,6 +59,18 @@
       <main class="flex-1 overflow-y-auto bg-white">
         <RouterView />
       </main>
+
+      <nav class="safe-bottom flex shrink-0 items-center border-t border-slate-100 bg-white/95 lg:hidden">
+        <RouterLink
+          v-for="item in bottomNavItems"
+          :key="item.to"
+          :to="item.to"
+          :class="['flex min-h-11 flex-1 flex-col items-center justify-center gap-0.5 py-1.5 transition-colors', isActive(item.to) ? 'text-primary' : 'text-slate-400']"
+        >
+          <component :is="item.icon" class="h-5 w-5" />
+          <span class="text-[10px] font-semibold">{{ item.label }}</span>
+        </RouterLink>
+      </nav>
     </div>
 
     <Teleport to="body">
@@ -87,6 +99,20 @@
                 {{ item.label }}
               </RouterLink>
             </nav>
+            <div class="border-t border-slate-100 p-3">
+              <RouterLink
+                to="/admin/profile"
+                :class="['qs-nav-link', isActive('/admin/profile') ? 'qs-nav-link-active' : 'hover:bg-emerald-50']"
+                @click="sidebarOpen = false"
+              >
+                <UserCircleIcon class="h-5 w-5" />
+                My Profile
+              </RouterLink>
+              <button class="mt-1 flex w-full items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold text-red-500 transition-colors hover:bg-red-50" @click="sidebarOpen = false; handleLogout()">
+                <ArrowRightOnRectangleIcon class="h-4 w-4" />
+                Sign out
+              </button>
+            </div>
           </div>
         </div>
       </Transition>
@@ -119,6 +145,13 @@ const navItems = [
   { to: '/admin/stores', label: 'Stores', icon: BuildingStorefrontIcon },
   { to: '/admin/metrics', label: 'Platform Metrics', icon: ChartBarSquareIcon },
   { to: '/admin/billing', label: 'Billing', icon: CreditCardIcon },
+]
+
+const bottomNavItems = [
+  { to: '/admin/stores', label: 'Stores', icon: BuildingStorefrontIcon },
+  { to: '/admin/metrics', label: 'Metrics', icon: ChartBarSquareIcon },
+  { to: '/admin/billing', label: 'Billing', icon: CreditCardIcon },
+  { to: '/admin/profile', label: 'Profile', icon: UserCircleIcon },
 ]
 
 function isActive(path: string) {

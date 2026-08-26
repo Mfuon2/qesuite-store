@@ -45,9 +45,7 @@
 
           <div class="sm:col-span-2">
             <label class="admin-label">Store Category</label>
-            <select v-model="form.store_category" class="admin-input">
-              <option v-for="cat in categories" :key="cat.value" :value="cat.value">{{ cat.label }}</option>
-            </select>
+            <QeSelect v-model="form.store_category" :options="categories" />
           </div>
         </div>
       </section>
@@ -80,9 +78,7 @@
             </div>
             <div class="col-span-2 md:col-span-1">
               <label class="admin-label">Font</label>
-              <select v-model="form.font_family" class="admin-input">
-                <option v-for="font in fonts" :key="font" :value="font" :style="{ fontFamily: storeFontStack(font) }">{{ font }}</option>
-              </select>
+              <QeSelect v-model="form.font_family" :options="fontOptions" />
             </div>
           </div>
         </div>
@@ -97,7 +93,7 @@
         <div class="grid grid-cols-1 gap-2">
           <div>
             <label class="admin-label">Phone</label>
-            <input v-model="form.phone" type="tel" placeholder="+254700000000" class="admin-input" />
+            <QePhoneInput v-model="form.phone" />
           </div>
           <div>
             <label class="admin-label">Store Location</label>
@@ -154,6 +150,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { CheckCircleIcon, XCircleIcon, EyeIcon } from '@heroicons/vue/24/outline'
+import { QeSelect, QePhoneInput } from '@qesuite/ui'
 import ImageUpload from '@/components/dashboard/ImageUpload.vue'
 import ColorPicker from '@/components/dashboard/ColorPicker.vue'
 import LocationSearch from '@/components/dashboard/LocationSearch.vue'
@@ -162,6 +159,9 @@ import { beginNetworkActivity, endNetworkActivity } from '@/composables/useNetwo
 import { STORE_FONTS, storeFontStack } from '@qesuite/shared'
 
 const fonts = STORE_FONTS
+const fontOptions = computed(() =>
+  fonts.map((font) => ({ value: font, label: font, style: { fontFamily: storeFontStack(font) } }))
+)
 
 const categories = [
   { value: 'groceries',   label: 'Groceries & Supermarket' },

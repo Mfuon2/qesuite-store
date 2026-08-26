@@ -4,6 +4,7 @@ import { superadminMiddleware } from '../middleware/auth'
 import { signJWT, generateId } from '../lib/jwt'
 import { hashPassword } from '../lib/password'
 import { businessDate, businessDateDaysAgo } from '../lib/time'
+import { validatePhone, normalizeKenyaPhone } from '@qesuite/shared'
 
 const admin = new Hono<{ Bindings: Env; Variables: Variables }>()
 
@@ -185,6 +186,14 @@ admin.put('/stores/:id/profile', async (c) => {
 
     const tenant = await c.env.qesuite_db.prepare('SELECT id FROM tenants WHERE id = ?').bind(id).first()
     if (!tenant) return c.json({ success: false, error: 'Store not found', data: null }, 404)
+
+    for (const field of ['phone', 'whatsapp_number', 'owner_phone'] as const) {
+      const val = body[field]
+      if (val && !validatePhone(val)) {
+        return c.json({ success: false, error: 'Enter a valid Kenyan phone number, e.g. 0712345678', data: null }, 400)
+      }
+      if (val) (body as Record<string, string>)[field] = normalizeKenyaPhone(val)
+    }
 
     if (body.slug) {
       const taken = await c.env.qesuite_db.prepare(

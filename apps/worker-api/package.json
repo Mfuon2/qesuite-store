@@ -8,13 +8,13 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "hono": "^4.3.0",
+    "hono": "^4.13.5",
     "@qesuite/types": "*",
     "@qesuite/shared": "*"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20240524.0",
     "typescript": "^5.4.0",
-    "wrangler": "^4.112.0"
+    "wrangler": "^4.126.0"
   }
 }

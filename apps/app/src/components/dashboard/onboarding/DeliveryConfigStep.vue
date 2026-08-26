@@ -73,7 +73,7 @@
           </div>
           <div class="sm:col-span-2">
             <label class="admin-label">WhatsApp Business Number</label>
-            <input v-model="form.whatsapp_number" type="tel" placeholder="+254700000000" class="admin-input" />
+            <QePhoneInput v-model="form.whatsapp_number" />
           </div>
         </div>
       </section>
@@ -87,7 +87,7 @@
         </div>
 
         <div class="flex gap-2">
-          <input v-model="riderPhone" type="tel" placeholder="+254700000000" @keydown.enter="addRider" class="admin-input flex-1" />
+          <QePhoneInput v-model="riderPhone" class="flex-1" @keydown.enter="addRider" />
           <button
             @click="addRider"
             :disabled="!riderPhone"
@@ -137,6 +137,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { BuildingStorefrontIcon, PhoneIcon, TruckIcon, UserGroupIcon, XMarkIcon } from '@heroicons/vue/24/outline'
+import { QePhoneInput } from '@qesuite/ui'
 
 const form = defineModel<{
   delivery_enabled: boolean

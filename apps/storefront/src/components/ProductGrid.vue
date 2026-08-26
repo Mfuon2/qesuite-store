@@ -76,17 +76,13 @@
           </div>
           <div class="flex shrink-0 items-center gap-1.5 sm:gap-2">
             <label class="sr-only" for="product-sort">Sort products</label>
-            <select
+            <QeSelect
               id="product-sort"
               v-model="sortBy"
-              class="h-9 max-w-[6.75rem] rounded-xl border border-slate-100 bg-white px-2.5 text-xs font-bold text-slate-700 shadow-[0_6px_18px_rgba(15,23,42,0.03)] outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 sm:h-10 sm:max-w-none sm:px-4 sm:text-sm"
-            >
-              <option value="popular">Popular</option>
-              <option value="price-asc">Price: Low to High</option>
-              <option value="price-desc">Price: High to Low</option>
-              <option value="name-asc">Name: A to Z</option>
-              <option value="newest">Newest</option>
-            </select>
+              size="sm"
+              class="max-w-[6.75rem] sm:max-w-none"
+              :options="sortOptions"
+            />
             <button
               class="grid h-9 w-9 place-items-center rounded-xl shadow-[0_8px_20px_rgba(16,185,129,0.18)] sm:h-10 sm:w-10"
               :class="viewMode === 'grid' ? 'bg-emerald-700 text-white' : 'border border-slate-100 bg-white text-slate-600'"
@@ -173,17 +169,13 @@
           <div class="mt-4 grid gap-4">
             <div>
               <label for="mobile-product-sort" class="text-xs font-extrabold uppercase tracking-wide text-slate-400">Sort</label>
-              <select
+              <QeSelect
                 id="mobile-product-sort"
                 v-model="sortBy"
-                class="mt-2 h-11 w-full rounded-2xl border border-slate-100 bg-white px-3 text-sm font-bold text-slate-700 shadow-[0_6px_18px_rgba(15,23,42,0.03)] outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10"
-              >
-                <option value="popular">Popular</option>
-                <option value="price-asc">Price: Low to High</option>
-                <option value="price-desc">Price: High to Low</option>
-                <option value="name-asc">Name: A to Z</option>
-                <option value="newest">Newest</option>
-              </select>
+                size="lg"
+                class="mt-2"
+                :options="sortOptions"
+              />
             </div>
 
             <div>
@@ -248,6 +240,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { ListBulletIcon, ShoppingBagIcon, Squares2X2Icon, TagIcon, XMarkIcon } from '@heroicons/vue/24/outline'
+import { QeSelect } from '@qesuite/ui'
 import { useStorefrontStore } from '@/stores/store'
 import ProductCard from './ProductCard.vue'
 import SkeletonCard from './SkeletonCard.vue'
@@ -279,6 +272,14 @@ const filterOptions = [
 const selectedPriceRanges = ref<string[]>([])
 const selectedOptions = ref<string[]>([])
 const sortBy = ref<'popular' | 'price-asc' | 'price-desc' | 'name-asc' | 'newest'>('popular')
+
+const sortOptions = [
+  { value: 'popular', label: 'Popular' },
+  { value: 'price-asc', label: 'Price: Low to High' },
+  { value: 'price-desc', label: 'Price: High to Low' },
+  { value: 'name-asc', label: 'Name: A to Z' },
+  { value: 'newest', label: 'Newest' },
+]
 const viewMode = ref<'grid' | 'compact'>('grid')
 
 const loading = computed(() => store.productsLoading)

@@ -17,7 +17,8 @@
     "@heroicons/vue": "^2.1.0",
     "@qesuite/types": "*",
     "@qesuite/shared": "*",
-    "@qesuite/styles": "*"
+    "@qesuite/styles": "*",
+    "@qesuite/ui": "*"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^6.0.8",

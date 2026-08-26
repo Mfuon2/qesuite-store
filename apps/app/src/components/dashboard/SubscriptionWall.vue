@@ -150,13 +150,7 @@
               </div>
 
               <template v-if="!mpesaSuccess">
-                <input
-                  v-model="mpesaPhone"
-                  type="tel"
-                  placeholder="+254 7XX XXX XXX"
-                  class="owner-input w-full"
-                  :disabled="paying"
-                />
+                <QePhoneInput v-model="mpesaPhone" :disabled="paying" />
                 <button
                   @click="payWithMpesa"
                   :disabled="!mpesaPhone || paying || !selectedPlan"
@@ -229,6 +223,7 @@ import { useSettingsStore } from '@/stores/settings'
 import { apiInitiateMpesaPayment } from '@/api/settings'
 import { useRouter } from 'vue-router'
 import { parseAppTimestamp } from '@qesuite/shared'
+import { QePhoneInput } from '@qesuite/ui'
 
 const authStore = useAuthStore()
 const settingsStore = useSettingsStore()

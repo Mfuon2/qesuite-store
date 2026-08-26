@@ -58,13 +58,7 @@
 
         <div>
           <label for="profile-phone" class="admin-label">Phone</label>
-          <input
-            id="profile-phone"
-            v-model="form.phone"
-            type="tel"
-            class="admin-input"
-            placeholder="+254 7XX XXX XXX"
-          />
+          <QePhoneInput id="profile-phone" v-model="form.phone" />
         </div>
 
         <button
@@ -140,6 +134,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { QePhoneInput } from '@qesuite/ui'
 import { useAuthStore } from '@/stores/auth'
 import { apiGetMe, apiUpdateMe } from '@/api/auth'
 import { useAdminAction } from '@/composables/useAdminAction'

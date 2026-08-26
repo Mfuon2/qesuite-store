@@ -563,9 +563,7 @@
                   </label>
                   <label v-if="saveCashOutAsExpense" class="mt-2 block border-t border-slate-100 pt-2">
                     <span class="mb-1 block text-[10px] font-bold text-slate-600">What was the expense for?</span>
-                    <select v-model="cashExpenseCategory" class="owner-select h-9 w-full text-xs">
-                      <option v-for="(meta, key) in EXPENSE_CATEGORIES" :key="key" :value="key">{{ meta.label }}</option>
-                    </select>
+                    <QeSelect v-model="cashExpenseCategory" size="sm" :options="expenseCategoryOptions" />
                   </label>
                 </div>
                 <button
@@ -704,6 +702,7 @@ import {
   CubeIcon, XMarkIcon, BanknotesIcon, ReceiptPercentIcon,
   ReceiptRefundIcon, ChartBarIcon, ShoppingCartIcon, TrashIcon
 } from '@heroicons/vue/24/outline'
+import { QeSelect } from '@qesuite/ui'
 import PosTill, { type TillForm } from '@/components/dashboard/PosTill.vue'
 import VoidSaleModal from '@/components/dashboard/VoidSaleModal.vue'
 import { usePosStore } from '@/stores/pos'
@@ -1078,6 +1077,10 @@ function cashDifferenceLabel(amount: number): string {
 function expenseCategoryLabel(category: string): string {
   return EXPENSE_CATEGORIES[category as ExpenseCategory]?.label ?? category
 }
+
+const expenseCategoryOptions = computed(() =>
+  Object.entries(EXPENSE_CATEGORIES).map(([value, meta]) => ({ value, label: meta.label }))
+)
 
 watch(tab, (newTab) => {
   if (newTab === 'history') {

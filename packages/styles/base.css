@@ -26,11 +26,18 @@ html  { color-scheme: light only; background-color: #ffffff; }
   --qs-canvas: #f6faf4;
   --qs-card-bg: rgba(255,255,255,.95);
   --qs-card-border: rgba(226,232,240,.72);
-  --qs-card-radius: 1rem;
-  --qs-card-radius-lg: 1.35rem;
+  --qs-card-radius: .875rem;
+  --qs-card-radius-lg: 1rem;
   --qs-card-shadow: 0 8px 24px rgba(15, 23, 42, .035);
   --qs-card-shadow-lg: 0 10px 32px rgba(15, 23, 42, .035);
   --qs-card-shadow-hover: 0 14px 34px rgba(15, 23, 42, .06);
+
+  /* Application-wide small component density */
+  --qs-control-height: 2.25rem;
+  --qs-control-padding-x: .75rem;
+  --qs-control-padding-y: .4375rem;
+  --qs-control-font-size: .75rem;
+  --qs-panel-padding: .75rem;
 
   /* Spacing scale (compact-first) */
   --space-xs:  0.25rem;   /* 4px  */
@@ -139,8 +146,9 @@ body {
 .qs-input {
   display: block;
   width: 100%;
-  padding: 0.5rem 0.75rem;
-  font-size: 0.875rem;
+  min-height: var(--qs-control-height);
+  padding: var(--qs-control-padding-y) var(--qs-control-padding-x);
+  font-size: var(--qs-control-font-size);
   line-height: 1.5;
   border-radius: var(--radius-lg);
   border: 1px solid var(--qs-line);
@@ -200,8 +208,9 @@ body {
   align-items: center;
   justify-content: center;
   gap: 0.375rem;
-  padding: 0.5rem 1rem;
-  font-size: 0.875rem;
+  min-height: var(--qs-control-height);
+  padding: var(--qs-control-padding-y) var(--qs-control-padding-x);
+  font-size: var(--qs-control-font-size);
   font-weight: 600;
   border-radius: var(--radius-md);
   transition: opacity var(--transition-fast), transform var(--transition-fast);
@@ -309,8 +318,8 @@ body {
 }
 
 .qs-brand-mark {
-  width: 2.5rem;
-  height: 2.5rem;
+  width: 2.25rem;
+  height: 2.25rem;
   border-radius: .7rem;
   display: inline-grid;
   place-items: center;
@@ -342,11 +351,11 @@ body {
 .qs-nav-link {
   display: flex;
   align-items: center;
-  gap: .75rem;
+  gap: .625rem;
   border-radius: .75rem;
-  padding: .72rem .9rem;
+  padding: .575rem .75rem;
   color: #43536b;
-  font-size: .91rem;
+  font-size: .8125rem;
   font-weight: 600;
   transition: background var(--transition-fast), color var(--transition-fast), box-shadow var(--transition-fast);
 }
@@ -364,9 +373,9 @@ body {
 .qs-icon-tile {
   display: grid;
   place-items: center;
-  width: 2.55rem;
-  height: 2.55rem;
-  border-radius: .85rem;
+  width: 2.125rem;
+  height: 2.125rem;
+  border-radius: .7rem;
   background: color-mix(in srgb, var(--color-primary) 9%, white);
   color: var(--color-primary);
 }
@@ -383,7 +392,7 @@ body {
   background:
     linear-gradient(135deg, color-mix(in srgb, var(--color-primary) 90%, #fff), var(--color-primary), color-mix(in srgb, var(--color-primary) 65%, #000));
   color: white;
-  border-radius: .9rem;
+  border-radius: .8rem;
   box-shadow: 0 18px 45px rgba(20,132,71,.22);
 }
 
@@ -426,8 +435,9 @@ body {
 /* Delivery app action buttons */
 .btn-action {
   width: 100%;
-  padding: 1.125rem;
-  font-size: 1.0625rem;
+  min-height: 2.75rem;
+  padding: .7rem .9rem;
+  font-size: .875rem;
   font-weight: 700;
   border-radius: var(--radius-lg);
   color: white;

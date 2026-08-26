@@ -4,7 +4,6 @@
     <section class="admin-page-hero">
       <div class="admin-page-header">
         <div class="min-w-0">
-          <div class="owner-eyebrow">Platform health</div>
           <h1 class="owner-title">Platform Metrics</h1>
           <p class="owner-subtitle">Monitor store growth, subscriptions, conversion, GMV, and monthly recurring revenue.</p>
         </div>

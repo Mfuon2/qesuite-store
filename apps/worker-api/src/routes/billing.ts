@@ -4,6 +4,7 @@ import { authMiddleware } from '../middleware/auth'
 import { tenantGuard } from '../middleware/tenant'
 import { generateId } from '../lib/jwt'
 import { normalizeKenyaPhone } from '../lib/notifications'
+import { nairobiCompactTimestamp } from '../lib/time'
 
 const billing = new Hono<{ Bindings: Env; Variables: Variables }>()
 
@@ -134,6 +135,87 @@ billing.get('/history', async (c) => {
   return c.json({ success: true, data: results, error: null })
 })
 
+// POST /api/billing/mpesa/reference — submit an M-Pesa code for verification
+billing.post('/mpesa/reference', async (c) => {
+  try {
+    const tenantId = c.get('user').tenant_id!
+    const actor = c.get('user')
+    const body = await c.req.json<{ reference?: string }>()
+      .catch((): { reference?: string } => ({}))
+    const reference = body.reference?.trim().toUpperCase() ?? ''
+
+    if (!/^[A-Z0-9]{8,20}$/.test(reference)) {
+      return c.json({
+        success: false,
+        error: 'Enter a valid M-Pesa transaction code from your confirmation message.',
+        data: null,
+      }, 400)
+    }
+
+    const existing = await c.env.qesuite_db.prepare(
+      "SELECT id FROM billing_history WHERE payment_method = 'mpesa' AND reference = ? COLLATE NOCASE LIMIT 1"
+    ).bind(reference).first()
+
+    if (existing) {
+      return c.json({
+        success: false,
+        error: 'This M-Pesa transaction code has already been submitted.',
+        data: null,
+      }, 409)
+    }
+
+    const subscription = await c.env.qesuite_db.prepare(
+      'SELECT amount, currency FROM subscriptions WHERE tenant_id = ? ORDER BY created_at DESC LIMIT 1'
+    ).bind(tenantId).first<{ amount: number | null; currency: string | null }>()
+
+    const recordId = generateId()
+    const amount = subscription?.amount ?? 999
+    const currency = subscription?.currency ?? 'KES'
+
+    await c.env.qesuite_db.batch([
+      c.env.qesuite_db.prepare(
+        `INSERT INTO billing_history
+          (id, tenant_id, amount, currency, status, payment_method, reference, paid_at, created_at)
+         VALUES (?, ?, ?, ?, 'pending', 'mpesa', ?, NULL, datetime('now'))`
+      ).bind(recordId, tenantId, amount, currency, reference),
+      c.env.qesuite_db.prepare(
+        `INSERT INTO audit_log
+          (id, actor_id, actor_role, action, target_type, target_id, detail, ip, created_at)
+         VALUES (?, ?, ?, 'SUBMIT_MPESA_REFERENCE', 'billing_history', ?, ?, ?, datetime('now'))`
+      ).bind(
+        generateId(),
+        actor.sub,
+        actor.role,
+        recordId,
+        JSON.stringify({ tenant_id: tenantId, amount, currency, reference }),
+        c.req.header('CF-Connecting-IP') ?? null,
+      ),
+    ])
+
+    const record = await c.env.qesuite_db.prepare(
+      'SELECT * FROM billing_history WHERE id = ?'
+    ).bind(recordId).first()
+
+    return c.json({
+      success: true,
+      data: record,
+      error: null,
+      message: 'M-Pesa transaction code submitted for verification.',
+    }, 201)
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    if (message.includes('UNIQUE constraint failed')) {
+      return c.json({
+        success: false,
+        error: 'This M-Pesa transaction code has already been submitted.',
+        data: null,
+      }, 409)
+    }
+    console.error('billing/mpesa/reference error', err)
+    return c.json({ success: false, error: 'Could not submit the transaction code. Please try again.', data: null }, 500)
+  }
+})
+
 // POST /api/billing/mpesa — initiate subscription payment via M-Pesa
 billing.post('/mpesa', async (c) => {
   try {
@@ -145,7 +227,7 @@ billing.post('/mpesa', async (c) => {
     // Handles: +254724… | 254724… | 0724… | 724… (bare 9-digit)
     const normalizedPhone = normalizeKenyaPhone(phone)
     // else assume already starts with 254
-    const timestamp = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 14)
+    const timestamp = nairobiCompactTimestamp()
     const password = btoa(`${c.env.MPESA_SHORTCODE}${c.env.MPESA_PASSKEY}${timestamp}`)
 
     const tokenRes = await fetch(

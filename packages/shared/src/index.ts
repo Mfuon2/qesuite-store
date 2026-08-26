@@ -71,12 +71,39 @@ export function generateTrackingCode(): string {
 // Date & time utilities
 // ─────────────────────────────────────────────────────────────
 
+/** The one business and display timezone used by every Stores application. */
+export const APP_TIME_ZONE = 'Africa/Nairobi' as const;
+
+/** Nairobi has no daylight-saving changes and is permanently UTC+03:00. */
+export const APP_TIME_ZONE_OFFSET = '+03:00' as const;
+
+/** Parse D1's timezone-less UTC timestamps and normal ISO timestamps consistently. */
+export function parseAppTimestamp(date: string | Date): Date {
+  if (date instanceof Date) return new Date(date.getTime());
+  const raw = date.trim();
+  if (/Z$|[+-]\d{2}:\d{2}$/.test(raw)) return new Date(raw);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return new Date(`${raw}T00:00:00Z`);
+  return new Date(`${raw.replace(' ', 'T')}Z`);
+}
+
+/** Return a YYYY-MM-DD calendar date using Nairobi's clock. */
+export function nairobiDate(date: string | Date = new Date()): string {
+  const value = parseAppTimestamp(date);
+  if (isNaN(value.getTime())) return '';
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: APP_TIME_ZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(value);
+}
+
 /**
  * Format an ISO date string to a human-readable local date.
  * e.g. "2024-06-01T12:00:00Z" → "1 Jun 2024, 3:00 PM"
  */
 export function formatDate(date: string, locale = 'en-KE'): string {
-  const d = new Date(date);
+  const d = parseAppTimestamp(date);
   if (isNaN(d.getTime())) return 'Invalid date';
   return d.toLocaleString(locale, {
     day: 'numeric',
@@ -85,7 +112,7 @@ export function formatDate(date: string, locale = 'en-KE'): string {
     hour: '2-digit',
     minute: '2-digit',
     hour12: true,
-    timeZone: 'Africa/Nairobi',
+    timeZone: APP_TIME_ZONE,
   });
 }
 
@@ -94,13 +121,13 @@ export function formatDate(date: string, locale = 'en-KE'): string {
  * e.g. "2024-06-01T12:00:00Z" → "1 Jun 2024"
  */
 export function formatDateShort(date: string, locale = 'en-KE'): string {
-  const d = new Date(date);
+  const d = parseAppTimestamp(date);
   if (isNaN(d.getTime())) return 'Invalid date';
   return d.toLocaleDateString(locale, {
     day: 'numeric',
     month: 'short',
     year: 'numeric',
-    timeZone: 'Africa/Nairobi',
+    timeZone: APP_TIME_ZONE,
   });
 }
 
@@ -110,7 +137,7 @@ export function formatDateShort(date: string, locale = 'en-KE'): string {
  */
 export function timeAgo(date: string): string {
   const now = Date.now();
-  const then = new Date(date).getTime();
+  const then = parseAppTimestamp(date).getTime();
   if (isNaN(then)) return '';
   const diff = Math.floor((now - then) / 1000);
 
@@ -140,15 +167,15 @@ export function timeAgo(date: string): string {
  * Get today's date as YYYY-MM-DD in Nairobi timezone.
  */
 export function todayNairobi(): string {
-  return new Date().toLocaleDateString('sv-SE', { timeZone: 'Africa/Nairobi' });
+  return nairobiDate();
 }
 
 /**
  * Add days to a date string and return YYYY-MM-DD.
  */
 export function addDays(date: string, days: number): string {
-  const d = new Date(date);
-  d.setDate(d.getDate() + days);
+  const d = new Date(`${date}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
   return d.toISOString().split('T')[0];
 }
 

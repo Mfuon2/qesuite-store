@@ -3,6 +3,7 @@ import { Env, Variables } from '../types'
 import { authMiddleware } from '../middleware/auth'
 import { tenantGuard } from '../middleware/tenant'
 import { generateId } from '../lib/jwt'
+import { nairobiCompactTimestamp } from '../lib/time'
 
 const payments = new Hono<{ Bindings: Env; Variables: Variables }>()
 
@@ -22,10 +23,7 @@ async function getMpesaToken(env: Env): Promise<string> {
 }
 
 function getMpesaPassword(shortcode: string, passkey: string): { password: string; timestamp: string } {
-  const timestamp = new Date()
-    .toISOString()
-    .replace(/[^0-9]/g, '')
-    .substring(0, 14)
+  const timestamp = nairobiCompactTimestamp()
   const password = btoa(`${shortcode}${passkey}${timestamp}`)
   return { password, timestamp }
 }

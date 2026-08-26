@@ -1,12 +1,12 @@
 <template>
-  <div class="p-4 sm:p-6 lg:p-8">
-    <section class="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+  <div class="owner-page">
+    <section class="mb-3 flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between">
       <div>
-        <h1 class="text-2xl font-extrabold text-slate-950 sm:text-3xl">Good {{ greeting }}, {{ firstName }}!</h1>
-        <p class="mt-1 text-sm text-slate-500">Here's what's happening with your store today.</p>
+        <h1 class="text-xl font-extrabold text-slate-950 sm:text-2xl">Good {{ greeting }}, {{ firstName }}!</h1>
+        <p class="mt-0.5 text-xs text-slate-500">Here's what's happening with your store today.</p>
       </div>
       <!-- Period selector — same visual, now functional -->
-      <button @click="cyclePeriod" class="inline-flex items-center gap-2 self-start rounded-xl border border-[#d0daca] bg-white/90 px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm lg:self-auto">
+      <button @click="cyclePeriod" class="inline-flex min-h-9 items-center gap-1.5 self-start rounded-xl border border-[#d0daca] bg-white/90 px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm lg:self-auto">
         <CalendarDaysIcon class="h-4 w-4 text-slate-500" />
         {{ dateRangeDisplay }}
         <ChevronDownIcon class="h-4 w-4 text-slate-500" />
@@ -14,81 +14,114 @@
     </section>
 
     <!-- Stat cards + hero -->
-    <section class="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
-      <template v-if="kpiLoading">
-        <div v-for="i in 4" :key="i" class="qs-stat-card skeleton h-[112px] p-4" />
-        <div class="qs-hero-card skeleton h-[112px] p-5 sm:col-span-2 xl:col-span-1" />
-      </template>
-      <template v-else>
-        <div v-for="card in statCards" :key="card.label" class="qs-stat-card p-4">
-          <div class="mb-4 flex items-start justify-between">
-            <p class="text-sm font-medium text-slate-600">{{ card.label }}</p>
-            <div :class="['qs-icon-tile', card.tone]">
-              <component :is="card.icon" class="h-5 w-5" />
+    <section class="mb-3">
+      <div
+        ref="kpiScroller"
+        class="scrollbar-hide -mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-1 sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 sm:pb-0 xl:grid-cols-7"
+        role="region"
+        aria-label="Store statistics"
+        @scroll.passive="updateActiveKpi"
+      >
+        <template v-if="kpiLoading">
+          <div
+            v-for="i in 6"
+            :key="i"
+            class="qs-stat-card skeleton h-24 w-[82vw] max-w-[19rem] shrink-0 snap-center p-2.5 sm:w-auto sm:max-w-none"
+          />
+          <div class="qs-hero-card skeleton h-24 w-[82vw] max-w-[19rem] shrink-0 snap-center p-2.5 sm:col-span-2 sm:w-auto sm:max-w-none xl:col-span-1" />
+        </template>
+        <template v-else>
+          <div
+            v-for="card in statCards"
+            :key="card.label"
+            class="qs-stat-card h-24 w-[82vw] max-w-[19rem] shrink-0 snap-center p-2.5 sm:w-auto sm:max-w-none"
+          >
+            <div class="mb-1.5 flex items-start justify-between">
+              <p class="text-xs font-semibold text-slate-600">{{ card.label }}</p>
+              <div :class="['qs-icon-tile', card.tone]">
+                <component :is="card.icon" class="h-4 w-4" />
+              </div>
             </div>
+            <p class="truncate text-lg font-extrabold leading-none text-slate-950">{{ card.value }}</p>
+            <p class="mt-1.5 flex items-center gap-1.5 text-[11px] text-slate-500">
+              <span :class="['font-bold', card.changeTone]">{{ card.changeDir }} {{ card.change }}</span>
+              {{ periodCompareLabel }}
+            </p>
           </div>
-          <p class="text-2xl font-extrabold text-slate-950">{{ card.value }}</p>
-          <p class="mt-4 flex items-center gap-2 text-xs text-slate-500">
-            <span :class="['font-bold', card.changeTone]">{{ card.changeDir }} {{ card.change }}</span>
-            {{ periodCompareLabel }}
-          </p>
-        </div>
 
-        <div class="qs-hero-card relative overflow-hidden p-5 sm:col-span-2 xl:col-span-1">
-          <div class="relative z-10">
-            <p class="text-sm font-medium text-white/90">Today's Sales</p>
-            <p class="mt-5 text-3xl font-extrabold">KES {{ todaySales.toLocaleString() }}</p>
-            <p class="mt-3 text-sm text-white/90">{{ heroChangeTxt }}</p>
+          <div class="qs-hero-card relative h-24 w-[82vw] max-w-[19rem] shrink-0 snap-center overflow-hidden p-2.5 sm:col-span-2 sm:w-auto sm:max-w-none xl:col-span-1">
+            <div class="relative z-10">
+              <p class="text-xs font-semibold text-white/90">Today's Sales</p>
+              <p class="mt-2 text-2xl font-extrabold leading-none">KES {{ todaySales.toLocaleString() }}</p>
+              <p class="mt-1.5 text-xs text-white/90">{{ heroChangeTxt }}</p>
+            </div>
+            <ShoppingBagIcon class="absolute bottom-2 right-3 h-12 w-12 text-white/25 drop-shadow-sm sm:bottom-3 sm:right-4 sm:h-14 sm:w-14 sm:text-white/30" />
           </div>
-          <ShoppingBagIcon class="absolute bottom-3 right-4 h-14 w-14 text-white/30 drop-shadow-sm" />
-        </div>
-      </template>
+        </template>
+      </div>
+
+      <div class="mt-2 flex items-center justify-center gap-1.5 sm:hidden" aria-label="Statistics carousel pages">
+        <button
+          v-for="i in statCards.length + 1"
+          :key="i"
+          type="button"
+          :class="[
+            'h-1.5 rounded-full transition-all duration-200',
+            activeKpi === i - 1 ? 'w-5 bg-primary' : 'w-1.5 bg-slate-300'
+          ]"
+          :aria-label="`Show statistic ${i} of ${statCards.length + 1}`"
+          :aria-current="activeKpi === i - 1 ? 'true' : undefined"
+          @click="scrollToKpi(i - 1)"
+        />
+      </div>
     </section>
 
-    <section class="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.45fr)_minmax(320px,.9fr)_360px]">
-      <!-- Sales Overview chart -->
-      <div class="qs-surface p-4">
-        <div class="mb-5 flex items-center justify-between">
+    <section class="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1.45fr)_minmax(300px,.9fr)_330px]">
+      <!-- Sales and expense performance chart -->
+      <div class="qs-surface p-3">
+        <div class="mb-2 flex items-start justify-between gap-2">
           <div>
-            <h2 class="text-base font-bold text-slate-950">Sales Overview</h2>
-            <p class="mt-3 text-2xl font-extrabold text-slate-950">
-              KES {{ totalSales.toLocaleString() }}
+            <h2 class="text-sm font-bold text-slate-950">Sales, expenses &amp; variance</h2>
+            <p class="mt-1 text-xs font-semibold text-slate-600">
+              Sales KES {{ totalSales.toLocaleString() }}
               <span class="rounded-full bg-emerald-50 px-2 py-1 text-xs font-bold text-emerald-700">{{ overviewChangeTxt }}</span>
             </p>
           </div>
-          <button @click="cyclePeriod" class="rounded-lg border border-[#d0daca] bg-white px-3 py-2 text-sm font-semibold text-slate-700">{{ periodLabel }}</button>
+          <button @click="cyclePeriod" class="rounded-lg border border-[#d0daca] bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700">{{ periodLabel }}</button>
         </div>
-        <div class="relative h-56">
+        <div class="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] font-semibold text-slate-500">
+          <span class="flex items-center gap-1"><i class="h-2 w-2 rounded-full bg-emerald-500" /> Sales</span>
+          <span class="flex items-center gap-1"><i class="h-2 w-2 rounded-full bg-orange-500" /> Expenses KES {{ totalExpenses.toLocaleString() }}</span>
+          <span class="flex items-center gap-1" :class="periodVariance < 0 ? 'text-red-600' : 'text-blue-600'"><i class="h-2 w-2 rounded-full bg-blue-600" /> Variance {{ formatSignedKes(periodVariance) }}</span>
+        </div>
+        <div class="relative h-44">
           <template v-if="chartLoading">
             <div class="skeleton absolute inset-x-0 top-0 h-48 rounded-xl" />
           </template>
-          <template v-else>
+          <template v-else-if="sampledSeries.length">
             <div class="absolute inset-x-0 top-0 h-px bg-slate-100"></div>
             <div class="absolute inset-x-0 top-1/4 h-px bg-slate-100"></div>
             <div class="absolute inset-x-0 top-1/2 h-px bg-slate-100"></div>
             <div class="absolute inset-x-0 top-3/4 h-px bg-slate-100"></div>
             <svg class="absolute inset-0 h-full w-full overflow-visible" viewBox="0 0 700 220" preserveAspectRatio="none">
-              <defs>
-                <linearGradient id="salesFill" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stop-color="#148447" stop-opacity=".22" />
-                  <stop offset="100%" stop-color="#148447" stop-opacity="0" />
-                </linearGradient>
-              </defs>
-              <path :d="areaPath" fill="url(#salesFill)" />
-              <path :d="linePath" fill="none" stroke="#148447" stroke-width="3" vector-effect="non-scaling-stroke" />
-              <circle v-for="point in chartPoints" :key="point.x" :cx="point.x" :cy="point.y" r="4" fill="white" stroke="#148447" stroke-width="3" />
+              <line x1="20" x2="680" :y1="chartZeroY" :y2="chartZeroY" stroke="#cbd5e1" stroke-width="1" stroke-dasharray="4 4" />
+              <path :d="salesLinePath" fill="none" stroke="#10b981" stroke-width="3" vector-effect="non-scaling-stroke" />
+              <path :d="expenseLinePath" fill="none" stroke="#f97316" stroke-width="3" vector-effect="non-scaling-stroke" />
+              <path :d="varianceLinePath" fill="none" stroke="#2563eb" stroke-width="2.5" stroke-dasharray="6 5" vector-effect="non-scaling-stroke" />
             </svg>
           </template>
+          <p v-else class="absolute inset-0 grid place-items-center text-xs text-slate-400">No sales or expenses in this period</p>
           <div class="absolute inset-x-0 bottom-0 grid grid-cols-7 text-center text-xs font-medium text-slate-500">
             <span v-for="day in days" :key="day">{{ day }}</span>
           </div>
         </div>
+        <p class="mt-1 text-[10px] leading-4 text-slate-400">Estimated variance uses only the expenses recorded in the app.</p>
       </div>
 
       <!-- Order Status -->
-      <div class="qs-surface p-4">
-        <div class="mb-4 flex items-center justify-between">
-          <h2 class="text-base font-bold text-slate-950">Order Status</h2>
+      <div class="qs-surface p-3">
+        <div class="mb-2 flex items-center justify-between">
+          <h2 class="text-sm font-bold text-slate-950">Order Status</h2>
           <RouterLink to="/orders" class="text-sm font-semibold text-emerald-700">View all</RouterLink>
         </div>
         <div class="divide-y divide-slate-100">
@@ -96,7 +129,7 @@
             <div v-for="i in 6" :key="i" class="skeleton my-2 h-9 rounded-xl" />
           </template>
           <template v-else>
-            <div v-for="status in orderStatuses" :key="status.label" class="flex items-center gap-3 py-3">
+            <div v-for="status in orderStatuses" :key="status.label" class="flex items-center gap-2 py-2">
               <div :class="['grid h-8 w-8 place-items-center rounded-full text-white', status.bg]">
                 <component :is="status.icon" class="h-4 w-4" />
               </div>
@@ -109,17 +142,45 @@
 
       <!-- Quick tiles + Recent Activity (unchanged) -->
       <div class="space-y-4">
-        <div class="grid grid-cols-3 gap-3">
-          <RouterLink v-for="tile in quickTiles" :key="tile.label" :to="tile.to" class="qs-surface flex min-h-24 flex-col items-center justify-center gap-2 p-3 text-center">
-            <div :class="['qs-icon-tile', tile.tone]">
-              <component :is="tile.icon" class="h-5 w-5" />
-            </div>
-            <span class="text-xs font-bold text-slate-800">{{ tile.label }}</span>
-          </RouterLink>
+        <div>
+          <div
+            ref="quickScroller"
+            class="scrollbar-hide -mx-4 flex snap-x snap-mandatory gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:grid sm:grid-cols-3 sm:gap-3 sm:overflow-visible sm:px-0 sm:pb-0"
+            role="region"
+            aria-label="Quick actions"
+            @scroll.passive="updateQuickPage"
+          >
+            <RouterLink
+              v-for="tile in quickTiles"
+              :key="tile.label"
+              :to="tile.to"
+              class="qs-surface flex h-20 w-[5.5rem] shrink-0 snap-start flex-col items-center justify-center gap-1.5 p-2 text-center transition active:scale-[0.97] sm:min-h-24 sm:h-auto sm:w-auto sm:gap-2 sm:p-3"
+            >
+              <div :class="['qs-icon-tile !h-9 !w-9 !rounded-xl sm:!h-[2.55rem] sm:!w-[2.55rem]', tile.tone]">
+                <component :is="tile.icon" class="h-[18px] w-[18px] sm:h-5 sm:w-5" />
+              </div>
+              <span class="text-[11px] font-bold leading-none text-slate-800 sm:text-xs sm:leading-normal">{{ tile.label }}</span>
+            </RouterLink>
+          </div>
+
+          <div class="mt-2 flex items-center justify-center gap-1.5 sm:hidden" aria-label="Quick action carousel pages">
+            <button
+              v-for="i in quickPageCount"
+              :key="i"
+              type="button"
+              :class="[
+                'h-1.5 rounded-full transition-all duration-200',
+                activeQuickPage === i - 1 ? 'w-5 bg-primary' : 'w-1.5 bg-slate-300'
+              ]"
+              :aria-label="`Show quick actions page ${i} of ${quickPageCount}`"
+              :aria-current="activeQuickPage === i - 1 ? 'true' : undefined"
+              @click="scrollToQuickPage(i - 1)"
+            />
+          </div>
         </div>
-        <div class="qs-surface p-4">
-          <div class="mb-4 flex items-center justify-between">
-            <h2 class="text-base font-bold text-slate-950">Recent Activity</h2>
+        <div class="qs-surface p-3">
+          <div class="mb-2 flex items-center justify-between">
+            <h2 class="text-sm font-bold text-slate-950">Recent Activity</h2>
             <RouterLink to="/orders" class="text-sm font-semibold text-emerald-700">View all</RouterLink>
           </div>
           <div class="divide-y divide-slate-100">
@@ -127,7 +188,7 @@
               <div v-for="i in 4" :key="i" class="skeleton my-2 h-9 rounded-xl" />
             </template>
             <template v-else>
-              <div v-for="item in recentActivity" :key="item.text" class="flex items-center gap-3 py-3">
+              <div v-for="item in recentActivity" :key="item.text" class="flex items-center gap-2 py-2">
                 <div :class="['grid h-8 w-8 place-items-center rounded-full', item.bg]">
                   <component :is="item.icon" class="h-4 w-4" />
                 </div>
@@ -140,22 +201,22 @@
       </div>
     </section>
 
-    <section class="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.4fr)_minmax(320px,.8fr)]">
+    <section class="mt-3 grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1.4fr)_minmax(300px,.8fr)]">
       <!-- Recent Orders -->
-      <div class="qs-surface overflow-hidden p-4">
-        <div class="mb-4 flex items-center justify-between">
-          <h2 class="text-base font-bold text-slate-950">Recent Orders</h2>
+      <div class="qs-surface overflow-hidden p-3">
+        <div class="mb-2 flex items-center justify-between">
+          <h2 class="text-sm font-bold text-slate-950">Recent Orders</h2>
           <RouterLink to="/orders" class="text-sm font-semibold text-emerald-700">View all</RouterLink>
         </div>
         <div class="overflow-x-auto">
           <table class="w-full min-w-[620px] text-sm">
             <thead>
               <tr class="border-b border-slate-100 text-left text-xs font-semibold text-slate-500">
-                <th class="py-3">Order</th>
-                <th class="py-3">Customer</th>
-                <th class="py-3">Items</th>
-                <th class="py-3">Total</th>
-                <th class="py-3">Status</th>
+                <th class="py-2">Order</th>
+                <th class="py-2">Customer</th>
+                <th class="py-2">Items</th>
+                <th class="py-2">Total</th>
+                <th class="py-2">Status</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-100">
@@ -166,11 +227,11 @@
               </template>
               <template v-else>
                 <tr v-for="order in recentOrders" :key="order.id">
-                  <td class="py-3 font-bold text-emerald-700">#{{ order.tracking_code }}</td>
-                  <td class="py-3 text-slate-700">{{ order.customer_name || order.customer_phone }}</td>
-                  <td class="py-3 text-slate-700">{{ itemsCount(order.items_summary) }}</td>
-                  <td class="py-3 font-semibold text-slate-900">KES {{ order.total.toLocaleString() }}</td>
-                  <td class="py-3"><span :class="['rounded-full px-2.5 py-1 text-xs font-bold', statusPill(order.status)]">{{ statusLabel(order.status) }}</span></td>
+                  <td class="py-2 font-bold text-emerald-700">#{{ order.tracking_code }}</td>
+                  <td class="py-2 text-slate-700">{{ order.customer_name || order.customer_phone }}</td>
+                  <td class="py-2 text-slate-700">{{ itemsCount(order.items_summary) }}</td>
+                  <td class="py-2 font-semibold text-slate-900">KES {{ order.total.toLocaleString() }}</td>
+                  <td class="py-2"><span :class="['rounded-full px-2.5 py-1 text-xs font-bold', statusPill(order.status)]">{{ statusLabel(order.status) }}</span></td>
                 </tr>
               </template>
             </tbody>
@@ -179,9 +240,9 @@
       </div>
 
       <!-- Top Products -->
-      <div class="qs-surface p-4">
-        <div class="mb-4 flex items-center justify-between">
-          <h2 class="text-base font-bold text-slate-950">Top Products</h2>
+      <div class="qs-surface p-3">
+        <div class="mb-2 flex items-center justify-between">
+          <h2 class="text-sm font-bold text-slate-950">Top Products</h2>
           <RouterLink to="/products" class="text-sm font-semibold text-emerald-700">View all</RouterLink>
         </div>
         <div class="divide-y divide-slate-100">
@@ -189,7 +250,7 @@
             <div v-for="i in 5" :key="i" class="skeleton my-2 h-10 rounded-xl" />
           </template>
           <template v-else>
-            <div v-for="product in topProducts" :key="product.name" class="flex items-center gap-3 py-3">
+            <div v-for="product in topProducts" :key="product.name" class="flex items-center gap-2 py-2">
               <div class="grid h-10 w-10 place-items-center rounded-xl border border-slate-100 bg-white"><CubeIcon class="h-5 w-5 text-emerald-600" /></div>
               <span class="flex-1 text-sm font-semibold text-slate-800">{{ product.name }}</span>
               <span class="text-xs text-slate-500">{{ product.sold }} sold</span>
@@ -208,16 +269,51 @@ import {
   BanknotesIcon, ShoppingBagIcon, ChartBarIcon, UserPlusIcon,
   CalendarDaysIcon, ChevronDownIcon, ClipboardDocumentListIcon,
   CheckCircleIcon, TruckIcon, XCircleIcon, CubeIcon, UsersIcon,
-  BuildingStorefrontIcon, ArchiveBoxIcon
+  BuildingStorefrontIcon, ArchiveBoxIcon, ReceiptRefundIcon, ScaleIcon
 } from '@heroicons/vue/24/outline'
 import { useAuthStore } from '@/stores/auth'
 import { getGreeting } from '@/composables/useDateFormat'
+import { useSnapCarousel } from '@/composables/useSnapCarousel'
 import { apiFetch } from '@/api/index'
 import type { OrderStatus } from '@qesuite/types'
+import { APP_TIME_ZONE, addDays, parseAppTimestamp, todayNairobi } from '@qesuite/shared'
 
 const auth = useAuthStore()
 const firstName = computed(() => (auth.user?.name || 'Store').split(' ')[0])
 const greeting = computed(() => getGreeting())
+
+// ─── Mobile KPI carousel ─────────────────────────────────────────────────────
+const {
+  scroller: kpiScroller,
+  activeIndex: activeKpi,
+  updateActiveIndex: updateActiveKpi,
+  scrollToIndex: scrollToKpi,
+} = useSnapCarousel()
+const quickScroller = ref<HTMLElement | null>(null)
+const activeQuickPage = ref(0)
+const quickPageSize = 3
+const quickPageCount = computed(() => Math.ceil(quickTiles.length / quickPageSize))
+
+function updateQuickPage() {
+  const scroller = quickScroller.value
+  if (!scroller) return
+
+  const maxScroll = scroller.scrollWidth - scroller.clientWidth
+  activeQuickPage.value = maxScroll > 0
+    ? Math.min(quickPageCount.value - 1, Math.round((scroller.scrollLeft / maxScroll) * (quickPageCount.value - 1)))
+    : 0
+}
+
+function scrollToQuickPage(page: number) {
+  const scroller = quickScroller.value
+  if (!scroller) return
+
+  const maxScroll = scroller.scrollWidth - scroller.clientWidth
+  scroller.scrollTo({
+    left: quickPageCount.value > 1 ? (maxScroll * page) / (quickPageCount.value - 1) : 0,
+    behavior: 'smooth',
+  })
+}
 
 // ─── Period ───────────────────────────────────────────────────────────────────
 type Period = 'today' | 'week' | 'month'
@@ -236,11 +332,15 @@ const periodCompareLabel = computed(() =>
   period.value === 'today' ? 'vs yesterday' : period.value === 'week' ? 'vs last 7 days' : 'vs last 30 days'
 )
 const dateRangeDisplay = computed(() => {
-  const fmt = (d: Date) => d.toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' })
-  const to = new Date()
+  const fmt = (value: string) => parseAppTimestamp(value).toLocaleDateString('en-KE', {
+    timeZone: APP_TIME_ZONE,
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  })
+  const to = todayNairobi()
   if (period.value === 'today') return fmt(to)
-  const from = new Date()
-  from.setDate(from.getDate() - (period.value === 'week' ? 6 : 29))
+  const from = addDays(to, -(period.value === 'week' ? 6 : 29))
   return `${fmt(from)} - ${fmt(to)}`
 })
 function buildQs() { return `?period=${period.value}` }
@@ -252,11 +352,29 @@ interface SummaryData {
   prev: { total_revenue: number; total_orders: number; avg_order_value: number }
 }
 
+interface FinancialPoint {
+  date: string
+  revenue: number
+  expenses: number
+  variance: number
+}
+
+interface DashboardFinancialData {
+  revenue: number
+  expenses: number
+  variance: number
+  online_orders: number
+  pos_sales: number
+  previous: { revenue: number; expenses: number; variance: number }
+  daily: FinancialPoint[]
+}
+
 const kpiLoading = ref(true)
 const kpiData = ref<SummaryData | null>(null)
 
 // Always today — for the hero card
 const todayData = ref<SummaryData | null>(null)
+const financialData = ref<DashboardFinancialData | null>(null)
 
 function pctChange(curr: number, prev: number) {
   if (prev === 0) return curr > 0 ? 100 : 0
@@ -265,6 +383,17 @@ function pctChange(curr: number, prev: number) {
 
 const totalSales = computed(() => kpiData.value?.total_revenue ?? 0)
 const todaySales = computed(() => todayData.value?.total_revenue ?? 0)
+const totalExpenses = computed(() => financialData.value?.expenses ?? 0)
+const periodVariance = computed(() => financialData.value?.variance ?? 0)
+
+function formatSignedKes(value: number) {
+  return value < 0 ? `-KES ${Math.abs(value).toLocaleString()}` : `KES ${value.toLocaleString()}`
+}
+
+function varianceChange(current: number, previous: number) {
+  if (previous === 0) return current === 0 ? 0 : current > 0 ? 100 : -100
+  return Math.round(((current - previous) / Math.abs(previous)) * 100)
+}
 
 const heroChangePct = computed(() => {
   if (!todayData.value) return 0
@@ -290,6 +419,9 @@ const statCards = computed(() => {
   const revPct = d ? pctChange(d.total_revenue, d.prev.total_revenue) : 0
   const ordPct = d ? pctChange(d.total_orders, d.prev.total_orders) : 0
   const aovPct = d ? pctChange(d.avg_order_value, d.prev.avg_order_value) : 0
+  const finance = financialData.value
+  const expensePct = finance ? pctChange(finance.expenses, finance.previous.expenses) : 0
+  const resultPct = finance ? varianceChange(finance.variance, finance.previous.variance) : 0
   const newCust = s?.new_customers ?? 0
   const card = (pct: number, changeTone?: string) => ({
     changeDir: pct >= 0 ? '↑' : '↓',
@@ -298,8 +430,10 @@ const statCards = computed(() => {
   })
   return [
     { label: 'Total Sales', value: `KES ${(d?.total_revenue ?? 0).toLocaleString()}`, icon: BanknotesIcon, tone: 'bg-emerald-100 text-emerald-700', ...card(revPct) },
-    { label: 'Orders', value: d?.total_orders ?? 0, icon: ShoppingBagIcon, tone: 'bg-amber-100 text-amber-700', ...card(ordPct) },
-    { label: 'Average Order Value', value: `KES ${(d?.avg_order_value ?? 0).toLocaleString()}`, icon: ChartBarIcon, tone: 'bg-blue-100 text-blue-700', ...card(aovPct) },
+    { label: 'Recorded Expenses', value: `KES ${(finance?.expenses ?? 0).toLocaleString()}`, icon: ReceiptRefundIcon, tone: 'bg-orange-100 text-orange-700', ...card(expensePct, expensePct <= 0 ? 'text-emerald-700' : 'text-red-500') },
+    { label: 'Estimated Result', value: formatSignedKes(finance?.variance ?? 0), icon: ScaleIcon, tone: finance && finance.variance < 0 ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700', ...card(resultPct) },
+    { label: 'Sales', value: d?.total_orders ?? 0, icon: ShoppingBagIcon, tone: 'bg-amber-100 text-amber-700', ...card(ordPct) },
+    { label: 'Average Sale', value: `KES ${(d?.avg_order_value ?? 0).toLocaleString()}`, icon: ChartBarIcon, tone: 'bg-blue-100 text-blue-700', ...card(aovPct) },
     { label: 'New Customers', value: newCust, icon: UserPlusIcon, tone: 'bg-violet-100 text-violet-700', changeDir: '', change: `${s?.unique_customers ?? 0} unique`, changeTone: 'text-slate-400' },
   ]
 })
@@ -319,11 +453,9 @@ async function fetchTodayKpi() {
   } catch { /* ignore */ }
 }
 
-// ─── B. Revenue Chart ────────────────────────────────────────────────────────
-interface RevenuePoint { date: string; revenue: number; order_count: number }
-
+// ─── B. Sales, expenses, and variance chart ─────────────────────────────────
 const chartLoading = ref(true)
-const chartSeries = ref<RevenuePoint[]>([])
+const chartSeries = computed(() => financialData.value?.daily ?? [])
 
 // Sample series to exactly 7 evenly-spaced points for the fixed 7-column grid
 const sampledSeries = computed(() => {
@@ -332,32 +464,41 @@ const sampledSeries = computed(() => {
   if (data.length <= 7) {
     // Pad to 7 with zero entries at the start
     const pad = 7 - data.length
-    const zeros: RevenuePoint[] = Array.from({ length: pad }, (_, i) => ({ date: `pad-${i}`, revenue: 0, order_count: 0 }))
+    const zeros: FinancialPoint[] = Array.from({ length: pad }, (_, i) => ({ date: `pad-${i}`, revenue: 0, expenses: 0, variance: 0 }))
     return [...zeros, ...data]
   }
   const step = (data.length - 1) / 6
   return Array.from({ length: 7 }, (_, i) => data[Math.round(i * step)])
 })
 
-const chartPoints = computed(() => {
+const chartBounds = computed(() => {
   const data = sampledSeries.value
-  if (!data.length) return [
-    { x: 20, y: 165 }, { x: 130, y: 130 }, { x: 240, y: 125 },
-    { x: 350, y: 88 }, { x: 460, y: 105 }, { x: 570, y: 54 }, { x: 680, y: 86 },
-  ]
-  const maxRev = Math.max(...data.map(d => d.revenue), 1)
-  return data.map((d, i) => ({
-    x: 20 + i * (660 / 6),
-    y: 20 + (1 - d.revenue / maxRev) * 185,
-  }))
+  const values = data.flatMap(point => [point.revenue, point.expenses, point.variance])
+  const min = Math.min(0, ...values)
+  const max = Math.max(1, ...values)
+  return { min, max, span: Math.max(1, max - min) }
 })
 
-const linePath = computed(() => chartPoints.value.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' '))
-const areaPath = computed(() => {
-  const pts = chartPoints.value
-  if (!pts.length) return ''
-  return `${linePath.value} L ${pts[pts.length - 1].x} 210 L ${pts[0].x} 210 Z`
-})
+function chartY(value: number) {
+  const bounds = chartBounds.value
+  return 15 + ((bounds.max - value) / bounds.span) * 175
+}
+
+function pointsFor(key: 'revenue' | 'expenses' | 'variance') {
+  return sampledSeries.value.map((point, i) => ({
+    x: 20 + i * (660 / 6),
+    y: chartY(point[key]),
+  }))
+}
+
+function linePath(points: Array<{ x: number; y: number }>) {
+  return points.map((point, i) => `${i === 0 ? 'M' : 'L'} ${point.x} ${point.y}`).join(' ')
+}
+
+const salesLinePath = computed(() => linePath(pointsFor('revenue')))
+const expenseLinePath = computed(() => linePath(pointsFor('expenses')))
+const varianceLinePath = computed(() => linePath(pointsFor('variance')))
+const chartZeroY = computed(() => chartY(0))
 
 const days = computed(() => {
   const data = sampledSeries.value
@@ -366,16 +507,16 @@ const days = computed(() => {
     if (d.date.startsWith('pad-')) return ''
     const dt = new Date(d.date)
     if (period.value === 'today') return 'Today'
-    if (period.value === 'week') return dt.toLocaleDateString('en', { weekday: 'short' })
-    return dt.toLocaleDateString('en', { month: 'short', day: 'numeric' })
+    if (period.value === 'week') return dt.toLocaleDateString('en', { timeZone: APP_TIME_ZONE, weekday: 'short' })
+    return dt.toLocaleDateString('en', { timeZone: APP_TIME_ZONE, month: 'short', day: 'numeric' })
   })
 })
 
 async function fetchChart() {
   chartLoading.value = true
   try {
-    const res = await apiFetch<{ success: boolean; data: RevenuePoint[] }>(`/api/analytics/revenue${buildQs()}`)
-    if (res.success && res.data) chartSeries.value = res.data
+    const res = await apiFetch<{ success: boolean; data: DashboardFinancialData }>(`/api/analytics/profit-loss${buildQs()}`)
+    if (res.success && res.data) financialData.value = res.data
   } catch { /* ignore */ } finally { chartLoading.value = false }
 }
 
@@ -494,7 +635,7 @@ function itemsCount(summary: string | null) {
 }
 
 function timeAgo(iso: string) {
-  const diff = Date.now() - new Date(iso).getTime()
+  const diff = Date.now() - parseAppTimestamp(iso).getTime()
   const m = Math.floor(diff / 60000)
   if (m < 1) return 'just now'
   if (m < 60) return `${m}m ago`

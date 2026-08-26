@@ -1,15 +1,15 @@
 <template>
-  <div class="min-h-screen bg-white text-gray-900">
+  <div class="app-density-sm min-h-screen bg-white text-gray-900">
     <router-view />
     <GlobalNetworkLoader />
 
     <!-- Toast container -->
-    <div class="fixed top-4 right-4 z-[9999] flex flex-col gap-2 max-w-sm w-full pointer-events-none">
+    <div class="fixed right-3 top-3 z-[9999] flex w-full max-w-xs flex-col gap-2 pointer-events-none">
       <TransitionGroup name="toast">
         <div
           v-for="toast in toasts"
           :key="toast.id"
-          class="pointer-events-auto flex items-start gap-3 px-4 py-3 rounded-xl shadow-lg border text-sm font-medium"
+          class="pointer-events-auto flex items-start gap-2 rounded-xl border px-3 py-2 text-xs font-medium shadow-lg"
           :class="{
             'bg-emerald-50 border-emerald-200 text-emerald-800': toast.type === 'success',
             'bg-red-50 border-red-200 text-red-800': toast.type === 'error',
@@ -34,10 +34,10 @@
           v-if="confirm.visible"
           class="fixed inset-0 z-[9998] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
         >
-          <div class="admin-card max-w-sm w-full p-6 animate-bounce-in">
-            <h3 class="text-lg font-semibold text-gray-900 mb-2">{{ confirm.title }}</h3>
-            <p class="text-gray-500 text-sm mb-6">{{ confirm.message }}</p>
-            <div class="flex gap-3 justify-end">
+          <div class="admin-card w-full max-w-sm p-4 animate-bounce-in">
+            <h3 class="mb-1 text-base font-semibold text-gray-900">{{ confirm.title }}</h3>
+            <p class="mb-4 text-xs leading-5 text-gray-500">{{ confirm.message }}</p>
+            <div class="flex justify-end gap-2">
               <button
                 class="admin-btn-secondary"
                 @click="confirm.resolve(false)"

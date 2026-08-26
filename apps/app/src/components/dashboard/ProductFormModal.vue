@@ -1,19 +1,19 @@
 <template>
   <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-    <div class="qs-card-soft w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-[30px] bg-white animate-bounce-in">
-      <div class="sticky top-0 z-10 flex items-center justify-between border-b border-slate-100 bg-white/95 p-5 backdrop-blur">
+    <div class="qs-card-soft max-h-[90vh] w-full max-w-xl overflow-y-auto bg-white animate-bounce-in">
+      <div class="sticky top-0 z-10 flex items-center justify-between border-b border-slate-100 bg-white/95 p-3 backdrop-blur">
         <div>
-          <p class="text-xs font-bold uppercase tracking-[0.2em] text-primary">Catalog item</p>
-          <h3 class="mt-1 text-xl font-bold text-slate-950">
+          <p class="text-[10px] font-bold uppercase tracking-[0.16em] text-primary">Catalog item</p>
+          <h3 class="mt-0.5 text-base font-bold text-slate-950">
             {{ product ? 'Edit product' : 'Add product' }}
           </h3>
         </div>
-        <button @click="emit('close')" class="owner-icon-button h-10 w-10">
-          <XMarkIcon class="h-5 w-5" />
+        <button @click="emit('close')" class="owner-icon-button">
+          <XMarkIcon class="h-4 w-4" />
         </button>
       </div>
 
-      <form @submit.prevent="handleSubmit" class="space-y-5 p-5">
+      <form @submit.prevent="handleSubmit" class="space-y-3 p-3">
         <div>
           <label class="admin-label">Product image</label>
           <ImageUpload
@@ -57,7 +57,7 @@
           </div>
         </div>
 
-        <div class="grid grid-cols-2 gap-4">
+        <div class="grid grid-cols-2 gap-3">
           <div>
             <label class="admin-label">Price (KES) *</label>
             <input
@@ -100,7 +100,7 @@
               :class="['qs-toggle', form.featured ? 'bg-primary' : 'bg-slate-200']">
               <span :class="['qs-toggle-thumb', form.featured ? 'translate-x-5' : 'translate-x-0.5']" />
             </button>
-            <span class="text-sm font-bold text-slate-700">Featured</span>
+            <span class="text-xs font-bold text-slate-700">Featured</span>
           </label>
 
           <label class="flex items-center gap-2 cursor-pointer select-none">
@@ -108,11 +108,11 @@
               :class="['qs-toggle', form.on_sale ? 'bg-primary' : 'bg-slate-200']">
               <span :class="['qs-toggle-thumb', form.on_sale ? 'translate-x-5' : 'translate-x-0.5']" />
             </button>
-            <span class="text-sm font-bold text-slate-700">On sale</span>
+            <span class="text-xs font-bold text-slate-700">On sale</span>
           </label>
         </div>
 
-        <div class="flex gap-3 pt-2">
+        <div class="flex gap-2 pt-1">
           <button type="button" @click="emit('close')" class="owner-secondary-action flex-1">
             Cancel
           </button>

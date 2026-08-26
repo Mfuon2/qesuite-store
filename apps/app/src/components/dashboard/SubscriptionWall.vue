@@ -23,9 +23,6 @@
       <section class="owner-page-hero">
         <div class="owner-page-header">
           <div class="min-w-0">
-            <div class="owner-eyebrow">
-              Account attention
-            </div>
             <h1 class="owner-title">
               {{ isExpired ? 'Your trial has expired' : 'Subscription required' }}
             </h1>
@@ -231,6 +228,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useSettingsStore } from '@/stores/settings'
 import { apiInitiateMpesaPayment } from '@/api/settings'
 import { useRouter } from 'vue-router'
+import { parseAppTimestamp } from '@qesuite/shared'
 
 const authStore = useAuthStore()
 const settingsStore = useSettingsStore()
@@ -271,12 +269,12 @@ const daysSinceActive = computed(() => {
   if (!t) return 0
   // For expired trial, measure from trial_ends_at
   if (t.subscription_status === 'trialing' && t.trial_ends_at) {
-    const diff = Date.now() - new Date(t.trial_ends_at).getTime()
+    const diff = Date.now() - parseAppTimestamp(t.trial_ends_at).getTime()
     return Math.max(0, Math.floor(diff / 86_400_000))
   }
   // For cancelled/other, measure from account creation as proxy
   if (t.subscription_status === 'cancelled') {
-    return Math.max(0, Math.floor((Date.now() - new Date(t.created_at ?? Date.now()).getTime()) / 86_400_000))
+    return Math.max(0, Math.floor((Date.now() - parseAppTimestamp(t.created_at ?? new Date()).getTime()) / 86_400_000))
   }
   return 0
 })

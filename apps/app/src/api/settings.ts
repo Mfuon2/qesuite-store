@@ -81,6 +81,13 @@ export async function apiInitiateMpesaPayment(phone: string): Promise<ApiRespons
   })
 }
 
+export async function apiSubmitMpesaReference(reference: string): Promise<ApiResponse<BillingHistory>> {
+  return apiFetch('/api/billing/mpesa/reference', {
+    method: 'POST',
+    body: JSON.stringify({ reference })
+  })
+}
+
 export async function apiGetUploadUrl(filename: string, contentType: string, purpose?: 'product' | 'logo' | 'banner'): Promise<ApiResponse<{ upload_url: string; public_url: string }>> {
   return apiFetch('/api/upload/image', {
     method: 'POST',

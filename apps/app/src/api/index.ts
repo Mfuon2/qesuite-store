@@ -89,7 +89,7 @@ export async function apiFetch<T = unknown>(
     // so it should fall through to the normal error handler below.
     if (res.status === 401 && retry && accessToken) {
       const role = getRoleFromToken(accessToken)
-      if (role === 'owner') {
+      if (role === 'owner' || role === 'staff') {
         const newToken = await refreshAccessToken()
         if (!newToken) {
           clearTokens()

@@ -162,6 +162,27 @@ export const CURRENCY_SYMBOLS: Record<Currency, string> = {
 };
 
 // ─────────────────────────────────────────────────────────────
+// Store typography
+// ─────────────────────────────────────────────────────────────
+
+export const STORE_FONTS = ['Inter', 'Poppins', 'DM Sans', 'Nunito', 'Segoe UI'] as const;
+
+/**
+ * Return a complete CSS font stack for a configured store font.
+ * Segoe UI is system-provided on Windows, so it intentionally does not require
+ * a CDN download and falls back to the closest native UI fonts elsewhere.
+ */
+export function storeFontStack(fontFamily?: string | null): string {
+  if (fontFamily === 'Segoe UI') {
+    return "'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif";
+  }
+  if (fontFamily && (STORE_FONTS as readonly string[]).includes(fontFamily)) {
+    return `'${fontFamily}', sans-serif`;
+  }
+  return "'Inter', sans-serif";
+}
+
+// ─────────────────────────────────────────────────────────────
 // Payment methods
 // ─────────────────────────────────────────────────────────────
 
@@ -170,6 +191,133 @@ export const PAYMENT_METHODS = {
   mpesa:           { label: 'M-Pesa',          description: 'Mobile money payment via Safaricom M-Pesa.' },
   stripe:          { label: 'Card',            description: 'Credit or debit card payment via Stripe.' },
 } as const;
+
+// ─────────────────────────────────────────────────────────────
+// Expense categories (restaurant Sales Terminal)
+// ─────────────────────────────────────────────────────────────
+
+export const EXPENSE_CATEGORIES = {
+  supplies:     { label: 'Supplies & Ingredients' },
+  rent:         { label: 'Rent' },
+  utilities:    { label: 'Utilities' },
+  staff_wages:  { label: 'Staff Wages' },
+  maintenance:  { label: 'Maintenance & Repairs' },
+  other:        { label: 'Other' },
+} as const;
+
+// ─────────────────────────────────────────────────────────────
+// Store staff access control
+// ─────────────────────────────────────────────────────────────
+
+export const ACCESS_PERMISSION_GROUPS = [
+  {
+    id: 'dashboard', label: 'Dashboard', description: 'Store overview and customer summaries',
+    permissions: [
+      { key: 'dashboard.view', label: 'View dashboard', operation: 'Menu' },
+    ],
+  },
+  {
+    id: 'orders', label: 'Orders', description: 'Online orders and fulfilment',
+    permissions: [
+      { key: 'orders.view', label: 'View orders', operation: 'Menu' },
+      { key: 'orders.update_status', label: 'Update order status', operation: 'Operate' },
+      { key: 'orders.manage_payments', label: 'Record payments', operation: 'Operate' },
+      { key: 'orders.assign_delivery', label: 'Assign deliveries', operation: 'Operate' },
+    ],
+  },
+  {
+    id: 'pos', label: 'Sales terminal', description: 'Counter sales and till controls',
+    permissions: [
+      { key: 'pos.view', label: 'View sales terminal', operation: 'Menu' },
+      { key: 'pos.create_sale', label: 'Complete sales', operation: 'Operate' },
+      { key: 'pos.void_sale', label: 'Void completed sales', operation: 'Sensitive' },
+      { key: 'pos.manage_till', label: 'Open, adjust, and close till', operation: 'Sensitive' },
+    ],
+  },
+  {
+    id: 'expenses', label: 'Expenses', description: 'Business expense records',
+    permissions: [
+      { key: 'expenses.view', label: 'View expenses', operation: 'Menu' },
+      { key: 'expenses.create', label: 'Record expenses', operation: 'Operate' },
+      { key: 'expenses.delete', label: 'Delete expenses', operation: 'Sensitive' },
+    ],
+  },
+  {
+    id: 'products', label: 'Products', description: 'Catalog and stock',
+    permissions: [
+      { key: 'products.view', label: 'View products', operation: 'Menu' },
+      { key: 'products.create', label: 'Add and import products', operation: 'Operate' },
+      { key: 'products.edit', label: 'Edit products and stock', operation: 'Operate' },
+      { key: 'products.delete', label: 'Delete products', operation: 'Sensitive' },
+    ],
+  },
+  {
+    id: 'categories', label: 'Categories', description: 'Catalog organization',
+    permissions: [
+      { key: 'categories.view', label: 'View categories', operation: 'Menu' },
+      { key: 'categories.manage', label: 'Create, edit, reorder, and delete', operation: 'Operate' },
+    ],
+  },
+  {
+    id: 'delivery', label: 'Delivery team', description: 'Riders and assignments',
+    permissions: [
+      { key: 'delivery.view', label: 'View delivery team', operation: 'Menu' },
+      { key: 'delivery.manage_staff', label: 'Add and edit riders', operation: 'Sensitive' },
+      { key: 'delivery.assign', label: 'Assign orders to riders', operation: 'Operate' },
+    ],
+  },
+  {
+    id: 'analytics', label: 'Analytics', description: 'Sales, costs, and employee performance',
+    permissions: [
+      { key: 'analytics.view', label: 'View analytics', operation: 'Menu' },
+      { key: 'analytics.view_employees', label: 'View employee performance', operation: 'Sensitive' },
+    ],
+  },
+  {
+    id: 'notifications', label: 'Notifications', description: 'Customer communication log',
+    permissions: [
+      { key: 'notifications.view', label: 'View notifications', operation: 'Menu' },
+      { key: 'notifications.send', label: 'Send and resend messages', operation: 'Operate' },
+    ],
+  },
+  {
+    id: 'settings', label: 'Settings', description: 'Store configuration',
+    permissions: [
+      { key: 'settings.view', label: 'View settings', operation: 'Menu' },
+      { key: 'settings.edit', label: 'Edit store settings', operation: 'Sensitive' },
+    ],
+  },
+  {
+    id: 'billing', label: 'Billing', description: 'Subscription and payments',
+    permissions: [
+      { key: 'billing.view', label: 'View billing', operation: 'Menu' },
+      { key: 'billing.manage', label: 'Change plan and submit payments', operation: 'Sensitive' },
+    ],
+  },
+] as const;
+
+export type AccessPermissionKey = typeof ACCESS_PERMISSION_GROUPS[number]['permissions'][number]['key'];
+
+export const ALL_ACCESS_PERMISSIONS = ACCESS_PERMISSION_GROUPS.flatMap(group =>
+  group.permissions.map(permission => permission.key)
+) as AccessPermissionKey[];
+
+export const ACCESS_PRESETS = {
+  manager: ALL_ACCESS_PERMISSIONS.filter(key => key !== 'billing.manage'),
+  sales: [
+    'dashboard.view', 'orders.view', 'orders.update_status', 'orders.manage_payments',
+    'orders.assign_delivery', 'pos.view', 'pos.create_sale', 'products.view',
+    'categories.view', 'delivery.view', 'delivery.assign',
+  ],
+  inventory: [
+    'dashboard.view', 'orders.view', 'products.view', 'products.create',
+    'products.edit', 'categories.view', 'categories.manage',
+  ],
+  accountant: [
+    'dashboard.view', 'pos.view', 'expenses.view', 'expenses.create',
+    'analytics.view', 'analytics.view_employees', 'billing.view',
+  ],
+} as const satisfies Record<string, readonly AccessPermissionKey[]>;
 
 // ─────────────────────────────────────────────────────────────
 // Vehicle types

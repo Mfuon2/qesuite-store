@@ -252,6 +252,7 @@ import { useStorefrontStore } from '@/stores/store'
 import ProductCard from './ProductCard.vue'
 import SkeletonCard from './SkeletonCard.vue'
 import type { Product } from '@qesuite/types'
+import { parseAppTimestamp } from '@qesuite/shared'
 
 const props = defineProps<{
   activeCategory: string | null
@@ -334,7 +335,7 @@ const sortedProducts = computed(() => {
     return products.sort((a, b) => a.name.localeCompare(b.name))
   }
   if (sortBy.value === 'newest') {
-    return products.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    return products.sort((a, b) => parseAppTimestamp(b.created_at).getTime() - parseAppTimestamp(a.created_at).getTime())
   }
   return products.sort((a, b) => Number(b.featured) - Number(a.featured) || b.stock - a.stock || a.name.localeCompare(b.name))
 })

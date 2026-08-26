@@ -4,124 +4,61 @@
     <Transition name="fade">
       <div v-if="isComplete" class="relative flex min-h-screen items-center justify-center overflow-hidden p-4 text-center">
         <div class="absolute inset-x-0 top-0 h-72 bg-[radial-gradient(circle_at_50%_0%,rgba(20,132,71,0.16),transparent_36rem)]"></div>
-        <div class="qs-card-soft relative w-full max-w-xl p-6 sm:p-8">
-          <div class="mx-auto mb-5 grid h-20 w-20 place-items-center rounded-[1.35rem] bg-emerald-700 shadow-[0_18px_42px_rgba(20,132,71,0.25)]">
-            <CheckIcon class="h-10 w-10 text-white" />
+        <div class="qs-card-soft relative w-full max-w-lg p-4">
+          <div class="mx-auto mb-3 grid h-12 w-12 place-items-center rounded-xl bg-emerald-700 shadow-[0_18px_42px_rgba(20,132,71,0.25)]">
+            <CheckIcon class="h-6 w-6 text-white" />
           </div>
-          <h1 class="text-2xl font-extrabold tracking-tight text-slate-950 sm:text-3xl">Your store is live</h1>
-          <p class="mx-auto mt-2 max-w-md text-sm font-medium leading-6 text-slate-500">
+          <h1 class="text-xl font-extrabold tracking-tight text-slate-950 sm:text-2xl">Your store is live</h1>
+          <p class="mx-auto mt-1 max-w-md text-xs font-medium leading-5 text-slate-500">
             Your setup is complete. Share the storefront link with customers and start taking orders.
           </p>
-          <div class="mt-6 flex items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50/80 px-4 py-3 text-left">
-            <LinkIcon class="h-5 w-5 shrink-0 text-emerald-700" />
-            <span class="min-w-0 flex-1 truncate font-mono text-sm font-semibold text-slate-700">{{ storefrontBase }}/{{ storeSlug }}</span>
-            <button @click="copyLink" class="grid h-9 w-9 place-items-center rounded-xl bg-white text-emerald-700 shadow-[0_8px_20px_rgba(15,23,42,0.04)]">
-              <ClipboardDocumentIcon class="h-5 w-5" />
+          <div class="mt-4 flex items-center gap-2 rounded-xl border border-slate-100 bg-slate-50/80 px-3 py-2 text-left">
+            <LinkIcon class="h-4 w-4 shrink-0 text-emerald-700" />
+            <span class="min-w-0 flex-1 truncate font-mono text-xs font-semibold text-slate-700">{{ storefrontBase }}/{{ storeSlug }}</span>
+            <button @click="copyLink" class="grid h-8 w-8 place-items-center rounded-lg bg-white text-emerald-700 shadow-[0_8px_20px_rgba(15,23,42,0.04)]">
+              <ClipboardDocumentIcon class="h-4 w-4" />
             </button>
           </div>
           <button
             @click="goToDashboard"
-            class="mt-6 inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-emerald-700 px-6 text-sm font-extrabold text-white shadow-[0_16px_34px_rgba(20,132,71,0.22)] transition hover:bg-emerald-800"
+            class="mt-4 inline-flex h-9 items-center justify-center gap-1.5 rounded-xl bg-emerald-700 px-4 text-xs font-extrabold text-white shadow-[0_16px_34px_rgba(20,132,71,0.22)] transition hover:bg-emerald-800"
           >
-            Go to Dashboard <ArrowRightIcon class="h-5 w-5" />
+            Go to Dashboard <ArrowRightIcon class="h-4 w-4" />
           </button>
         </div>
       </div>
     </Transition>
 
     <!-- Wizard -->
-    <div v-if="!isComplete" class="relative min-h-screen overflow-hidden">
+    <div v-if="!isComplete" class="onboarding-dense relative min-h-screen overflow-hidden">
       <div class="pointer-events-none absolute inset-x-0 top-0 h-72 bg-[radial-gradient(circle_at_24%_0%,rgba(20,132,71,0.16),transparent_34rem)]"></div>
 
-      <header class="relative mx-auto flex max-w-[1500px] items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
-        <div class="flex items-center gap-3">
+      <header class="relative mx-auto flex max-w-[1280px] items-center justify-between px-3 py-2.5 sm:px-5 lg:px-6">
+        <div class="flex items-center gap-2.5">
           <span class="qs-brand-mark shrink-0"></span>
-          <div>
-            <p class="text-base font-extrabold text-slate-950"><span class="text-emerald-700">Store</span> </p>
-            <p class="text-xs font-semibold text-slate-500"><p class="qs-brand-word text-xl leading-tight"><span>Store</span></p></p>
-          </div>
+          <p class="qs-brand-word text-lg leading-tight"><span>Store</span></p>
         </div>
-        <div class="hidden items-center gap-2 rounded-2xl border border-slate-100 bg-white/90 px-3 py-2 text-xs font-bold text-slate-500 shadow-[0_8px_24px_rgba(15,23,42,0.035)] sm:flex">
+        <div class="hidden items-center gap-1.5 text-xs font-bold text-slate-500 sm:flex">
           <SparklesIcon class="h-4 w-4 text-emerald-700" />
           {{ Math.round(progressPct) }}% complete
         </div>
       </header>
 
-      <main class="relative mx-auto grid max-w-[1500px] gap-5 px-4 pb-6 sm:px-6 lg:grid-cols-[360px_minmax(0,1fr)] lg:px-8">
-        <aside class="hidden lg:block">
-          <div class="sticky top-5 space-y-4">
-            <div class="qs-card-soft overflow-hidden p-0">
-              <div class="relative h-40 overflow-hidden bg-white">
-                <img
-                  src="/qesuite-marketplace-reference.png"
-                  alt=""
-                  class="h-full w-full object-cover object-[48%_26%]"
-                />
-                <div class="absolute inset-0 bg-gradient-to-t from-white via-white/35 to-white/5"></div>
-                <div class="absolute inset-y-0 left-0 w-16 bg-gradient-to-r from-white to-transparent"></div>
-                <div class="absolute inset-y-0 right-0 w-16 bg-gradient-to-l from-white to-transparent"></div>
-              </div>
-              <div class="p-5">
-                <h1 class="text-2xl font-extrabold tracking-tight text-slate-950">Launch your online store</h1>
-                <p class="mt-2 text-sm font-medium leading-6 text-slate-500">
-                  Configure the essentials customers see first: identity, catalog, delivery, and checkout readiness.
-                </p>
-                <div class="mt-5 grid gap-3">
-                  <div
-                    v-for="item in journeyItems"
-                    :key="item.label"
-                    class="flex items-center gap-3 rounded-2xl border border-slate-100 bg-white/80 p-3"
-                  >
-                    <div class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-emerald-50 text-emerald-700">
-                      <component :is="item.icon" class="h-5 w-5" />
-                    </div>
-                    <div class="min-w-0">
-                      <p class="truncate text-sm font-extrabold text-slate-800">{{ item.label }}</p>
-                      <p class="text-xs font-medium text-slate-500">{{ item.value }}</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div class="qs-card-soft p-4">
-              <div class="mb-3 flex items-center justify-between">
-                <p class="text-sm font-extrabold text-slate-950">Setup progress</p>
-                <p class="text-xs font-bold text-emerald-700">{{ currentStep }} of {{ stepLabels.length }}</p>
-              </div>
-              <div class="h-2 overflow-hidden rounded-full bg-slate-100">
-                <div class="h-full rounded-full bg-emerald-700 transition-all duration-300" :style="{ width: `${progressPct}%` }"></div>
-              </div>
-            </div>
-          </div>
-        </aside>
-
+      <main class="relative mx-auto max-w-[1280px] px-3 pb-4 sm:px-5 lg:px-6">
         <section class="min-w-0">
-          <div class="mb-4 lg:hidden">
-            <h1 class="text-2xl font-extrabold tracking-tight text-slate-950">Launch your online store</h1>
-            <p class="mt-1 text-sm font-medium text-slate-500">Complete the essentials and start selling.</p>
-          </div>
-
-          <div class="qs-card-soft mb-4 p-4 sm:p-5">
-            <OnboardingProgress :current-step="currentStep" :steps="stepLabels" />
-          </div>
-
           <div class="qs-card-soft overflow-hidden" :class="{ 'opacity-60 pointer-events-none': prefilling }">
-            <div class="border-b border-slate-100 px-4 py-4 sm:px-6">
-              <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div class="border-b border-slate-100 px-3 py-3 sm:px-4">
+              <div class="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(420px,0.8fr)] lg:items-center">
                 <div>
-                  <p class="text-xs font-extrabold uppercase tracking-wide text-emerald-700">Step {{ currentStep }}</p>
-                  <h2 class="mt-1 text-xl font-extrabold tracking-tight text-slate-950">{{ stepLabels[currentStep - 1] }}</h2>
-                  <p class="mt-1 text-sm font-medium leading-6 text-slate-500">{{ stepDescriptions[currentStep - 1] }}</p>
+                  <p class="text-[10px] font-extrabold uppercase tracking-wide text-emerald-700">Step {{ currentStep }} of {{ stepLabels.length }}</p>
+                  <h2 class="mt-0.5 text-lg font-extrabold tracking-tight text-slate-950">{{ stepLabels[currentStep - 1] }}</h2>
+                  <p class="mt-0.5 text-xs font-medium text-slate-500">{{ stepDescriptions[currentStep - 1] }}</p>
                 </div>
-                <div class="hidden rounded-2xl bg-emerald-50 px-4 py-2 text-right sm:block">
-                  <p class="text-xs font-bold text-emerald-700">Required</p>
-                  <p class="text-sm font-extrabold text-slate-950">{{ currentStep === 2 ? products.length : currentStep }}/{{ currentStep === 2 ? '1 product' : stepLabels.length }}</p>
-                </div>
+                <OnboardingProgress :current-step="currentStep" :steps="stepLabels" />
               </div>
             </div>
 
-            <div class="p-4 sm:p-6">
+            <div class="p-3 sm:p-4">
               <Transition name="slide" mode="out-in">
                 <div :key="currentStep">
                   <StoreIdentityStep v-if="currentStep === 1" v-model="storeIdentity" />
@@ -131,11 +68,11 @@
               </Transition>
             </div>
 
-            <div class="sticky bottom-0 flex items-center justify-between gap-3 border-t border-slate-100 bg-white/95 px-4 py-3 backdrop-blur sm:px-6">
+            <div class="sticky bottom-0 flex items-center justify-between gap-2 border-t border-slate-100 bg-white/95 px-3 py-2 backdrop-blur sm:px-4">
               <button
                 v-if="currentStep > 1"
                 @click="prevStep"
-                class="inline-flex h-11 items-center gap-2 rounded-2xl border border-slate-100 bg-white px-4 text-sm font-extrabold text-slate-600 shadow-[0_8px_20px_rgba(15,23,42,0.035)] transition hover:bg-slate-50"
+                class="inline-flex h-9 items-center gap-1.5 rounded-xl border border-slate-100 bg-white px-3 text-xs font-extrabold text-slate-600 shadow-[0_8px_20px_rgba(15,23,42,0.035)] transition hover:bg-slate-50"
               >
                 <ArrowLeftIcon class="h-4 w-4" /> Back
               </button>
@@ -144,7 +81,7 @@
               <button
                 @click="nextStep"
                 :disabled="saving || !canProceed"
-                class="inline-flex h-11 items-center gap-2 rounded-2xl bg-emerald-700 px-5 text-sm font-extrabold text-white shadow-[0_14px_30px_rgba(20,132,71,0.22)] transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-60"
+                class="inline-flex h-9 items-center gap-1.5 rounded-xl bg-emerald-700 px-4 text-xs font-extrabold text-white shadow-[0_14px_30px_rgba(20,132,71,0.22)] transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <svg v-if="saving" class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
                   <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
@@ -165,8 +102,8 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import {
-  ArrowLeftIcon, ArrowRightIcon, BuildingStorefrontIcon, CheckIcon, ClipboardDocumentIcon,
-  CubeIcon, LinkIcon, SparklesIcon, TruckIcon
+  ArrowLeftIcon, ArrowRightIcon, CheckIcon, ClipboardDocumentIcon,
+  LinkIcon, SparklesIcon
 } from '@heroicons/vue/24/outline'
 import OnboardingProgress from '@/components/dashboard/onboarding/OnboardingProgress.vue'
 import StoreIdentityStep from '@/components/dashboard/onboarding/StoreIdentityStep.vue'
@@ -198,12 +135,6 @@ const stepDescriptions = [
   'Brand your store with a logo, colors, and unique URL',
   'Add products your customers can order',
   'Set up how you deliver orders'
-]
-
-const journeyItems = [
-  { label: 'Public storefront', value: 'Name, link, logo, banner', icon: BuildingStorefrontIcon },
-  { label: 'Product catalog', value: 'Items customers can buy', icon: CubeIcon },
-  { label: 'Delivery options', value: 'Pickup, delivery, riders', icon: TruckIcon },
 ]
 
 const progressPct = computed(() => (currentStep.value / stepLabels.length) * 100)

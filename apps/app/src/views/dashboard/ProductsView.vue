@@ -1,30 +1,39 @@
 <template>
-  <div class="owner-page">
+  <div class="owner-page owner-page-dense">
     <section class="owner-page-hero">
       <div class="owner-page-header">
         <div class="min-w-0">
-          <div class="owner-eyebrow">Catalog workspace</div>
           <h1 class="owner-title">Products</h1>
           <p class="owner-subtitle">
             Manage the items customers can browse, search, and add to cart from your public storefront.
           </p>
         </div>
 
-        <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+        <button
+          v-if="canManageProducts"
+          type="button"
+          class="owner-primary-action shrink-0 sm:hidden"
+          @click="showMobileActions = true"
+        >
+          <AdjustmentsHorizontalIcon class="h-4 w-4" />
+          Manage products
+        </button>
+
+        <div class="scrollbar-hide hidden max-w-full flex-row gap-2 overflow-x-auto pb-0.5 sm:flex sm:items-center">
           <button
             @click="showCatalogModal = true"
-            class="owner-secondary-action"
+            class="owner-secondary-action shrink-0"
             :disabled="productsStore.loading || !productsStore.products.length"
           >
             <ShareIcon class="h-4 w-4" />
             Share catalog
           </button>
-          <label class="owner-secondary-action cursor-pointer">
+          <label v-if="accessStore.can('products.create')" class="owner-secondary-action shrink-0 cursor-pointer">
             <ArrowUpTrayIcon class="h-4 w-4" />
             <span>Import CSV</span>
             <input type="file" accept=".csv" class="hidden" @change="handleCsvImport" />
           </label>
-          <button @click="openAddModal" class="owner-primary-action">
+          <button v-if="accessStore.can('products.create')" @click="openAddModal" class="owner-primary-action shrink-0">
             <PlusIcon class="h-4 w-4" />
             Add product
           </button>
@@ -32,7 +41,7 @@
       </div>
     </section>
 
-    <section class="owner-stat-grid">
+    <section class="owner-stat-grid hidden sm:grid">
       <div class="owner-stat-card">
         <div class="owner-stat-icon">
           <CubeIcon class="h-5 w-5" />
@@ -106,22 +115,22 @@
       </div>
     </section>
 
-    <div class="mt-5">
-      <div v-if="productsStore.loading" :class="['gap-3', viewMode === 'grid' ? 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6' : 'flex flex-col']">
-        <div v-for="i in 12" :key="i" :class="[viewMode === 'grid' ? 'skeleton h-56 rounded-[24px]' : 'skeleton h-16 rounded-[22px]']" />
+    <div class="mt-3">
+      <div v-if="productsStore.loading" :class="['gap-2', viewMode === 'grid' ? 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6' : 'flex flex-col']">
+        <div v-for="i in 12" :key="i" :class="[viewMode === 'grid' ? 'skeleton h-44 rounded-2xl' : 'skeleton h-14 rounded-2xl']" />
       </div>
 
       <div v-else-if="!productsStore.products.length" class="owner-empty">
         <CubeIcon class="mx-auto mb-4 h-12 w-12 text-slate-300" />
         <p class="text-base font-bold text-slate-800">No products yet</p>
         <p class="mt-1 text-sm text-slate-500">Add your first product to start selling.</p>
-        <button @click="openAddModal" class="owner-primary-action mt-5">
+        <button v-if="accessStore.can('products.create')" @click="openAddModal" class="owner-primary-action mt-5">
           <PlusIcon class="h-4 w-4" />
           Add product
         </button>
       </div>
 
-      <div v-else-if="viewMode === 'grid'" class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
+      <div v-else-if="viewMode === 'grid'" class="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
         <div
           v-for="product in productsStore.products"
           :key="product.id"
@@ -137,18 +146,18 @@
               <span v-if="product.stock < 5" class="rounded-full bg-orange-100 px-2 py-1 text-[10px] font-black text-orange-700">Low</span>
             </div>
             <div class="absolute inset-0 flex items-center justify-center gap-2 bg-slate-950/42 opacity-0 transition-opacity group-hover:opacity-100">
-              <button @click="editProduct(product)" class="grid h-9 w-9 place-items-center rounded-xl bg-white text-slate-700 shadow-lg transition hover:text-primary" title="Edit">
+              <button v-if="accessStore.can('products.edit')" @click="editProduct(product)" class="grid h-9 w-9 place-items-center rounded-xl bg-white text-slate-700 shadow-lg transition hover:text-primary" title="Edit">
                 <PencilIcon class="h-4 w-4" />
               </button>
-              <button @click="confirmDelete(product.id)" class="grid h-9 w-9 place-items-center rounded-xl bg-red-500 text-white shadow-lg transition hover:bg-red-600" title="Delete">
+              <button v-if="accessStore.can('products.delete')" @click="confirmDelete(product.id)" class="grid h-9 w-9 place-items-center rounded-xl bg-red-500 text-white shadow-lg transition hover:bg-red-600" title="Delete">
                 <TrashIcon class="h-4 w-4" />
               </button>
             </div>
           </div>
-          <div class="p-3">
+          <div class="p-2.5">
             <p class="truncate text-sm font-bold text-slate-950">{{ product.name }}</p>
             <p class="mt-0.5 truncate text-xs font-medium text-slate-400">{{ product.category?.name || 'No category' }}</p>
-            <div class="mt-2 flex items-end justify-between gap-2">
+            <div class="mt-1.5 flex items-end justify-between gap-1.5">
               <div class="min-w-0">
                 <p class="text-sm font-black text-primary">KES {{ (product.sale_price || product.price).toLocaleString() }}</p>
                 <div v-if="product.sale_price" class="flex items-center gap-1.5 flex-wrap">
@@ -162,14 +171,14 @@
         </div>
       </div>
 
-      <div v-else class="owner-panel p-2 sm:p-2">
-        <div class="space-y-2">
+      <div v-else class="owner-panel !p-1.5">
+        <div class="space-y-1.5">
           <div
             v-for="product in productsStore.products"
             :key="product.id"
-            class="owner-list-row flex items-center gap-3"
+            class="owner-list-row flex items-center gap-2"
           >
-            <div class="h-12 w-12 shrink-0 overflow-hidden rounded-2xl bg-slate-50">
+            <div class="h-10 w-10 shrink-0 overflow-hidden rounded-xl bg-slate-50">
               <img v-if="product.image_url" :src="product.image_url" class="h-full w-full object-cover" />
               <div v-else class="flex h-full w-full items-center justify-center">
                 <CubeIcon class="h-5 w-5 text-slate-300" />
@@ -192,10 +201,10 @@
               <p class="text-xs font-medium text-slate-400">{{ product.stock }} left</p>
             </div>
             <div class="flex shrink-0 items-center gap-1">
-              <button @click="editProduct(product)" class="owner-action-icon">
+              <button v-if="accessStore.can('products.edit')" @click="editProduct(product)" class="owner-action-icon">
                 <PencilIcon class="h-4 w-4" />
               </button>
-              <button @click="confirmDelete(product.id)" class="owner-action-icon hover:bg-red-50 hover:text-red-500">
+              <button v-if="accessStore.can('products.delete')" @click="confirmDelete(product.id)" class="owner-action-icon hover:bg-red-50 hover:text-red-500">
                 <TrashIcon class="h-4 w-4" />
               </button>
             </div>
@@ -205,6 +214,59 @@
     </div>
 
     <Teleport to="body">
+      <Transition name="fade">
+        <div
+          v-if="showMobileActions"
+          class="fixed inset-0 z-[70] flex items-end bg-slate-950/55 p-3 backdrop-blur-sm sm:hidden"
+          @click.self="showMobileActions = false"
+        >
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="mobile-product-actions-title"
+            class="w-full overflow-hidden rounded-2xl border border-white/60 bg-white shadow-2xl"
+          >
+            <div class="flex items-start justify-between gap-3 border-b border-slate-100 px-4 py-3">
+              <div>
+                <h2 id="mobile-product-actions-title" class="text-base font-black text-slate-950">Manage products</h2>
+                <p class="mt-0.5 text-xs text-slate-500">Choose what you want to do with your catalog.</p>
+              </div>
+              <button type="button" class="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700" aria-label="Close product actions" @click="showMobileActions = false">
+                <XMarkIcon class="h-5 w-5" />
+              </button>
+            </div>
+
+            <div class="space-y-2 p-4">
+              <button
+                type="button"
+                class="flex w-full items-center gap-3 rounded-xl border border-slate-200 px-3 py-3 text-left transition hover:border-primary/30 hover:bg-primary/5 disabled:opacity-50"
+                :disabled="productsStore.loading || !productsStore.products.length"
+                @click="openCatalogFromMobile"
+              >
+                <span class="owner-brand-surface grid h-9 w-9 shrink-0 place-items-center rounded-xl text-primary"><ShareIcon class="h-4 w-4" /></span>
+                <span><span class="block text-sm font-bold text-slate-900">Share catalog</span><span class="text-xs text-slate-500">Create a shareable product catalog.</span></span>
+              </button>
+
+              <label v-if="accessStore.can('products.create')" class="flex w-full cursor-pointer items-center gap-3 rounded-xl border border-slate-200 px-3 py-3 text-left transition hover:border-primary/30 hover:bg-primary/5">
+                <span class="owner-brand-surface grid h-9 w-9 shrink-0 place-items-center rounded-xl text-primary"><ArrowUpTrayIcon class="h-4 w-4" /></span>
+                <span class="min-w-0 flex-1"><span class="block text-sm font-bold text-slate-900">Import CSV</span><span class="text-xs text-slate-500">Add several products from a file.</span></span>
+                <input type="file" accept=".csv" class="hidden" @change="handleMobileCsvImport" />
+              </label>
+
+              <button
+                v-if="accessStore.can('products.create')"
+                type="button"
+                class="flex w-full items-center gap-3 rounded-xl bg-primary px-3 py-3 text-left text-white shadow-lg"
+                @click="openAddFromMobile"
+              >
+                <span class="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white/15"><PlusIcon class="h-4 w-4" /></span>
+                <span><span class="block text-sm font-bold">Add product</span><span class="text-xs text-white/75">Create one product manually.</span></span>
+              </button>
+            </div>
+          </section>
+        </div>
+      </Transition>
+
       <ProductFormModal
         v-if="showModal"
         :product="editingProduct"
@@ -225,19 +287,22 @@
 import { computed, ref, watch, onMounted } from 'vue'
 import {
   PlusIcon, MagnifyingGlassIcon, ArrowUpTrayIcon, PencilIcon, TrashIcon,
-  Squares2X2Icon, ListBulletIcon, CubeIcon, ShareIcon
+  Squares2X2Icon, ListBulletIcon, CubeIcon, ShareIcon,
+  AdjustmentsHorizontalIcon, XMarkIcon
 } from '@heroicons/vue/24/outline'
 import ProductFormModal from '@/components/dashboard/ProductFormModal.vue'
 import CatalogShareModal from '@/components/dashboard/CatalogShareModal.vue'
 import { useProductsStore } from '@/stores/products'
 import { useCategoriesStore } from '@/stores/categories'
 import { useSettingsStore } from '@/stores/settings'
+import { useAccessStore } from '@/stores/access'
 import { useConfirm } from '@/composables/useConfirm'
 import type { Product, ProductCreate } from '@qesuite/types'
 
 const productsStore = useProductsStore()
 const categoriesStore = useCategoriesStore()
 const settingsStore = useSettingsStore()
+const accessStore = useAccessStore()
 const { confirm } = useConfirm()
 
 const viewMode = ref<'grid' | 'list'>('grid')
@@ -245,7 +310,9 @@ const search = ref('')
 const selectedCategory = ref('')
 const showModal = ref(false)
 const showCatalogModal = ref(false)
+const showMobileActions = ref(false)
 const editingProduct = ref<Product | null>(null)
+const canManageProducts = computed(() => productsStore.products.length > 0 || accessStore.can('products.create'))
 const lowStockCount = computed(() => productsStore.products.filter(product => product.stock < 5).length)
 const featuredCount = computed(() => productsStore.products.filter(product => product.featured).length)
 
@@ -264,6 +331,17 @@ watch([search, selectedCategory], () => {
 function openAddModal() {
   editingProduct.value = null
   showModal.value = true
+}
+
+function openAddFromMobile() {
+  showMobileActions.value = false
+  openAddModal()
+}
+
+function openCatalogFromMobile() {
+  if (productsStore.loading || !productsStore.products.length) return
+  showMobileActions.value = false
+  showCatalogModal.value = true
 }
 
 function editProduct(product: Product) {
@@ -312,6 +390,11 @@ async function handleCsvImport(e: Event) {
     })
   }
   if (rows.length) await productsStore.bulkImport(rows)
+}
+
+async function handleMobileCsvImport(e: Event) {
+  showMobileActions.value = false
+  await handleCsvImport(e)
 }
 
 onMounted(async () => {

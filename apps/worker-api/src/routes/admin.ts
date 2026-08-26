@@ -3,6 +3,7 @@ import { Env, Variables } from '../types'
 import { superadminMiddleware } from '../middleware/auth'
 import { signJWT, generateId } from '../lib/jwt'
 import { hashPassword } from '../lib/password'
+import { businessDate, businessDateDaysAgo } from '../lib/time'
 
 const admin = new Hono<{ Bindings: Env; Variables: Variables }>()
 
@@ -65,8 +66,10 @@ admin.get('/stores', async (c) => {
       `SELECT t.id, t.name, t.slug, t.plan, t.subscription_status, t.is_suspended,
               t.trial_ends_at, t.created_at,
               u.name as owner_name, u.phone as owner_phone, u.email as owner_email,
-              (SELECT COUNT(*) FROM orders WHERE tenant_id = t.id) as total_orders,
-              (SELECT COALESCE(SUM(total), 0) FROM orders WHERE tenant_id = t.id AND status != 'CANCELLED') as total_gmv
+              ((SELECT COUNT(*) FROM orders WHERE tenant_id = t.id AND status != 'CANCELLED') +
+               (SELECT COUNT(*) FROM pos_sales WHERE tenant_id = t.id AND status = 'completed')) as total_orders,
+              ((SELECT COALESCE(SUM(total), 0) FROM orders WHERE tenant_id = t.id AND status != 'CANCELLED') +
+               (SELECT COALESCE(SUM(total), 0) FROM pos_sales WHERE tenant_id = t.id AND status = 'completed')) as total_gmv
        FROM tenants t
        LEFT JOIN users u ON u.tenant_id = t.id AND u.role = 'owner'
        ${whereClause}
@@ -119,13 +122,25 @@ admin.get('/stores/:id', async (c) => {
     ).bind(id).all()
 
     const orderStats = await c.env.qesuite_db.prepare(
-      `SELECT
-         COUNT(*) as total_orders,
-         COALESCE(SUM(total), 0) as total_revenue,
-         COUNT(*) FILTER (WHERE status = 'DELIVERED') as delivered,
-         COUNT(*) FILTER (WHERE status = 'CANCELLED') as cancelled
-       FROM orders WHERE tenant_id = ?`
-    ).bind(id).first()
+      `WITH sales AS (
+         SELECT total,
+                CASE WHEN status != 'CANCELLED' THEN 1 ELSE 0 END AS included,
+                CASE WHEN status = 'DELIVERED' THEN 1 ELSE 0 END AS completed,
+                CASE WHEN status = 'CANCELLED' THEN 1 ELSE 0 END AS cancelled
+         FROM orders WHERE tenant_id = ?
+         UNION ALL
+         SELECT total,
+                CASE WHEN status = 'completed' THEN 1 ELSE 0 END AS included,
+                CASE WHEN status = 'completed' THEN 1 ELSE 0 END AS completed,
+                CASE WHEN status = 'voided' THEN 1 ELSE 0 END AS cancelled
+         FROM pos_sales WHERE tenant_id = ?
+       )
+       SELECT COALESCE(SUM(included), 0) AS total_orders,
+              COALESCE(SUM(CASE WHEN included = 1 THEN total ELSE 0 END), 0) AS total_revenue,
+              COALESCE(SUM(completed), 0) AS delivered,
+              COALESCE(SUM(cancelled), 0) AS cancelled
+       FROM sales`
+    ).bind(id, id).first()
 
     const recentOrders = await c.env.qesuite_db.prepare(
       'SELECT id, tracking_code, status, total, customer_name, created_at FROM orders WHERE tenant_id = ? ORDER BY created_at DESC LIMIT 10'
@@ -294,23 +309,49 @@ admin.delete('/stores/:id', async (c) => {
       }, 409)
     }
 
-    // Cascade delete in FK-safe order
-    await c.env.qesuite_db.prepare('DELETE FROM delivery_assignments WHERE tenant_id = ?').bind(id).run()
-    await c.env.qesuite_db.prepare('DELETE FROM order_items WHERE order_id IN (SELECT id FROM orders WHERE tenant_id = ?)').bind(id).run()
-    await c.env.qesuite_db.prepare('DELETE FROM orders WHERE tenant_id = ?').bind(id).run()
-    await c.env.qesuite_db.prepare('DELETE FROM delivery_staff WHERE tenant_id = ?').bind(id).run()
-    await c.env.qesuite_db.prepare('DELETE FROM products WHERE tenant_id = ?').bind(id).run()
-    await c.env.qesuite_db.prepare('DELETE FROM categories WHERE tenant_id = ?').bind(id).run()
-    await c.env.qesuite_db.prepare('DELETE FROM store_settings WHERE tenant_id = ?').bind(id).run()
-    await c.env.qesuite_db.prepare('DELETE FROM billing_history WHERE tenant_id = ?').bind(id).run()
-    await c.env.qesuite_db.prepare('DELETE FROM subscriptions WHERE tenant_id = ?').bind(id).run()
-    await c.env.qesuite_db.prepare('DELETE FROM analytics_daily WHERE tenant_id = ?').bind(id).run()
-    await c.env.qesuite_db.prepare('DELETE FROM notifications_log WHERE tenant_id = ?').bind(id).run()
-    await c.env.qesuite_db.prepare('DELETE FROM audit_log WHERE tenant_id = ?').bind(id).run()
-    await c.env.qesuite_db.prepare('DELETE FROM users WHERE tenant_id = ?').bind(id).run()
-    await c.env.qesuite_db.prepare('DELETE FROM tenants WHERE id = ?').bind(id).run()
+    const actorId = c.get('user').sub
+    const statement = (sql: string) => c.env.qesuite_db.prepare(sql).bind(id)
 
-    await audit(c.env.qesuite_db, c.get('user').sub, 'DELETE_STORE', 'tenant', id, (tenant as {name: string}).name, c.req.header('CF-Connecting-IP'))
+    // D1 batch() is atomic. Keep the purge permission, dependent data deletion,
+    // tenant deletion, and audit record in the same transaction so a failure
+    // cannot leave a store half-deleted. The purge context is required by the
+    // append-only POS cash-ledger trigger and is removed before commit.
+    await c.env.qesuite_db.batch([
+      c.env.qesuite_db.prepare(
+        'INSERT INTO tenant_purge_context (tenant_id, authorized_by) VALUES (?, ?)'
+      ).bind(id, actorId),
+      statement('DELETE FROM audit_log WHERE actor_id IN (SELECT id FROM users WHERE tenant_id = ?)'),
+      statement('DELETE FROM notifications_log WHERE tenant_id = ?'),
+      statement('DELETE FROM delivery_assignments WHERE tenant_id = ?'),
+      statement('DELETE FROM order_payments WHERE tenant_id = ?'),
+      statement('DELETE FROM order_items WHERE order_id IN (SELECT id FROM orders WHERE tenant_id = ?)'),
+      statement('DELETE FROM orders WHERE tenant_id = ?'),
+      statement('DELETE FROM customers WHERE tenant_id = ?'),
+      statement('DELETE FROM pos_sale_items WHERE sale_id IN (SELECT id FROM pos_sales WHERE tenant_id = ?)'),
+      statement('DELETE FROM expenses WHERE tenant_id = ?'),
+      statement('DELETE FROM pos_sales WHERE tenant_id = ?'),
+      statement('DELETE FROM pos_cash_movements WHERE tenant_id = ?'),
+      statement('DELETE FROM pos_till_sessions WHERE tenant_id = ?'),
+      statement('DELETE FROM delivery_staff WHERE tenant_id = ?'),
+      statement('DELETE FROM products WHERE tenant_id = ?'),
+      statement('DELETE FROM categories WHERE tenant_id = ?'),
+      statement('DELETE FROM store_settings WHERE tenant_id = ?'),
+      statement('DELETE FROM billing_history WHERE tenant_id = ?'),
+      statement('DELETE FROM subscriptions WHERE tenant_id = ?'),
+      statement('DELETE FROM analytics_daily WHERE tenant_id = ?'),
+      statement('DELETE FROM user_permissions WHERE tenant_id = ?'),
+      statement('DELETE FROM staff_invitations WHERE tenant_id = ?'),
+      statement('DELETE FROM users WHERE tenant_id = ?'),
+      statement('DELETE FROM tenants WHERE id = ?'),
+      statement('DELETE FROM tenant_purge_context WHERE tenant_id = ?'),
+      c.env.qesuite_db.prepare(
+        `INSERT INTO audit_log (id, actor_id, actor_role, action, target_type, target_id, detail, ip)
+         VALUES (?, ?, 'superadmin', 'DELETE_STORE', 'tenant', ?, ?, ?)`
+      ).bind(
+        generateId(), actorId, id, tenant.name,
+        c.req.header('CF-Connecting-IP') ?? null,
+      ),
+    ])
 
     return c.json({ success: true, data: { deleted: true, id }, error: null, message: `Store permanently deleted.` })
   } catch (err) {
@@ -427,7 +468,7 @@ admin.put('/stores/:id/subscription', async (c) => {
         body.plan ?? 'starter',
         body.amount ?? 999,
         body.currency ?? 'KES',
-        body.current_period_start ?? new Date().toISOString().substring(0, 10),
+        body.current_period_start ?? businessDate(),
         body.current_period_end ?? null,
         body.payment_method ?? null,
       ).run()
@@ -694,6 +735,120 @@ admin.post('/stores/:id/billing', async (c) => {
   }
 })
 
+// POST /api/admin/billing/:id/verify — approve or reject a submitted M-Pesa reference
+admin.post('/billing/:id/verify', async (c) => {
+  try {
+    const billingId = c.req.param('id')
+    const body = await c.req.json<{ action?: 'approve' | 'reject' }>()
+      .catch((): { action?: 'approve' | 'reject' } => ({}))
+
+    if (body.action !== 'approve' && body.action !== 'reject') {
+      return c.json({ success: false, error: 'Choose approve or reject.', data: null }, 400)
+    }
+
+    const record = await c.env.qesuite_db.prepare(
+      `SELECT bh.id, bh.tenant_id, bh.amount, bh.currency, bh.status, bh.payment_method, bh.reference,
+              t.plan, t.name AS store_name
+       FROM billing_history bh
+       JOIN tenants t ON t.id = bh.tenant_id
+       WHERE bh.id = ?`
+    ).bind(billingId).first<{
+      id: string
+      tenant_id: string
+      amount: number
+      currency: string
+      status: string
+      payment_method: string
+      reference: string | null
+      plan: string | null
+      store_name: string
+    }>()
+
+    if (!record) return c.json({ success: false, error: 'Billing reference not found.', data: null }, 404)
+    if (record.payment_method !== 'mpesa' || record.status !== 'pending') {
+      return c.json({ success: false, error: 'This reference has already been reviewed.', data: null }, 409)
+    }
+
+    const actorId = c.get('user').sub
+    const auditStatement = (action: string, detail: Record<string, unknown>) => c.env.qesuite_db.prepare(
+      `INSERT INTO audit_log (id, actor_id, actor_role, action, target_type, target_id, detail, ip)
+       VALUES (?, ?, 'superadmin', ?, 'billing_history', ?, ?, ?)`
+    ).bind(
+      generateId(), actorId, action, billingId, JSON.stringify(detail),
+      c.req.header('CF-Connecting-IP') ?? null,
+    )
+
+    if (body.action === 'reject') {
+      await c.env.qesuite_db.batch([
+        c.env.qesuite_db.prepare(
+          "UPDATE billing_history SET status = 'failed', paid_at = NULL WHERE id = ? AND status = 'pending'"
+        ).bind(billingId),
+        auditStatement('REJECT_MPESA_REFERENCE', {
+          tenant_id: record.tenant_id,
+          reference: record.reference,
+        }),
+      ])
+
+      return c.json({ success: true, data: { status: 'failed' }, error: null, message: 'Payment reference rejected.' })
+    }
+
+    const existing = await c.env.qesuite_db.prepare(
+      'SELECT id, current_period_end, status FROM subscriptions WHERE tenant_id = ? ORDER BY created_at DESC LIMIT 1'
+    ).bind(record.tenant_id).first<{ id: string; current_period_end: string | null; status: string }>()
+
+    const now = new Date()
+    const existingEnd = existing?.current_period_end ? new Date(existing.current_period_end) : null
+    const periodStart = existing?.status === 'active' && existingEnd && existingEnd > now ? existingEnd : now
+    const periodEnd = new Date(periodStart)
+    periodEnd.setMonth(periodEnd.getMonth() + 1)
+
+    const subscriptionStatement = existing
+      ? c.env.qesuite_db.prepare(
+          `UPDATE subscriptions
+           SET status = 'active', plan = ?, amount = ?, currency = ?, current_period_start = ?,
+               current_period_end = ?, payment_method = 'mpesa'
+           WHERE id = ?`
+        ).bind(
+          record.plan ?? 'starter', record.amount, record.currency,
+          periodStart.toISOString(), periodEnd.toISOString(), existing.id,
+        )
+      : c.env.qesuite_db.prepare(
+          `INSERT INTO subscriptions
+            (id, tenant_id, plan, amount, currency, status, current_period_start, current_period_end, payment_method)
+           VALUES (?, ?, ?, ?, ?, 'active', ?, ?, 'mpesa')`
+        ).bind(
+          generateId(), record.tenant_id, record.plan ?? 'starter', record.amount, record.currency,
+          periodStart.toISOString(), periodEnd.toISOString(),
+        )
+
+    await c.env.qesuite_db.batch([
+      c.env.qesuite_db.prepare(
+        "UPDATE tenants SET subscription_status = 'active' WHERE id = ?"
+      ).bind(record.tenant_id),
+      subscriptionStatement,
+      c.env.qesuite_db.prepare(
+        "UPDATE billing_history SET status = 'paid', paid_at = datetime('now') WHERE id = ? AND status = 'pending'"
+      ).bind(billingId),
+      auditStatement('APPROVE_MPESA_REFERENCE', {
+        tenant_id: record.tenant_id,
+        reference: record.reference,
+        amount: record.amount,
+        period_end: periodEnd.toISOString(),
+      }),
+    ])
+
+    return c.json({
+      success: true,
+      data: { status: 'paid', current_period_end: periodEnd.toISOString() },
+      error: null,
+      message: 'Payment verified and subscription updated.',
+    })
+  } catch (err) {
+    console.error('admin verify M-Pesa reference error', err)
+    return c.json({ success: false, error: 'Failed to review the payment reference.', data: null }, 500)
+  }
+})
+
 // GET /api/admin/billing — platform-wide billing records
 admin.get('/billing', async (c) => {
   try {
@@ -748,13 +903,20 @@ admin.get('/metrics/gmv', async (c) => {
   try {
     const period = c.req.query('period') ?? '30d'
     const days = period === '7d' ? 7 : period === '90d' ? 90 : 30
-    const since = new Date(Date.now() - days * 86400_000).toISOString().split('T')[0]
+    const since = businessDateDaysAgo(days - 1)
 
     const rows = await c.env.qesuite_db.prepare(
-      `SELECT date(created_at) as date, COALESCE(SUM(total), 0) as value
-       FROM orders WHERE status != 'CANCELLED' AND date(created_at) >= ?
-       GROUP BY date(created_at) ORDER BY date ASC`
-    ).bind(since).all<{ date: string; value: number }>()
+      `WITH sales AS (
+         SELECT created_at, total FROM orders
+         WHERE status != 'CANCELLED' AND date(created_at, '+3 hours') >= ?
+         UNION ALL
+         SELECT created_at, total FROM pos_sales
+         WHERE status = 'completed' AND date(created_at, '+3 hours') >= ?
+       )
+       SELECT date(created_at, '+3 hours') AS date, COALESCE(SUM(total), 0) AS value
+       FROM sales
+       GROUP BY date(created_at, '+3 hours') ORDER BY date ASC`
+    ).bind(since, since).all<{ date: string; value: number }>()
 
     return c.json({ success: true, data: rows.results, error: null })
   } catch (err) {
@@ -768,12 +930,12 @@ admin.get('/metrics/store-growth', async (c) => {
   try {
     const period = c.req.query('period') ?? '30d'
     const days = period === '7d' ? 7 : period === '90d' ? 90 : 30
-    const since = new Date(Date.now() - days * 86400_000).toISOString().split('T')[0]
+    const since = businessDateDaysAgo(days)
 
     const rows = await c.env.qesuite_db.prepare(
-      `SELECT date(created_at) as date, COUNT(*) as count
-       FROM tenants WHERE date(created_at) >= ?
-       GROUP BY date(created_at) ORDER BY date ASC`
+      `SELECT date(created_at, '+3 hours') as date, COUNT(*) as count
+       FROM tenants WHERE date(created_at, '+3 hours') >= ?
+       GROUP BY date(created_at, '+3 hours') ORDER BY date ASC`
     ).bind(since).all<{ date: string; count: number }>()
 
     return c.json({ success: true, data: rows.results, error: null })
@@ -803,7 +965,9 @@ admin.get('/metrics', async (c) => {
     ).first<{ cnt: number }>()
 
     const platformGmv = await c.env.qesuite_db.prepare(
-      "SELECT COALESCE(SUM(total), 0) as gmv FROM orders WHERE status != 'CANCELLED'"
+      `SELECT
+         (SELECT COALESCE(SUM(total), 0) FROM orders WHERE status != 'CANCELLED') +
+         (SELECT COALESCE(SUM(total), 0) FROM pos_sales WHERE status = 'completed') AS gmv`
     ).first<{ gmv: number }>()
 
     // MRR: active subscriptions × amount
@@ -812,21 +976,23 @@ admin.get('/metrics', async (c) => {
     ).first<{ mrr: number }>()
 
     // This month GMV + new stores this month
-    const thisMonth = new Date()
-    const monthStart = `${thisMonth.getFullYear()}-${String(thisMonth.getMonth() + 1).padStart(2, '0')}-01`
-    const today = thisMonth.toISOString().split('T')[0]
+    const today = businessDate()
+    const monthStart = `${today.slice(0, 7)}-01`
 
     const monthlyGmv = await c.env.qesuite_db.prepare(
-      `SELECT COALESCE(SUM(total), 0) as gmv
-       FROM orders WHERE status != 'CANCELLED' AND date(created_at) >= ?`
-    ).bind(monthStart).first<{ gmv: number }>()
+      `SELECT
+         (SELECT COALESCE(SUM(total), 0) FROM orders
+          WHERE status != 'CANCELLED' AND date(created_at, '+3 hours') >= ?) +
+         (SELECT COALESCE(SUM(total), 0) FROM pos_sales
+          WHERE status = 'completed' AND date(created_at, '+3 hours') >= ?) AS gmv`
+    ).bind(monthStart, monthStart).first<{ gmv: number }>()
 
     const newToday = await c.env.qesuite_db.prepare(
-      'SELECT COUNT(*) as cnt FROM tenants WHERE date(created_at) = ?'
+      "SELECT COUNT(*) as cnt FROM tenants WHERE date(created_at, '+3 hours') = ?"
     ).bind(today).first<{ cnt: number }>()
 
     const newThisMonth = await c.env.qesuite_db.prepare(
-      'SELECT COUNT(*) as cnt FROM tenants WHERE date(created_at) >= ?'
+      "SELECT COUNT(*) as cnt FROM tenants WHERE date(created_at, '+3 hours') >= ?"
     ).bind(monthStart).first<{ cnt: number }>()
 
     // Trial-to-paid conversion

@@ -1,13 +1,13 @@
 <template>
   <div class="relative min-h-screen overflow-hidden px-4 py-5 sm:px-6 lg:px-8">
     <img
-      src="/login-wallpaper.png"
+      src="/auth-marketplace-wallpaper.webp"
       alt=""
       class="absolute inset-0 h-full w-full object-cover object-left"
     />
-    <div class="absolute inset-0 bg-white/30 backdrop-blur-[2px]" />
+    <div class="absolute inset-0 bg-gradient-to-r from-white/10 via-white/15 to-white/40 backdrop-blur-[1px]" />
 
-    <div class="relative mx-auto flex min-h-[calc(100vh-2.5rem)] w-full max-w-6xl flex-col">
+    <div class="relative mx-auto flex min-h-[calc(100vh-2.5rem)] w-full max-w-[1680px] flex-col">
       <header class="flex items-center justify-between py-2">
         <div class="flex items-center gap-3">
           <div class="qs-brand-mark h-11 w-11 shrink-0" />
@@ -24,65 +24,10 @@
         </router-link>
       </header>
 
-      <main class="flex flex-1 items-center py-8 lg:py-10">
-        <!-- ── Single combined card ───────────────────────────────────────── -->
-        <div class="relative w-full overflow-hidden rounded-[32px] border border-white/55 shadow-[0_24px_80px_rgba(15,23,42,0.10)] backdrop-blur-2xl bg-white/20 lg:grid lg:grid-cols-[minmax(0,1fr)_440px]">
-
-          <!-- Subtle inner gradients -->
-          <div class="absolute inset-0 bg-gradient-to-br from-white/60 via-white/20 to-white/5 pointer-events-none" />
-          <div class="absolute inset-x-0 bottom-0 h-48 bg-gradient-to-t from-white/40 to-transparent pointer-events-none" />
-
-          <!-- ── Left — marketing panel (desktop only) ───────────────────── -->
-          <div class="relative hidden lg:flex flex-col justify-between p-10">
-            <div class="max-w-md">
-              <div class="owner-eyebrow">Store operations</div>
-              <h1 class="mt-4 text-4xl font-black leading-tight tracking-tight text-slate-950">
-                Run orders, catalog, delivery, and billing from one calm workspace.
-              </h1>
-              <p class="mt-3 text-sm font-medium leading-6 text-slate-500">
-                Sign in to continue managing your store with the same polished owner-console experience across the platform.
-              </p>
-            </div>
-
-            <div class="mt-8 grid grid-cols-3 gap-3">
-              <div class="owner-stat-card">
-                <div class="owner-stat-icon h-10 w-10">
-                  <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7h18M6 7v11a2 2 0 002 2h8a2 2 0 002-2V7M9 7V5a3 3 0 016 0v2" />
-                  </svg>
-                </div>
-                <div>
-                  <p class="text-sm font-black text-slate-950">Orders</p>
-                  <p class="text-xs font-medium text-slate-500">Live queue</p>
-                </div>
-              </div>
-              <div class="owner-stat-card">
-                <div class="owner-stat-icon h-10 w-10">
-                  <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4 8 4 8-4zM4 7v10l8 4 8-4V7" />
-                  </svg>
-                </div>
-                <div>
-                  <p class="text-sm font-black text-slate-950">Products</p>
-                  <p class="text-xs font-medium text-slate-500">Catalog</p>
-                </div>
-              </div>
-              <div class="owner-stat-card">
-                <div class="owner-stat-icon h-10 w-10">
-                  <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0zM13 16V6a1 1 0 00-1-1H4v11h9zm0 0h2m-2-5h4l3 3v2h-3" />
-                  </svg>
-                </div>
-                <div>
-                  <p class="text-sm font-black text-slate-950">Delivery</p>
-                  <p class="text-xs font-medium text-slate-500">Riders</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- ── Right — form panel ──────────────────────────────────────── -->
-          <div class="relative border-white/40 bg-white/72 backdrop-blur-sm lg:border-l">
+      <main class="flex flex-1 items-center justify-center py-6 lg:justify-end lg:py-8">
+        <section class="relative w-full max-w-[460px] overflow-hidden rounded-[28px] border border-white/80 bg-white/90 shadow-[0_24px_80px_rgba(15,23,42,0.14)] backdrop-blur-xl">
+          <div class="pointer-events-none absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-white to-transparent" />
+          <div class="relative">
 
             <!-- Store selector -->
             <div v-if="auth.pendingStoreSelection" class="p-6 sm:p-8">
@@ -93,7 +38,6 @@
                 <ArrowLeftIcon class="h-3.5 w-3.5" /> Back
               </button>
               <div class="mb-5">
-                <div class="owner-eyebrow">Multiple stores</div>
                 <h2 class="owner-title">Which store?</h2>
                 <p class="owner-subtitle">Your phone is linked to {{ auth.pendingStoreSelection.stores.length }} stores. Pick one to continue.</p>
               </div>
@@ -128,7 +72,6 @@
             <!-- Normal login form -->
             <div v-else class="p-6 sm:p-8">
               <div class="mb-5">
-                <div class="owner-eyebrow">Secure sign in</div>
                 <h2 class="owner-title">Welcome back</h2>
                 <p class="owner-subtitle">Log in to manage your store, track orders, and keep operations moving.</p>
               </div>
@@ -249,8 +192,8 @@
               </button>
             </form>
             </div><!-- /normal login form -->
-          </div><!-- /right panel -->
-        </div><!-- /combined card -->
+          </div>
+        </section>
       </main>
     </div>
   </div>
@@ -279,7 +222,7 @@ const adminPassword = ref('')
 const storefrontUrl = (import.meta.env.VITE_STOREFRONT_URL ?? 'https://store.qesuite.com').replace(/\/$/, '')
 
 const tabs = [
-  { id: 'owner', label: 'Store Owner' },
+  { id: 'owner', label: 'Owner / Staff' },
   { id: 'rider', label: 'Rider' },
   { id: 'admin', label: 'Admin' },
 ] as const

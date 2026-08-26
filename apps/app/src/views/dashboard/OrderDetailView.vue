@@ -1,5 +1,5 @@
 <template>
-  <div class="p-3 sm:p-4 max-w-3xl mx-auto">
+  <div class="owner-page !max-w-[1400px] !py-3 sm:!py-4">
     <!-- Back -->
     <button @click="router.back()" class="flex items-center gap-1.5 text-xs text-gray-500  hover:text-gray-700  mb-3 transition-colors">
       <ArrowLeftIcon class="w-3.5 h-3.5" /> Back to Orders
@@ -13,8 +13,9 @@
     </div>
 
     <template v-else-if="order">
+      <div class="grid items-start gap-3 lg:grid-cols-[minmax(0,1fr)_320px] xl:grid-cols-[minmax(0,1fr)_360px]">
       <!-- Header card -->
-      <div class="bg-white  rounded-xl border border-gray-100  p-4 mb-3">
+      <div class="bg-white rounded-xl border border-gray-100 p-4 lg:col-start-1 lg:row-start-1">
         <div class="flex items-start justify-between gap-3 flex-wrap">
           <div>
             <div class="flex items-center gap-2 mb-1">
@@ -27,8 +28,9 @@
         </div>
 
         <!-- Status action buttons -->
-        <div class="mt-4 flex flex-wrap gap-2">
+        <div v-if="accessStore.canAny('orders.update_status', 'orders.assign_delivery', 'delivery.assign')" class="mt-4 flex flex-wrap gap-2">
           <button
+            v-if="accessStore.can('orders.update_status')"
             v-for="action in availableActions"
             :key="action.status"
             @click="handleStatusAction(action.status)"
@@ -39,7 +41,7 @@
             {{ action.label }}
           </button>
           <button
-            v-if="canAssignRider"
+            v-if="canAssignRider && accessStore.canAny('orders.assign_delivery', 'delivery.assign')"
             @click="showAssignModal = true"
             class="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold bg-teal-500 text-white hover:bg-teal-600 transition-colors"
           >
@@ -47,7 +49,7 @@
             Assign Rider
           </button>
           <button
-            v-if="canCancel"
+            v-if="canCancel && accessStore.can('orders.update_status')"
             @click="showCancelDropdown = !showCancelDropdown"
             class="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold bg-red-100  text-red-600  hover:bg-red-200  transition-colors"
           >
@@ -83,7 +85,7 @@
       </div>
 
       <!-- Customer -->
-      <div class="bg-white  rounded-xl border border-gray-100  p-3.5 mb-3">
+      <div class="bg-white rounded-xl border border-gray-100 p-3.5 lg:col-start-2 lg:row-start-1">
         <h3 class="text-xs font-semibold text-gray-500  uppercase tracking-wide mb-2">Customer</h3>
         <div class="flex items-center justify-between">
           <div>
@@ -111,7 +113,7 @@
       </div>
 
       <!-- Items -->
-      <div class="bg-white  rounded-xl border border-gray-100  p-3.5 mb-3">
+      <div class="min-w-0 bg-white rounded-xl border border-gray-100 p-3.5 lg:col-start-1 lg:row-start-2">
         <h3 class="text-xs font-semibold text-gray-500  uppercase tracking-wide mb-2">Items</h3>
         <div class="space-y-2">
           <div
@@ -150,32 +152,8 @@
         </div>
       </div>
 
-      <!-- Live delivery map -->
-      <div
-        v-if="order.status === 'OUT_FOR_DELIVERY'"
-        class="bg-white  rounded-xl border border-gray-100  p-3.5 mb-3"
-      >
-        <div class="flex items-center justify-between mb-3">
-          <h3 class="text-xs font-semibold text-gray-500  uppercase tracking-wide">Live Delivery</h3>
-          <span class="flex items-center gap-1.5 text-[11px] font-bold text-emerald-600">
-            <span class="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
-            Updates every 15s
-          </span>
-        </div>
-        <LiveMap
-          :rider-lat="riderLat"
-          :rider-lng="riderLng"
-          :dest-lat="(order as any).delivery_lat ?? null"
-          :dest-lng="(order as any).delivery_lng ?? null"
-          height="260px"
-        />
-        <p v-if="!riderLat" class="mt-2 text-center text-xs text-slate-400">
-          Waiting for rider location…
-        </p>
-      </div>
-
       <!-- Payment & Rider info -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+      <aside class="space-y-3 lg:sticky lg:top-3 lg:col-start-2 lg:row-start-2 lg:row-span-2">
         <div class="bg-white  rounded-xl border border-gray-100  p-3.5">
           <h3 class="text-xs font-semibold text-gray-500  uppercase tracking-wide mb-2">Payment</h3>
           <div class="flex items-center justify-between mb-2">
@@ -183,7 +161,7 @@
             <StatusBadge :status="order.payment_status" size="sm" />
           </div>
           <button
-            v-if="order.payment_status !== 'paid' && order.status !== 'CANCELLED'"
+            v-if="order.payment_status !== 'paid' && order.status !== 'CANCELLED' && accessStore.can('orders.manage_payments')"
             @click="showPaymentModal = true"
             class="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl bg-emerald-50  text-emerald-700  text-xs font-semibold hover:bg-emerald-100  transition-colors border border-emerald-200 "
           >
@@ -202,17 +180,40 @@
             {{ order.assignment.staff?.phone }}
           </a>
         </div>
-      </div>
 
-      <!-- Packing slip -->
-      <div class="flex justify-end">
+        <!-- Packing slip -->
         <button
           @click="showPackingSlip = true"
-          class="flex items-center gap-2 px-4 py-2.5 bg-gray-100  text-gray-700  text-sm font-medium rounded-xl hover:bg-gray-200  transition-colors"
+          class="flex w-full items-center justify-center gap-2 rounded-xl bg-gray-100 px-4 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-200"
         >
           <DocumentTextIcon class="w-4 h-4" />
           Packing Slip
         </button>
+      </aside>
+
+      <!-- Live delivery map -->
+      <div
+        v-if="order.status === 'OUT_FOR_DELIVERY'"
+        class="bg-white rounded-xl border border-gray-100 p-3.5 lg:col-start-1 lg:row-start-3"
+      >
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Live Delivery</h3>
+          <span class="flex items-center gap-1.5 text-[11px] font-bold text-emerald-600">
+            <span class="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
+            Updates every 15s
+          </span>
+        </div>
+        <LiveMap
+          :rider-lat="riderLat"
+          :rider-lng="riderLng"
+          :dest-lat="(order as any).delivery_lat ?? null"
+          :dest-lng="(order as any).delivery_lng ?? null"
+          height="260px"
+        />
+        <p v-if="!riderLat" class="mt-2 text-center text-xs text-slate-400">
+          Waiting for rider location…
+        </p>
+      </div>
       </div>
     </template>
 
@@ -260,12 +261,14 @@ import PackingSlipModal from '@/components/dashboard/PackingSlipModal.vue'
 import PaymentReferenceModal from '@/components/dashboard/PaymentReferenceModal.vue'
 import LiveMap from '@/components/dashboard/LiveMap.vue'
 import { useOrdersStore } from '@/stores/orders'
+import { useAccessStore } from '@/stores/access'
 import { apiRecordPayment } from '@/api/orders'
 import type { OrderStatus } from '@qesuite/types'
 
 const route = useRoute()
 const router = useRouter()
 const ordersStore = useOrdersStore()
+const accessStore = useAccessStore()
 
 const orderId = route.params.id as string
 const showAssignModal = ref(false)

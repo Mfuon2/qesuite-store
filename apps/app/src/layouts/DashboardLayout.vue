@@ -3,34 +3,34 @@
     <!-- Subscription wall — blocks all features when subscription is inactive -->
     <SubscriptionWall v-if="!settingsStore.isSubscriptionActive && !settingsStore.loading" />
 
-    <aside class="hidden w-72 shrink-0 flex-col border-r border-[#d0daca]/70 bg-white/80 backdrop-blur-xl lg:flex">
-      <div class="flex items-center gap-3 px-6 py-6">
+    <aside class="hidden w-64 shrink-0 flex-col border-r border-[#d0daca]/70 bg-white/80 backdrop-blur-xl lg:flex">
+      <div class="flex items-center gap-2.5 px-4 py-4">
         <div class="qs-brand-mark shrink-0" />
         <div class="min-w-0">
-          <p class="qs-brand-word text-xl leading-tight"><span>Store</span></p>
-          <p class="truncate text-xs text-slate-500">{{ settingsStore.tenant?.name || 'Store Console' }}</p>
+          <p class="qs-brand-word text-lg leading-tight"><span>Store</span></p>
+          <p class="truncate text-xs text-slate-500">Business dashboard</p>
         </div>
       </div>
 
-      <div class="mx-4 mb-4 rounded-xl border border-[#d0daca]/80 bg-white/70 p-3 shadow-sm">
-        <div class="flex items-center gap-3">
-          <div class="owner-brand-surface grid h-12 w-12 place-items-center rounded-xl"><BuildingStorefrontIcon class="h-6 w-6" /></div>
+      <div class="mx-3 mb-3 rounded-xl border border-[#d0daca]/80 bg-white/70 p-2.5 shadow-sm">
+        <div class="flex items-center gap-2.5">
+          <div class="owner-brand-surface grid h-9 w-9 place-items-center rounded-lg"><BuildingStorefrontIcon class="h-4 w-4" /></div>
           <div class="min-w-0 flex-1">
             <p class="truncate text-sm font-bold text-slate-900">{{ settingsStore.tenant?.name || "Mama Mboga's" }}</p>
             <p class="mt-0.5 flex items-center gap-1.5 text-xs text-slate-500"><span class="h-2 w-2 rounded-full bg-primary"></span> Open</p>
           </div>
-          <ChevronDownIcon class="h-4 w-4 text-slate-500" />
+          <span class="rounded-full bg-slate-50 px-2 py-1 text-[9px] font-bold uppercase tracking-wide text-slate-400">Current</span>
         </div>
       </div>
 
-      <nav class="flex-1 space-y-1 overflow-y-auto px-4 py-2">
+      <nav class="flex-1 space-y-0.5 overflow-y-auto px-3 py-1">
         <router-link
           v-for="item in navItems"
           :key="item.to"
           :to="item.to"
           :class="['qs-nav-link group', isActiveNav(item.to) ? 'qs-nav-link-active' : 'owner-brand-hover hover:text-primary']"
         >
-          <component :is="item.icon" class="h-5 w-5 shrink-0" />
+          <component :is="item.icon" class="h-4 w-4 shrink-0" />
           {{ item.label }}
           <span
             v-if="item.to === '/orders' && newOrderCount > 0"
@@ -42,9 +42,9 @@
       </nav>
 
       <!-- Subscription banner — always visible once tenant loads -->
-      <div v-if="settingsStore.tenant" class="mx-4 mb-4 overflow-hidden rounded-2xl border border-[#d0daca]/80 bg-white/80 shadow-sm">
+      <div v-if="settingsStore.tenant" class="mx-3 mb-3 overflow-hidden rounded-xl border border-[#d0daca]/80 bg-white/80 shadow-sm">
         <!-- Plan + status row -->
-        <div class="flex items-center justify-between gap-2 px-4 pt-3 pb-2">
+        <div class="flex items-center justify-between gap-2 px-3 pb-1.5 pt-2.5">
           <div class="flex items-center gap-2 min-w-0">
             <component :is="planIcon" class="h-4 w-4 shrink-0 text-emerald-700" />
             <div class="min-w-0">
@@ -68,7 +68,7 @@
         </div>
 
         <!-- Progress bar showing how far through the billing period -->
-        <div v-if="settingsStore.subscriptionDaysLeft !== null" class="px-4 pb-1">
+        <div v-if="settingsStore.subscriptionDaysLeft !== null" class="px-3 pb-1">
           <div class="h-1 overflow-hidden rounded-full bg-slate-100">
             <div
               class="h-full rounded-full transition-all"
@@ -79,7 +79,7 @@
         </div>
 
         <!-- CTA -->
-        <div class="px-4 pb-3 pt-1.5">
+        <div class="px-3 pb-2.5 pt-1.5">
           <p class="mb-2 text-[11px] leading-4 text-slate-500">
             <template v-if="settingsStore.isTrialing">Upgrade to keep growing after your trial ends.</template>
             <template v-else>Manage your plan and billing history.</template>
@@ -93,24 +93,16 @@
         </div>
       </div>
 
-      <div class="border-t border-[#d0daca]/70 p-4">
-        <div class="flex items-center gap-3 rounded-xl px-2 py-2">
-          <div class="owner-brand-surface grid h-10 w-10 shrink-0 place-items-center rounded-full">
-            <span class="text-sm font-bold text-primary">{{ userInitial }}</span>
-          </div>
-          <div class="min-w-0 flex-1">
-            <p class="truncate text-sm font-bold text-slate-900">{{ authStore.user?.name || 'Owner' }}</p>
-            <p class="truncate text-xs text-slate-500">{{ authStore.user?.email || authStore.user?.phone }}</p>
-          </div>
-          <button class="rounded-lg p-2 text-slate-400 transition-colors hover:bg-red-50 hover:text-red-500" title="Sign out" @click="handleLogout">
-            <ArrowRightOnRectangleIcon class="h-4 w-4" />
-          </button>
-        </div>
+      <div class="border-t border-[#d0daca]/70 p-3">
+        <button class="flex w-full items-center justify-center gap-2 rounded-xl px-3 py-2 text-xs font-bold text-slate-500 transition-colors hover:bg-red-50 hover:text-red-600" @click="handleLogout">
+          <ArrowRightOnRectangleIcon class="h-4 w-4" />
+          Sign out
+        </button>
       </div>
     </aside>
 
     <div class="flex min-w-0 flex-1 flex-col overflow-hidden">
-      <header class="flex shrink-0 items-center gap-4 border-b border-[#d0daca]/70 bg-white/75 px-4 py-3 backdrop-blur-xl sm:px-6 lg:px-8">
+      <header class="flex shrink-0 items-center gap-3 border-b border-[#d0daca]/70 bg-white/75 px-3 py-2 backdrop-blur-xl sm:px-5 lg:px-6">
         <button class="owner-brand-hover rounded-lg p-2 text-slate-600 transition-colors hover:text-primary lg:hidden" @click="mobileMenuOpen = !mobileMenuOpen">
           <Bars3Icon class="h-5 w-5" />
         </button>
@@ -118,8 +110,8 @@
         <h1 class="flex-1 truncate text-base font-bold text-slate-900 lg:hidden">{{ currentPageTitle }}</h1>
 
         <div class="relative hidden w-full max-w-xl lg:block">
-          <MagnifyingGlassIcon class="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
-          <input class="owner-input w-full rounded-xl border-[#d0daca] bg-white/80 py-3 pl-12 pr-12 text-sm text-slate-700 shadow-sm" placeholder="Search orders, products, customers..." />
+          <MagnifyingGlassIcon class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <input class="owner-input w-full border-[#d0daca] bg-white/80 pl-9 pr-10 text-slate-700 shadow-sm" placeholder="Search orders, products, customers..." />
           <span class="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400">⌘K</span>
         </div>
 
@@ -136,13 +128,13 @@
               {{ newOrderCount > 9 ? '9+' : newOrderCount }}
             </span>
           </div>
-          <div class="hidden items-center gap-3 pl-3 sm:flex">
-            <div class="owner-brand-surface grid h-10 w-10 place-items-center rounded-full text-sm font-bold text-primary">{{ userInitial }}</div>
+          <RouterLink to="/settings" class="owner-brand-hover hidden items-center gap-2 rounded-xl py-1 pl-2 pr-1.5 sm:flex" title="Edit personal information in Settings">
+            <div class="owner-brand-surface grid h-8 w-8 place-items-center rounded-full text-xs font-bold text-primary">{{ userInitial }}</div>
             <div class="hidden md:block">
-              <p class="text-sm font-bold text-slate-900">{{ settingsStore.tenant?.name || authStore.user?.name || 'Store Owner' }}</p>
-              <p class="text-xs text-slate-500">Owner</p>
+              <p class="max-w-44 truncate text-sm font-bold text-slate-900">{{ authStore.user?.name || 'Store owner' }}</p>
+              <p class="text-xs text-slate-500">{{ authStore.role === 'staff' ? 'Store staff' : 'Store owner' }}</p>
             </div>
-          </div>
+          </RouterLink>
         </div>
       </header>
 
@@ -159,7 +151,7 @@
           v-for="item in mobileNavItems"
           :key="item.to"
           :to="item.to"
-          :class="['relative flex flex-1 flex-col items-center gap-1 py-2 transition-colors', isActiveNav(item.to) ? 'text-primary' : 'text-slate-400']"
+          :class="['relative flex min-h-11 flex-1 flex-col items-center justify-center gap-0.5 py-1.5 transition-colors', isActiveNav(item.to) ? 'text-primary' : 'text-slate-400']"
         >
           <div class="relative">
             <component :is="item.icon" class="h-5 w-5" />
@@ -170,7 +162,7 @@
               {{ newOrderCount > 9 ? '9+' : newOrderCount }}
             </span>
           </div>
-          <span class="text-xs font-semibold">{{ item.short }}</span>
+          <span class="text-[10px] font-semibold">{{ item.short }}</span>
         </router-link>
       </nav>
     </div>
@@ -179,8 +171,8 @@
       <Transition name="fade">
         <div v-if="mobileMenuOpen" class="fixed inset-0 z-50 flex lg:hidden">
           <div class="absolute inset-0 bg-black/45 backdrop-blur-sm" @click="mobileMenuOpen = false" />
-          <div class="relative z-10 flex h-full w-72 flex-col bg-white shadow-2xl animate-slide-up">
-            <div class="flex items-center justify-between border-b border-[#d0daca]/70 px-6 py-5">
+          <div class="relative z-10 flex h-full w-64 flex-col bg-white shadow-2xl animate-slide-up">
+            <div class="flex items-center justify-between border-b border-[#d0daca]/70 px-4 py-3">
               <div class="flex items-center gap-3">
                 <div class="qs-brand-mark scale-90" />
                 <span class="qs-brand-word text-lg"><span>Store</span> </span>
@@ -189,7 +181,7 @@
                 <XMarkIcon class="h-5 w-5" />
               </button>
             </div>
-            <nav class="flex-1 space-y-1 overflow-y-auto px-4 py-4">
+            <nav class="flex-1 space-y-0.5 overflow-y-auto px-3 py-3">
               <router-link
                 v-for="item in navItems"
                 :key="item.to"
@@ -221,12 +213,14 @@ import {
   ShoppingCartIcon, CubeIcon, TagIcon, TruckIcon, ChartBarIcon,
   Cog6ToothIcon, CreditCardIcon, BellIcon, Bars3Icon, XMarkIcon,
   ArrowRightOnRectangleIcon, MoonIcon, SunIcon, UsersIcon,
-  Squares2X2Icon, ChevronDownIcon, MagnifyingGlassIcon,
-  BoltIcon, BuildingStorefrontIcon, RocketLaunchIcon, SparklesIcon, TrophyIcon
+  Squares2X2Icon, MagnifyingGlassIcon,
+  BoltIcon, BuildingStorefrontIcon, RocketLaunchIcon, SparklesIcon, TrophyIcon,
+  BanknotesIcon, ReceiptRefundIcon
 } from '@heroicons/vue/24/outline'
 import { useAuthStore } from '@/stores/auth'
 import { useSettingsStore } from '@/stores/settings'
 import { useOrdersStore } from '@/stores/orders'
+import { useAccessStore } from '@/stores/access'
 import SubscriptionWall from '@/components/dashboard/SubscriptionWall.vue'
 
 const route = useRoute()
@@ -234,28 +228,33 @@ const router = useRouter()
 const authStore = useAuthStore()
 const settingsStore = useSettingsStore()
 const ordersStore = useOrdersStore()
+const accessStore = useAccessStore()
 
 const mobileMenuOpen = ref(false)
 
-const navItems = [
-  { to: '/dashboard', label: 'Dashboard', icon: Squares2X2Icon },
-  { to: '/orders', label: 'Orders', icon: ShoppingCartIcon },
-  { to: '/products', label: 'Products', icon: CubeIcon },
-  { to: '/categories', label: 'Categories', icon: TagIcon },
-  { to: '/delivery', label: 'Delivery Team', icon: UsersIcon },
-  { to: '/analytics', label: 'Analytics', icon: ChartBarIcon },
-  { to: '/notifications', label: 'Notifications', icon: BellIcon },
-  { to: '/settings', label: 'Settings', icon: Cog6ToothIcon },
-  { to: '/billing', label: 'Billing', icon: CreditCardIcon },
-]
+const isRestaurant = computed(() => settingsStore.tenant?.store_category === 'food')
 
-const mobileNavItems = [
-  { to: '/dashboard', short: 'Home', icon: Squares2X2Icon },
-  { to: '/orders', short: 'Orders', icon: ShoppingCartIcon },
-  { to: '/products', short: 'Products', icon: CubeIcon },
-  { to: '/delivery', short: 'Delivery', icon: TruckIcon },
-  { to: '/settings', short: 'Settings', icon: Cog6ToothIcon },
-]
+const navItems = computed(() => [
+  { to: '/dashboard', label: 'Dashboard', icon: Squares2X2Icon, permission: 'dashboard.view' },
+  { to: '/orders', label: 'Orders', icon: ShoppingCartIcon, permission: 'orders.view' },
+  ...(isRestaurant.value ? [
+    { to: '/pos', label: 'POS', icon: BanknotesIcon, permission: 'pos.view' },
+    { to: '/expenses', label: 'Expenses', icon: ReceiptRefundIcon, permission: 'expenses.view' },
+  ] : []),
+  { to: '/products', label: 'Products', icon: CubeIcon, permission: 'products.view' },
+  { to: '/categories', label: 'Categories', icon: TagIcon, permission: 'categories.view' },
+  { to: '/delivery', label: 'Delivery Team', icon: UsersIcon, permission: 'delivery.view' },
+  { to: '/analytics', label: 'Analytics', icon: ChartBarIcon, permission: 'analytics.view' },
+  { to: '/notifications', label: 'Notifications', icon: BellIcon, permission: 'notifications.view' },
+  { to: '/settings', label: 'Settings', icon: Cog6ToothIcon, permission: 'settings.view' },
+  { to: '/billing', label: 'Billing', icon: CreditCardIcon, permission: 'billing.view' },
+].filter(item => accessStore.can(item.permission)))
+
+const mobileNavItems = computed(() => navItems.value.slice(0, 6).map(item => ({
+  to: item.to,
+  short: item.to === '/dashboard' ? 'Home' : item.label.split(' ')[0],
+  icon: item.icon,
+})))
 
 const newOrderCount = computed(() =>
   ordersStore.orders.filter(o => o.status === 'NEW').length
@@ -293,6 +292,7 @@ const userInitial = computed(() =>
 
 const pageTitles: Record<string, string> = {
   '/dashboard': 'Dashboard',
+  '/pos': 'POS',
   '/orders': 'Orders',
   '/products': 'Products',
   '/categories': 'Categories',
@@ -323,10 +323,11 @@ async function handleLogout() {
 onMounted(async () => {
   await Promise.all([
     settingsStore.fetchTenant(),
-    settingsStore.fetchStoreSettings()
+    settingsStore.fetchStoreSettings(),
+    authStore.fetchMe()
   ])
-  await ordersStore.fetchOrders()
-  if (authStore.user?.tenant_id) {
+  if (accessStore.can('orders.view')) await ordersStore.fetchOrders()
+  if (accessStore.can('orders.view') && authStore.user?.tenant_id) {
     ordersStore.subscribeRealtime(authStore.user.tenant_id)
   }
   if ('Notification' in window && Notification.permission === 'default') {

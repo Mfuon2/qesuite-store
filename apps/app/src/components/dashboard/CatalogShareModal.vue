@@ -273,6 +273,7 @@ import {
 } from '@heroicons/vue/24/outline'
 import { useToast } from '@/composables/useToast'
 import type { Product, Tenant } from '@qesuite/types'
+import { storeFontStack, todayNairobi } from '@qesuite/shared'
 
 type CatalogId = 'price-list' | 'basket-packages' | 'featured-offers'
 
@@ -515,7 +516,7 @@ async function createCatalogFile(id: CatalogId) {
     canvas = await renderCatalog(id, false)
     blob = await canvasToBlob(canvas)
   }
-  const name = `${slugify(storeName.value)}-${id}-${new Date().toISOString().slice(0, 10)}.png`
+  const name = `${slugify(storeName.value)}-${id}-${todayNairobi()}.png`
   return new File([blob], name, { type: 'image/png' })
 }
 
@@ -833,7 +834,7 @@ function drawText(
   maxWidth?: number
 ) {
   ctx.save()
-  ctx.font = `${weight} ${size}px ${props.tenant?.font_family || 'Poppins'}, Inter, sans-serif`
+  ctx.font = `${weight} ${size}px ${storeFontStack(props.tenant?.font_family || 'Poppins')}`
   ctx.fillStyle = color
   ctx.textAlign = align
   ctx.textBaseline = 'alphabetic'
@@ -858,7 +859,7 @@ function drawStrikethroughText(
   maxWidth?: number
 ) {
   ctx.save()
-  ctx.font = `${weight} ${size}px ${props.tenant?.font_family || 'Poppins'}, Inter, sans-serif`
+  ctx.font = `${weight} ${size}px ${storeFontStack(props.tenant?.font_family || 'Poppins')}`
   ctx.fillStyle = color
   ctx.textAlign = align
   ctx.textBaseline = 'alphabetic'

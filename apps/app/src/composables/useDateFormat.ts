@@ -14,24 +14,18 @@
  *   2. Formats the result in the configured app timezone (default: Africa/Nairobi).
  *   3. Provides a time-aware greeting computed from the same clock.
  *
- * Configuration
- * ─────────────
- * Set VITE_DEFAULT_TIMEZONE in .env (e.g. "Africa/Nairobi").
- * Falls back to "Africa/Nairobi" so it works even without the env var.
+ * Africa/Nairobi is intentionally fixed for this Kenya operating application.
+ * It is not derived from the browser or an environment override.
  */
 
-const APP_TZ: string =
-  (import.meta.env.VITE_DEFAULT_TIMEZONE as string | undefined) ?? 'Africa/Nairobi'
+import { APP_TIME_ZONE, parseAppTimestamp } from '@qesuite/shared'
+
+const APP_TZ = APP_TIME_ZONE
 
 /** Parse a raw date string from D1/SQLite as UTC regardless of browser locale. */
 function toUTC(raw: string | null | undefined): Date | null {
   if (!raw) return null
-  // Already has timezone info (ISO 8601 with Z or offset) — parse directly
-  if (raw.includes('T') || raw.endsWith('Z') || /[+-]\d{2}:\d{2}$/.test(raw)) {
-    return new Date(raw)
-  }
-  // SQLite "YYYY-MM-DD HH:MM:SS" — append Z to force UTC interpretation
-  return new Date(raw.replace(' ', 'T') + 'Z')
+  return parseAppTimestamp(raw)
 }
 
 /** Short date: "1 Jun 2026" */

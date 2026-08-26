@@ -3,7 +3,6 @@
     <section class="admin-page-hero">
       <div class="admin-page-header">
         <div class="min-w-0">
-          <div class="owner-eyebrow">Revenue operations</div>
           <h1 class="owner-title">Platform Billing</h1>
           <p class="owner-subtitle">Track subscription payments, payment status, and store billing references.</p>
         </div>
@@ -60,16 +59,17 @@
               <th class="table-th">Reference</th>
               <th class="table-th">Status</th>
               <th class="table-th">Paid At</th>
+              <th class="table-th text-right">Actions</th>
             </tr>
           </thead>
           <tbody>
             <template v-if="loading && records.length === 0">
               <tr>
-                <td colspan="7"><LoadingSpinner height="sm" /></td>
+                <td colspan="8"><LoadingSpinner height="sm" /></td>
               </tr>
             </template>
             <tr v-else-if="records.length === 0">
-              <td colspan="7"><EmptyState icon="billing" message="No billing records found" size="sm" /></td>
+              <td colspan="8"><EmptyState icon="billing" message="No billing records found" size="sm" /></td>
             </tr>
             <tr
               v-for="rec in records"
@@ -109,6 +109,27 @@
               <td class="table-td text-slate-500">
                 {{ rec.paid_at ? formatDate(rec.paid_at) : '—' }}
               </td>
+              <td class="table-td">
+                <div v-if="rec.status === 'pending' && rec.payment_method === 'mpesa'" class="flex justify-end gap-1.5">
+                  <button
+                    type="button"
+                    class="rounded-lg bg-emerald-600 px-2.5 py-1.5 text-[11px] font-bold text-white transition hover:bg-emerald-700 disabled:opacity-50"
+                    :disabled="reviewingId === rec.id"
+                    @click="reviewReference(rec, 'approve')"
+                  >
+                    Approve
+                  </button>
+                  <button
+                    type="button"
+                    class="rounded-lg border border-red-200 bg-white px-2.5 py-1.5 text-[11px] font-bold text-red-700 transition hover:bg-red-50 disabled:opacity-50"
+                    :disabled="reviewingId === rec.id"
+                    @click="reviewReference(rec, 'reject')"
+                  >
+                    Reject
+                  </button>
+                </div>
+                <span v-else class="block text-right text-slate-300">—</span>
+              </td>
             </tr>
           </tbody>
         </table>
@@ -132,20 +153,23 @@
 import { ref, onMounted } from 'vue'
 import { formatDate } from '@/composables/useDateFormat'
 import { RouterLink } from 'vue-router'
-import { getPlatformBilling, type PlatformBillingRecord } from '@/api/admin'
+import { getPlatformBilling, verifyBillingReference, type PlatformBillingRecord } from '@/api/admin'
 import Pagination from '@/components/admin/Pagination.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 import { useDebounce } from '@/composables/useDebounce'
 import { usePagination } from '@/composables/usePagination'
+import { useToast } from '@/composables/useToast'
 
 const { debounce } = useDebounce(300)
 const { page, total, totalPages, pageSize, setMeta, changePage, resetPage } = usePagination(20)
+const { showToast } = useToast()
 
 const records = ref<PlatformBillingRecord[]>([])
 const loading = ref(false)
 const searchInput = ref('')
 const statusFilter = ref('all')
+const reviewingId = ref<string | null>(null)
 
 const statusFilters = [
   { value: 'all', label: 'All' },
@@ -180,6 +204,25 @@ function handleSearch() {
 function onPageChange(p: number) {
   changePage(p)
   fetchData()
+}
+
+async function reviewReference(rec: PlatformBillingRecord, action: 'approve' | 'reject') {
+  const verb = action === 'approve' ? 'approve' : 'reject'
+  if (!window.confirm(`${verb === 'approve' ? 'Approve' : 'Reject'} M-Pesa reference ${rec.reference}?`)) return
+
+  reviewingId.value = rec.id
+  try {
+    await verifyBillingReference(rec.id, action)
+    showToast(
+      action === 'approve' ? 'Payment approved and subscription updated' : 'Payment reference rejected',
+      'success',
+    )
+    await fetchData()
+  } catch (err) {
+    showToast(err instanceof Error ? err.message : 'Could not review payment reference', 'error')
+  } finally {
+    reviewingId.value = null
+  }
 }
 
 onMounted(fetchData)

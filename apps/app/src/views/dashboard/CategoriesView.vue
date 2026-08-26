@@ -1,22 +1,22 @@
 <template>
-  <div class="owner-page">
+  <div class="owner-page owner-page-dense">
     <section class="owner-page-hero">
       <div class="owner-page-header">
         <div class="min-w-0">
-          <div class="owner-eyebrow">Catalog structure</div>
           <h1 class="owner-title">Categories</h1>
           <p class="owner-subtitle">
             Organise products into simple browsing groups so customers can scan the store quickly.
           </p>
         </div>
-        <button @click="openAddForm" class="owner-primary-action">
+        <button v-if="accessStore.can('categories.manage')" type="button" @click="openAddForm" class="owner-primary-action">
           <PlusIcon class="h-4 w-4" />
-          Add category
+          <span class="hidden sm:inline">Add category</span>
+          <span class="sm:hidden">Manage categories</span>
         </button>
       </div>
     </section>
 
-    <section class="owner-stat-grid">
+    <section class="owner-stat-grid hidden sm:grid">
       <div class="owner-stat-card">
         <div class="owner-stat-icon">
           <TagIcon class="h-5 w-5" />
@@ -55,44 +55,9 @@
       </div>
     </section>
 
-    <Transition name="slide">
-      <section v-if="showForm" class="owner-soft-form mt-5">
-        <div class="owner-panel-header">
-          <div>
-            <h2 class="owner-section-title">{{ editingId ? 'Edit category' : 'New category' }}</h2>
-            <p class="owner-section-copy">Keep category names short and easy to recognize.</p>
-          </div>
-          <button @click="cancelForm" class="owner-secondary-action">Cancel</button>
-        </div>
-
-        <div class="grid gap-3 lg:grid-cols-[minmax(0,1fr)_180px_auto]">
-          <input
-            v-model="form.name"
-            type="text"
-            placeholder="Category name"
-            required
-            class="owner-input"
-          />
-          <input
-            v-model="form.icon"
-            type="text"
-            placeholder="Icon text"
-            class="owner-input"
-          />
-          <button @click="saveCategory" :disabled="!form.name || categoriesStore.saving" class="owner-primary-action">
-            <svg v-if="categoriesStore.saving" class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
-              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
-              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-            </svg>
-            {{ editingId ? 'Save changes' : 'Add category' }}
-          </button>
-        </div>
-      </section>
-    </Transition>
-
-    <section class="mt-5">
+    <section class="mt-3">
       <div v-if="categoriesStore.loading" class="space-y-2">
-        <div v-for="i in 5" :key="i" class="skeleton h-16 rounded-[22px]" />
+        <div v-for="i in 5" :key="i" class="skeleton h-14 rounded-2xl" />
       </div>
 
       <div v-else-if="!categoriesStore.categories.length" class="owner-empty">
@@ -101,13 +66,13 @@
         <p class="mt-1 text-sm text-slate-500">Add categories to organise your products.</p>
       </div>
 
-      <div v-else class="owner-panel space-y-2 p-2 sm:p-2">
+      <div v-else class="owner-panel space-y-1.5 !p-1.5">
         <div
           v-for="(cat, idx) in categoriesStore.categories"
           :key="cat.id"
-          class="owner-list-row group flex items-center gap-3"
+          class="owner-list-row group flex items-center gap-2"
         >
-          <div class="flex shrink-0 flex-col gap-0.5">
+          <div v-if="accessStore.can('categories.manage')" class="flex shrink-0 flex-col gap-0.5">
             <button @click="moveUp(idx)" :disabled="idx === 0" class="rounded-lg p-0.5 text-slate-300 transition hover:bg-slate-50 hover:text-slate-500 disabled:opacity-30">
               <ChevronUpIcon class="h-3.5 w-3.5" />
             </button>
@@ -116,7 +81,7 @@
             </button>
           </div>
 
-          <div class="owner-brand-surface flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-sm font-black text-primary ring-1">
+          <div class="owner-brand-surface flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-xs font-black text-primary ring-1">
             {{ cat.icon || cat.name.charAt(0).toUpperCase() }}
           </div>
 
@@ -125,11 +90,11 @@
             <p class="text-xs font-medium text-slate-400">Sort order {{ cat.sort_order }}</p>
           </div>
 
-          <span :class="['rounded-full px-2.5 py-1 text-xs font-bold', cat.is_active ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500']">
+          <span :class="['rounded-full px-2 py-0.5 text-[10px] font-bold', cat.is_active ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500']">
             {{ cat.is_active ? 'Active' : 'Off' }}
           </span>
 
-          <div class="flex items-center gap-1 opacity-100 sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100">
+          <div v-if="accessStore.can('categories.manage')" class="flex items-center gap-1 opacity-100 sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100">
             <button @click="toggleActive(cat)" class="owner-action-icon" :title="cat.is_active ? 'Deactivate' : 'Activate'">
               <EyeIcon v-if="!cat.is_active" class="h-4 w-4" />
               <EyeSlashIcon v-else class="h-4 w-4" />
@@ -144,17 +109,68 @@
         </div>
       </div>
     </section>
+
+    <Teleport to="body">
+      <Transition name="fade">
+        <div
+          v-if="showForm"
+          class="fixed inset-0 z-[80] grid place-items-center bg-slate-950/55 p-4 backdrop-blur-sm"
+          @click.self="cancelForm"
+        >
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="category-dialog-title"
+            class="w-full max-w-md overflow-hidden rounded-2xl border border-white/60 bg-white shadow-2xl"
+          >
+            <div class="flex items-start justify-between gap-3 border-b border-slate-100 px-4 py-3">
+              <div>
+                <h2 id="category-dialog-title" class="text-base font-black text-slate-950">{{ editingId ? 'Edit category' : 'New category' }}</h2>
+                <p class="mt-0.5 text-xs text-slate-500">Keep category names short and easy to recognize.</p>
+              </div>
+              <button type="button" class="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700" aria-label="Close category dialog" @click="cancelForm">
+                <XMarkIcon class="h-5 w-5" />
+              </button>
+            </div>
+
+            <form class="space-y-3 p-4" @submit.prevent="saveCategory">
+              <label class="block">
+                <span class="admin-label">Category name</span>
+                <input v-model="form.name" type="text" maxlength="100" placeholder="Category name" required class="owner-input mt-1.5" />
+              </label>
+              <label class="block">
+                <span class="admin-label">Icon text</span>
+                <input v-model="form.icon" type="text" maxlength="12" placeholder="Optional emoji or short text" class="owner-input mt-1.5" />
+              </label>
+
+              <div class="flex justify-end gap-2 border-t border-slate-100 pt-3">
+                <button type="button" class="owner-secondary-action" @click="cancelForm">Cancel</button>
+                <button type="submit" :disabled="!form.name || categoriesStore.saving" class="owner-primary-action">
+                  <svg v-if="categoriesStore.saving" class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                  </svg>
+                  {{ categoriesStore.saving ? 'Saving…' : editingId ? 'Save changes' : 'Add category' }}
+                </button>
+              </div>
+            </form>
+          </section>
+        </div>
+      </Transition>
+    </Teleport>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, ref, reactive, onMounted } from 'vue'
-import { PlusIcon, PencilIcon, TrashIcon, TagIcon, ChevronUpIcon, ChevronDownIcon, EyeIcon, EyeSlashIcon } from '@heroicons/vue/24/outline'
+import { PlusIcon, PencilIcon, TrashIcon, TagIcon, ChevronUpIcon, ChevronDownIcon, EyeIcon, EyeSlashIcon, XMarkIcon } from '@heroicons/vue/24/outline'
 import { useCategoriesStore } from '@/stores/categories'
+import { useAccessStore } from '@/stores/access'
 import { useConfirm } from '@/composables/useConfirm'
 import type { Category } from '@qesuite/types'
 
 const categoriesStore = useCategoriesStore()
+const accessStore = useAccessStore()
 const { confirm } = useConfirm()
 
 const showForm = ref(false)

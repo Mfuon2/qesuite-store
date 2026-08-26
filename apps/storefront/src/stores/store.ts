@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { getStore, getProducts, getCategories } from '@/api/storefront'
 import type { StorefrontConfig, Product, Category } from '@qesuite/types'
+import { parseAppTimestamp, storeFontStack } from '@qesuite/shared'
 
 const CACHE_TTL = 5 * 60 * 1000 // 5 minutes
 
@@ -90,7 +91,7 @@ export const useStorefrontStore = defineStore('storefront', () => {
     if (status === 'active') return false
     if (status === 'trialing') {
       if (!t.trial_ends_at) return true
-      return new Date(t.trial_ends_at) < new Date()
+      return parseAppTimestamp(t.trial_ends_at) < new Date()
     }
     return true // cancelled, expired, or unknown — treat as inaccessible
   })
@@ -117,7 +118,7 @@ export const useStorefrontStore = defineStore('storefront', () => {
     if (primary_color) root.style.setProperty('--color-primary', primary_color)
     if (accent_color) root.style.setProperty('--color-accent', accent_color)
     if (font_family) {
-      root.style.setProperty('--font-family', `'${font_family}', sans-serif`)
+      root.style.setProperty('--font-family', storeFontStack(font_family))
     }
     // Update theme-color meta
     const metaTheme = document.querySelector('meta[name="theme-color"]')

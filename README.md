@@ -275,3 +275,7 @@ Order events enqueue messages asynchronously. The queue consumer dispatches:
 - M-Pesa callbacks: IP whitelist to Safaricom IPs
 - CORS: locked to `*.qesuite.com`
 - All secrets in Cloudflare Worker secrets — never in `wrangler.toml`
+
+
+
+claude --resume 2fb348cc-15b6-4265-9247-99930c6b11d5

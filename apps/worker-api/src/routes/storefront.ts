@@ -2,6 +2,7 @@ import { Hono } from 'hono'
 import { Env, Variables } from '../types'
 import { generateId, generateTrackingCode } from '../lib/jwt'
 import { sendSMS, sendWhatsApp, normalizeKenyaPhone, getOrderConfirmedSMS, getNewOrderSMS } from '../lib/notifications'
+import { nairobiCompactTimestamp } from '../lib/time'
 
 const storefront = new Hono<{ Bindings: Env; Variables: Variables }>()
 
@@ -28,7 +29,7 @@ storefront.get('/', async (c) => {
                  WHERE is_suspended = 0
                    AND (
                      subscription_status = 'active'
-                     OR (subscription_status = 'trialing' AND trial_ends_at > datetime('now'))
+                     OR (subscription_status = 'trialing' AND unixepoch(trial_ends_at) > unixepoch('now'))
                    )`
     const params: (string | number)[] = []
 
@@ -515,7 +516,7 @@ storefront.post('/:slug/mpesa/initiate', async (c) => {
 
     // M-Pesa STK Push
     const phone = normalizedSubmitted
-    const timestamp = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 14)
+    const timestamp = nairobiCompactTimestamp()
     const password = btoa(`${c.env.MPESA_SHORTCODE}${c.env.MPESA_PASSKEY}${timestamp}`)
 
     // Get OAuth token

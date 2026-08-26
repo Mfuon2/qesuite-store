@@ -2,6 +2,7 @@ import { Env } from '../types'
 import { generateId } from '../lib/jwt'
 import { sendSMS } from '../lib/notifications'
 import { SMS_TEMPLATES } from '@qesuite/shared'
+import { businessDateDaysAgo } from '../lib/time'
 
 export async function handleCron(
   event: ScheduledEvent,
@@ -36,7 +37,7 @@ async function runSubscriptionReminders(env: Env): Promise<void> {
        LEFT JOIN users u ON u.tenant_id = t.id AND u.role = 'owner'
        WHERE t.is_suspended = 0
          AND t.subscription_status NOT IN ('active')
-         AND NOT (t.subscription_status = 'trialing' AND t.trial_ends_at > datetime('now'))`
+         AND NOT (t.subscription_status = 'trialing' AND unixepoch(t.trial_ends_at) > unixepoch('now'))`
     ).all<{ id: string; name: string; created_at: string; owner_phone: string | null; owner_name: string | null }>()
 
     for (const tenant of unpaid.results) {
@@ -101,9 +102,7 @@ async function maybeSendReminder(
 
 async function runDailyAnalyticsSnapshot(env: Env): Promise<void> {
   // Snapshot for yesterday
-  const yesterday = new Date()
-  yesterday.setDate(yesterday.getDate() - 1)
-  const dateStr = yesterday.toISOString().substring(0, 10)
+  const dateStr = businessDateDaysAgo(1)
 
   try {
     // Get all tenants
@@ -124,14 +123,25 @@ async function runDailyAnalyticsSnapshot(env: Env): Promise<void> {
 
 async function snapshotTenantDay(env: Env, tenantId: string, date: string): Promise<void> {
   const stats = await env.qesuite_db.prepare(
-    `SELECT
-       COUNT(*) as total_orders,
-       COALESCE(SUM(total), 0) as total_revenue,
-       COALESCE(AVG(total), 0) as avg_order_value,
-       COUNT(*) FILTER (WHERE status = 'CANCELLED') as cancelled_orders
-     FROM orders
-     WHERE tenant_id = ? AND date(created_at) = ?`
-  ).bind(tenantId, date).first<{
+    `WITH sales AS (
+       SELECT total,
+              CASE WHEN status != 'CANCELLED' THEN 1 ELSE 0 END AS included,
+              CASE WHEN status = 'CANCELLED' THEN 1 ELSE 0 END AS cancelled
+       FROM orders
+       WHERE tenant_id = ? AND date(created_at, '+3 hours') = ?
+       UNION ALL
+       SELECT total,
+              CASE WHEN status = 'completed' THEN 1 ELSE 0 END AS included,
+              CASE WHEN status = 'voided' THEN 1 ELSE 0 END AS cancelled
+       FROM pos_sales
+       WHERE tenant_id = ? AND date(created_at, '+3 hours') = ?
+     )
+     SELECT COALESCE(SUM(included), 0) AS total_orders,
+            COALESCE(SUM(CASE WHEN included = 1 THEN total ELSE 0 END), 0) AS total_revenue,
+            COALESCE(AVG(CASE WHEN included = 1 THEN total END), 0) AS avg_order_value,
+            COALESCE(SUM(cancelled), 0) AS cancelled_orders
+     FROM sales`
+  ).bind(tenantId, date, tenantId, date).first<{
     total_orders: number
     total_revenue: number
     avg_order_value: number

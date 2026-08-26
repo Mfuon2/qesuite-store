@@ -10,9 +10,9 @@
         ]"
       >
         <!-- Danger header band -->
-        <div v-if="danger" class="bg-red-50 border-b border-red-100 px-6 pt-6 pb-4">
-          <div class="flex items-start gap-4">
-            <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-red-100">
+        <div v-if="danger" class="border-b border-red-100 bg-red-50 px-4 pb-3 pt-4">
+          <div class="flex items-start gap-3">
+            <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-red-100">
               <svg class="h-5 w-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                   d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
@@ -28,23 +28,23 @@
         </div>
 
         <!-- Standard header (non-danger) -->
-        <div v-else class="px-6 pt-6">
-          <h2 class="text-lg font-bold text-slate-950">{{ title }}</h2>
+        <div v-else class="px-4 pt-4">
+          <h2 class="text-base font-bold text-slate-950">{{ title }}</h2>
         </div>
 
         <!-- Body -->
-        <div class="px-6 py-4">
-          <p class="text-sm text-slate-600 leading-relaxed">{{ message }}</p>
+        <div class="px-4 py-3">
+          <p class="text-xs leading-5 text-slate-600">{{ message }}</p>
 
           <!-- Danger extra warning — only shown for destructive ops that require typed confirmation -->
-          <div v-if="requireText" class="mt-4 rounded-xl border border-red-100 bg-red-50/60 px-4 py-3">
+          <div v-if="requireText" class="mt-3 rounded-xl border border-red-100 bg-red-50/60 px-3 py-2">
             <p class="text-xs font-semibold text-red-700">
               This will permanently erase all data associated with this store including orders, products, customers and delivery staff. There is no way to recover this data once deleted.
             </p>
           </div>
 
           <!-- Type-to-confirm input -->
-          <div v-if="requireText" class="mt-5">
+          <div v-if="requireText" class="mt-3">
             <label class="block text-xs font-semibold text-slate-600 mb-1.5">
               Type <span class="font-mono font-bold text-red-600">{{ requireText }}</span> to confirm
             </label>
@@ -60,7 +60,7 @@
         </div>
 
         <!-- Actions -->
-        <div class="flex gap-3 border-t border-slate-100 px-6 py-4">
+        <div class="flex gap-2 border-t border-slate-100 px-4 py-3">
           <button
             class="admin-btn-secondary flex-1 justify-center"
             @click="$emit('cancel')"

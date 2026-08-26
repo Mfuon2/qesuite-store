@@ -2,10 +2,9 @@
   <div class="owner-page">
 
     <!-- ── Header bar ─────────────────────────────────────────────────── -->
-    <div class="mb-4 flex flex-wrap items-center gap-3">
+    <div class="mb-4 hidden flex-wrap items-center gap-3 lg:flex">
       <div class="flex items-center gap-2.5 min-w-0">
         <h1 class="text-lg font-extrabold text-slate-950 shrink-0">Orders</h1>
-        <RealTimeIndicator :status="realtimeStatus" />
       </div>
 
       <div class="ml-auto flex flex-wrap items-center gap-2">
@@ -76,13 +75,72 @@
       </div>
     </div>
 
+    <!-- Mobile controls: keep the page title in the app bar and prioritise search. -->
+    <div class="mb-3 space-y-2 lg:hidden">
+      <div class="flex items-center justify-end px-0.5">
+        <span class="text-[11px] font-semibold text-slate-400">
+          {{ meta.total }} {{ meta.total === 1 ? 'order' : 'orders' }}
+        </span>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <div class="relative min-w-0 flex-1">
+          <MagnifyingGlassIcon class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <input
+            v-model="searchQuery"
+            type="search"
+            inputmode="search"
+            placeholder="Search orders or customers"
+            aria-label="Search orders or customers"
+            class="h-10 w-full rounded-xl border border-slate-200 bg-white pl-9 pr-3 text-sm placeholder:text-slate-400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+            @input="onSearch"
+          />
+        </div>
+
+        <button
+          @click="settingsStore.toggleSound()"
+          :class="['grid h-10 w-10 shrink-0 place-items-center rounded-xl border transition',
+            settingsStore.soundEnabled
+              ? 'border-primary/30 bg-primary/5 text-primary'
+              : 'border-slate-200 bg-white text-slate-400']"
+          :aria-label="settingsStore.soundEnabled ? 'Mute order sounds' : 'Enable order sounds'"
+        >
+          <SpeakerWaveIcon v-if="settingsStore.soundEnabled" class="h-4 w-4" />
+          <SpeakerXMarkIcon v-else class="h-4 w-4" />
+        </button>
+
+        <button
+          @click="refresh()"
+          class="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-slate-200 bg-white text-slate-500 transition active:bg-slate-100"
+          aria-label="Refresh orders"
+        >
+          <ArrowPathIcon :class="['h-4 w-4', loading ? 'animate-spin' : '']" />
+        </button>
+      </div>
+
+      <div class="grid grid-cols-3 rounded-xl border border-slate-200 bg-white p-1">
+        <button
+          v-for="f in PAYMENT_FILTERS"
+          :key="f.value"
+          @click="setPayment(f.value)"
+          :class="['h-8 rounded-lg px-2 text-xs font-bold transition',
+            paymentFilter === f.value
+              ? 'bg-slate-800 text-white shadow-sm'
+              : 'text-slate-600 active:bg-slate-50']"
+        >{{ f.label }}</button>
+      </div>
+    </div>
+
     <!-- ── Status filter tabs (list mode only) ───────────────────────── -->
-    <div v-if="isListView" class="mb-4 flex flex-wrap gap-1.5">
+    <div
+      v-if="isListView"
+      class="scrollbar-hide -mx-4 mb-3 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:mb-4 sm:flex-wrap sm:gap-1.5 sm:px-0"
+    >
       <button
         v-for="tab in STATUS_TABS"
         :key="tab.value"
         @click="setStatus(tab.value)"
-        :class="['flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition',
+        :class="['flex h-9 shrink-0 items-center gap-1.5 rounded-xl px-3 text-xs font-bold transition',
           statusFilter === tab.value
             ? 'bg-primary text-white shadow-sm'
             : 'bg-white border border-slate-200 text-slate-600 hover:border-primary/30 hover:text-primary']"
@@ -132,6 +190,7 @@
               :key="order.id"
               :order="order"
               view-mode="kanban"
+              :allow-status-updates="accessStore.can('orders.update_status')"
               @status-changed="handleKanbanStatus"
               @view-detail="goToDetail(order.id)"
             />
@@ -200,10 +259,10 @@
         <div
           v-for="order in rows"
           :key="order.id"
-          class="group grid grid-cols-[auto_1fr_auto_auto] sm:grid-cols-[auto_1fr_minmax(100px,18%)_minmax(90px,14%)_minmax(90px,14%)_auto_auto] items-center gap-x-3 px-4 py-3 transition hover:bg-slate-50/70 cursor-pointer"
+          class="group grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 px-4 py-3 transition hover:bg-slate-50/70 cursor-pointer sm:grid-cols-[auto_1fr_minmax(100px,18%)_minmax(90px,14%)_minmax(90px,14%)_auto_auto]"
           @click="goToDetail(order.id)"
         >
-          <span :class="['h-2 w-2 shrink-0 rounded-full', statusDot(order.status)]" />
+          <span :class="['hidden h-2 w-2 shrink-0 rounded-full sm:block', statusDot(order.status)]" />
 
           <div class="min-w-0">
             <div class="flex items-center gap-1.5 flex-wrap">
@@ -232,34 +291,40 @@
             KES {{ order.total.toLocaleString() }}
           </p>
 
-          <p class="text-right text-[11px] text-slate-400 whitespace-nowrap">
+          <p class="hidden text-right text-[11px] text-slate-400 whitespace-nowrap sm:block">
             {{ timeAgo(order.created_at) }}
           </p>
 
-          <div class="flex items-center justify-end gap-1" @click.stop>
-            <a
-              :href="`tel:${order.customer_phone}`"
-              class="grid h-7 w-7 place-items-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition"
-              title="Call"
-            >
-              <PhoneIcon class="h-3.5 w-3.5" />
-            </a>
-            <button
-              v-if="nextAction(order.status)"
-              :disabled="advancing === order.id"
-              @click="advance(order)"
-              :class="['flex items-center gap-1 rounded-lg border px-2.5 py-1 text-[11px] font-bold transition active:scale-95 whitespace-nowrap',
-                nextAction(order.status)!.cls]"
-            >
-              <span v-if="advancing === order.id" class="h-3 w-3 rounded-full border-2 border-current/30 border-t-current animate-spin" />
-              {{ advancing === order.id ? '…' : nextAction(order.status)!.label }}
-            </button>
-            <button
-              class="grid h-7 w-7 place-items-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition"
-              title="View detail"
-            >
-              <ChevronRightIcon class="h-3.5 w-3.5" />
-            </button>
+          <div class="flex min-w-[4.5rem] flex-col items-end gap-1.5 sm:min-w-0 sm:flex-row sm:items-center sm:gap-1" @click.stop>
+            <p class="text-[11px] font-medium text-slate-400 whitespace-nowrap sm:hidden">
+              {{ timeAgo(order.created_at) }}
+            </p>
+            <div class="flex items-center justify-end gap-1">
+              <a
+                :href="`tel:${order.customer_phone}`"
+                class="grid h-8 w-8 place-items-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+                aria-label="Call customer"
+              >
+                <PhoneIcon class="h-3.5 w-3.5" />
+              </a>
+              <button
+                v-if="nextAction(order.status) && accessStore.can('orders.update_status')"
+                :disabled="advancing === order.id"
+                @click="advance(order)"
+                :class="['flex h-8 items-center gap-1 rounded-lg border px-2.5 text-[11px] font-bold transition active:scale-95 whitespace-nowrap',
+                  nextAction(order.status)!.cls]"
+              >
+                <span v-if="advancing === order.id" class="h-3 w-3 rounded-full border-2 border-current/30 border-t-current animate-spin" />
+                {{ advancing === order.id ? '…' : nextAction(order.status)!.label }}
+              </button>
+              <button
+                @click="goToDetail(order.id)"
+                class="grid h-8 w-6 place-items-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 sm:w-8"
+                aria-label="View order details"
+              >
+                <ChevronRightIcon class="h-3.5 w-3.5" />
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -305,17 +370,15 @@ import {
 } from '@heroicons/vue/24/outline'
 import StatusBadge from '@/components/dashboard/StatusBadge.vue'
 import OrderCard from '@/components/dashboard/OrderCard.vue'
-import RealTimeIndicator from '@/components/dashboard/RealTimeIndicator.vue'
 import { timeAgo } from '@/composables/useDateFormat'
 import { apiFetch } from '@/api/index'
 import { useSettingsStore } from '@/stores/settings'
-import { useAuthStore } from '@/stores/auth'
-import { useRealtime } from '@/composables/useRealtime'
+import { useAccessStore } from '@/stores/access'
 import type { Order, OrderStatus } from '@qesuite/types'
 
 const router = useRouter()
 const settingsStore = useSettingsStore()
-const authStore = useAuthStore()
+const accessStore = useAccessStore()
 
 // ── Types ──────────────────────────────────────────────────────
 interface OrderRow {
@@ -383,13 +446,15 @@ const paymentFilter = ref('')
 const searchQuery   = ref('')
 const currentPage   = ref(1)
 const advancing     = ref<string | null>(null)
+const mobileListOnly = ref(
+  typeof window !== 'undefined' && window.matchMedia('(max-width: 1023px)').matches
+)
 let searchTimer: ReturnType<typeof setTimeout> | null = null
-
-const tenantId = authStore.user?.tenant_id || ''
-const { status: realtimeStatus } = useRealtime(tenantId)
+let mobileMediaQuery: MediaQueryList | null = null
 
 // ── Computed ───────────────────────────────────────────────────
-const isListView  = computed(() => settingsStore.orderView === 'list')
+// Kanban is a desktop workspace. Mobile always uses the denser, scan-friendly list.
+const isListView  = computed(() => mobileListOnly.value || settingsStore.orderView === 'list')
 const totalPages  = computed(() => meta.value.total_pages)
 const hasFilters  = computed(() => !!statusFilter.value || !!paymentFilter.value || !!searchQuery.value)
 
@@ -547,6 +612,20 @@ watch(isListView, () => load())
 watch([statusFilter, paymentFilter, currentPage], () => { if (isListView.value) loadList() })
 watch(searchQuery, () => { if (isListView.value) loadList() })
 
-onMounted(() => { load(); loadCounts() })
-onUnmounted(() => { if (searchTimer) clearTimeout(searchTimer) })
+function syncMobileLayout(event: MediaQueryListEvent | MediaQueryList) {
+  mobileListOnly.value = event.matches
+}
+
+onMounted(() => {
+  mobileMediaQuery = window.matchMedia('(max-width: 1023px)')
+  syncMobileLayout(mobileMediaQuery)
+  mobileMediaQuery.addEventListener('change', syncMobileLayout)
+  load()
+  loadCounts()
+})
+
+onUnmounted(() => {
+  if (searchTimer) clearTimeout(searchTimer)
+  mobileMediaQuery?.removeEventListener('change', syncMobileLayout)
+})
 </script>

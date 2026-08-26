@@ -1,15 +1,5 @@
 <template>
-  <div class="admin-page space-y-5">
-    <!-- Back -->
-    <button
-      class="flex items-center gap-2 text-slate-500 hover:text-emerald-700 text-sm font-medium transition-colors"
-      @click="router.back()"
-    >
-      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-      </svg>
-      Back to stores
-    </button>
+  <div class="admin-page admin-page-dense space-y-3">
 
     <!-- Loading state -->
     <div v-if="stores.detailLoading" class="space-y-4">
@@ -27,26 +17,34 @@
     <template v-else-if="stores.currentStore">
       <!-- Store header -->
       <section class="admin-page-hero">
-        <div class="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-          <div class="flex items-center gap-4">
-            <div class="flex h-16 w-16 flex-shrink-0 items-center justify-center overflow-hidden rounded-[24px] bg-emerald-50 ring-1 ring-emerald-100">
+        <div class="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+          <div class="flex min-w-0 items-center gap-3">
+            <div class="flex h-12 w-12 flex-shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-emerald-50 ring-1 ring-emerald-100 sm:h-14 sm:w-14">
               <img
                 v-if="stores.currentStore.logo_url"
                 :src="stores.currentStore.logo_url"
                 :alt="stores.currentStore.name"
                 class="w-full h-full object-cover"
               />
-              <div v-else class="flex h-full w-full items-center justify-center text-2xl font-black text-emerald-700">
+              <div v-else class="flex h-full w-full items-center justify-center text-xl font-black text-emerald-700">
                 {{ stores.currentStore.name?.[0] ?? '?' }}
               </div>
             </div>
             <div class="min-w-0">
-              <div class="owner-eyebrow">Store profile</div>
+              <button
+                class="mb-0.5 inline-flex items-center gap-1 text-[11px] font-semibold text-slate-500 transition-colors hover:text-emerald-700"
+                @click="router.back()"
+              >
+                <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                </svg>
+                All stores
+              </button>
               <div class="flex items-center gap-2 flex-wrap">
-                <h1 class="owner-title truncate">{{ stores.currentStore.name }}</h1>
+                <h1 class="owner-title !mt-0 truncate">{{ stores.currentStore.name }}</h1>
                 <StatusBadge :status="stores.currentStore.subscription_status" :suspended="stores.currentStore.is_suspended" />
               </div>
-              <p class="text-sm font-medium text-slate-500">
+              <p class="text-xs font-medium text-slate-500">
                 {{ stores.currentStore.slug }}
                 &nbsp;·&nbsp;
                 <span class="text-slate-700 font-medium capitalize">{{ stores.currentStore.plan }}</span> plan
@@ -55,7 +53,7 @@
           </div>
 
           <!-- Actions -->
-          <div class="flex gap-2 flex-wrap">
+          <div class="grid w-full grid-cols-2 gap-1.5 sm:flex sm:w-auto sm:flex-wrap sm:justify-end">
             <button
               class="admin-btn-secondary"
               @click="handleImpersonate"
@@ -105,8 +103,8 @@
       </section>
 
       <!-- Tabs -->
-      <div class="owner-segmented max-w-full overflow-x-auto">
-        <nav class="flex gap-1">
+      <div class="owner-segmented w-full max-w-full overflow-x-auto sm:w-auto">
+        <nav class="flex min-w-max gap-1">
           <button
             v-for="tab in tabs"
             :key="tab.id"
@@ -119,38 +117,38 @@
       </div>
 
       <!-- Overview tab -->
-      <div v-if="activeTab === 'overview'" class="space-y-5">
+      <div v-if="activeTab === 'overview'" class="space-y-3">
         <!-- Key metrics (always read-only) -->
-        <div class="admin-card p-5">
-          <div class="owner-panel-header">
+        <div class="admin-card p-4 lg:grid lg:grid-cols-[minmax(170px,0.65fr)_minmax(0,3fr)] lg:items-center lg:gap-3">
+          <div class="owner-panel-header !mb-2 lg:!mb-0">
             <div>
               <h2 class="admin-section-title">Key Metrics</h2>
-              <p class="admin-section-copy">High-level store performance and subscription details.</p>
+              <p class="admin-section-copy">Performance at a glance.</p>
             </div>
           </div>
-          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div class="owner-stat-card flex-col items-start gap-2">
-              <p class="text-slate-500 text-xs font-medium uppercase tracking-wider mb-1">Total Orders</p>
-              <p class="text-2xl font-bold text-slate-950">{{ stores.currentStore.total_orders.toLocaleString() }}</p>
+          <div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <div class="owner-stat-card flex-col items-start !gap-0.5">
+              <p class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Total Orders</p>
+              <p class="text-lg font-bold text-slate-950">{{ stores.currentStore.total_orders.toLocaleString() }}</p>
             </div>
-            <div class="owner-stat-card flex-col items-start gap-2">
-              <p class="text-slate-500 text-xs font-medium uppercase tracking-wider mb-1">Total GMV</p>
-              <p class="text-2xl font-bold text-slate-950">KES {{ formatMoney(stores.currentStore.total_gmv) }}</p>
+            <div class="owner-stat-card flex-col items-start !gap-0.5">
+              <p class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Total GMV</p>
+              <p class="text-lg font-bold text-slate-950">KES {{ formatMoney(stores.currentStore.total_gmv) }}</p>
             </div>
-            <div class="owner-stat-card flex-col items-start gap-2">
-              <p class="text-slate-500 text-xs font-medium uppercase tracking-wider mb-1">Plan</p>
-              <p class="text-2xl font-bold text-slate-950 capitalize">{{ stores.currentStore.plan }}</p>
+            <div class="owner-stat-card flex-col items-start !gap-0.5">
+              <p class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Plan</p>
+              <p class="text-lg font-bold capitalize text-slate-950">{{ stores.currentStore.plan }}</p>
             </div>
-            <div class="owner-stat-card flex-col items-start gap-2">
-              <p class="text-slate-500 text-xs font-medium uppercase tracking-wider mb-1">Member since</p>
-              <p class="text-base font-bold text-slate-950">{{ formatDate(stores.currentStore.created_at) }}</p>
+            <div class="owner-stat-card flex-col items-start !gap-0.5">
+              <p class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Member since</p>
+              <p class="text-sm font-bold text-slate-950">{{ formatDate(stores.currentStore.created_at) }}</p>
             </div>
           </div>
         </div>
 
         <!-- Profile edit card -->
-        <div class="admin-card p-5">
-          <div class="flex items-center justify-between mb-5">
+        <div class="admin-card p-4">
+          <div class="mb-3 flex items-center justify-between gap-3">
             <div>
               <h2 class="admin-section-title">Store & Owner Profile</h2>
               <p class="admin-section-copy">Contact, URL, brand, and operational profile.</p>
@@ -169,40 +167,40 @@
           </div>
 
           <!-- Read-only view -->
-          <div v-if="!editingProfile" class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-3">Owner Contact</p>
-              <dl class="space-y-3">
-                <div class="flex justify-between">
+          <div v-if="!editingProfile" class="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <div class="rounded-xl bg-slate-50/70 p-3">
+              <p class="mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">Owner Contact</p>
+              <dl class="space-y-2">
+                <div class="flex justify-between gap-3">
                   <dt class="text-slate-500 text-sm">Name</dt>
-                  <dd class="text-slate-800 text-sm font-medium">{{ stores.currentStore.owner_name ?? '—' }}</dd>
+                  <dd class="min-w-0 truncate text-right text-sm font-medium text-slate-800">{{ stores.currentStore.owner_name ?? '—' }}</dd>
                 </div>
-                <div class="flex justify-between">
+                <div class="flex justify-between gap-3">
                   <dt class="text-slate-500 text-sm">Phone</dt>
-                  <dd class="text-slate-800 text-sm font-medium">{{ stores.currentStore.owner_phone ?? '—' }}</dd>
+                  <dd class="min-w-0 truncate text-right text-sm font-medium text-slate-800">{{ stores.currentStore.owner_phone ?? '—' }}</dd>
                 </div>
-                <div class="flex justify-between">
+                <div class="flex justify-between gap-3">
                   <dt class="text-slate-500 text-sm">Email</dt>
-                  <dd class="text-slate-800 text-sm font-medium">{{ stores.currentStore.owner_email ?? '—' }}</dd>
+                  <dd class="min-w-0 truncate text-right text-sm font-medium text-slate-800">{{ stores.currentStore.owner_email ?? '—' }}</dd>
                 </div>
               </dl>
             </div>
-            <div>
-              <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-3">Store Details</p>
-              <dl class="space-y-3">
-                <div class="flex justify-between">
+            <div class="rounded-xl bg-slate-50/70 p-3">
+              <p class="mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">Store Details</p>
+              <dl class="space-y-2">
+                <div class="flex justify-between gap-3">
                   <dt class="text-slate-500 text-sm">Store name</dt>
-                  <dd class="text-slate-800 text-sm font-medium">{{ stores.currentStore.name }}</dd>
+                  <dd class="min-w-0 truncate text-right text-sm font-medium text-slate-800">{{ stores.currentStore.name }}</dd>
                 </div>
-                <div class="flex justify-between">
+                <div class="flex justify-between gap-3">
                   <dt class="text-slate-500 text-sm">Slug</dt>
-                  <dd class="text-slate-800 text-sm font-mono">{{ stores.currentStore.slug }}</dd>
+                  <dd class="min-w-0 truncate text-right font-mono text-sm text-slate-800">{{ stores.currentStore.slug }}</dd>
                 </div>
-                <div class="flex justify-between">
+                <div class="flex justify-between gap-3">
                   <dt class="text-slate-500 text-sm">Address</dt>
-                  <dd class="text-slate-800 text-sm font-medium">{{ stores.currentStore.address ?? '—' }}</dd>
+                  <dd class="min-w-0 truncate text-right text-sm font-medium text-slate-800">{{ stores.currentStore.address ?? '—' }}</dd>
                 </div>
-                <div class="flex justify-between">
+                <div class="flex justify-between gap-3">
                   <dt class="text-slate-500 text-sm">Delivery</dt>
                   <dd class="text-sm font-medium" :class="stores.currentStore.delivery_enabled ? 'text-emerald-700' : 'text-slate-500'">
                     {{ stores.currentStore.delivery_enabled ? 'Enabled' : 'Disabled' }}
@@ -213,11 +211,11 @@
           </div>
 
           <!-- Editable form -->
-          <form v-else @submit.prevent="saveProfile" class="space-y-5">
+          <form v-else @submit.prevent="saveProfile" class="space-y-3">
             <!-- Owner info -->
             <div>
-              <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-3">Owner Contact</p>
-              <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <p class="mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">Owner Contact</p>
+              <div class="grid grid-cols-1 gap-2 sm:grid-cols-3">
                 <div>
                   <label class="block text-xs font-semibold text-slate-500 mb-1">Full name</label>
                   <input v-model="profileForm.owner_name" type="text" class="admin-input text-sm" placeholder="Jane Doe" />
@@ -235,8 +233,8 @@
 
             <!-- Store details -->
             <div>
-              <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-3">Store Details</p>
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <p class="mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">Store Details</p>
+              <div class="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
                 <div>
                   <label class="block text-xs font-semibold text-slate-500 mb-1">Store name</label>
                   <input v-model="profileForm.name" type="text" class="admin-input text-sm" placeholder="My Store" />
@@ -276,7 +274,7 @@
                 <div>
                   <label class="block text-xs font-semibold text-slate-500 mb-1">Font</label>
                   <select v-model="profileForm.font_family" class="admin-input text-sm">
-                    <option v-for="f in fonts" :key="f" :value="f">{{ f }}</option>
+                    <option v-for="f in fonts" :key="f" :value="f" :style="{ fontFamily: storeFontStack(f) }">{{ f }}</option>
                   </select>
                 </div>
               </div>
@@ -363,8 +361,8 @@ import StatusBadge from '@/components/admin/StatusBadge.vue'
 import SuspendModal from '@/components/admin/SuspendModal.vue'
 import ExtendTrialModal from '@/components/admin/ExtendTrialModal.vue'
 import ResetPasswordModal from '@/components/admin/ResetPasswordModal.vue'
-import BillingHistoryTab from '@/components/admin/BillingHistoryTab.vue'
 import SubscriptionTab from '@/components/admin/SubscriptionTab.vue'
+import { STORE_FONTS, storeFontStack } from '@qesuite/shared'
 
 const route = useRoute()
 const router = useRouter()
@@ -396,7 +394,7 @@ const storeCategories = [
   { value: 'other', label: 'Other' },
 ]
 
-const fonts = ['Inter', 'Poppins', 'DM Sans', 'Nunito']
+const fonts = STORE_FONTS
 
 const profileForm = reactive({
   owner_name: '',

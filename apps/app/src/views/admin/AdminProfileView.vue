@@ -4,7 +4,6 @@
     <section class="admin-page-hero">
       <div class="admin-page-header">
         <div class="min-w-0">
-          <div class="owner-eyebrow">Account security</div>
           <h1 class="owner-title">My Profile</h1>
           <p class="owner-subtitle">Update your admin identity, contact details, and password.</p>
         </div>

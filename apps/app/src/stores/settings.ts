@@ -4,6 +4,7 @@ import { apiGetTenant, apiUpdateTenant, apiGetStoreSettings, apiUpdateStoreSetti
 import type { Tenant, StoreSettings, StoreSettingsUpdate, Subscription } from '@qesuite/types'
 import type { TenantUpdate } from '@/api/settings'
 import { useToast } from '@/composables/useToast'
+import { parseAppTimestamp, storeFontStack } from '@qesuite/shared'
 
 export const useSettingsStore = defineStore('settings', () => {
   const tenant = ref<Tenant | null>(null)
@@ -22,7 +23,7 @@ export const useSettingsStore = defineStore('settings', () => {
 
   const trialDaysLeft = computed(() => {
     if (!tenant.value?.trial_ends_at) return null
-    const diff = new Date(tenant.value.trial_ends_at).getTime() - Date.now()
+    const diff = parseAppTimestamp(tenant.value.trial_ends_at).getTime() - Date.now()
     return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)))
   })
 
@@ -32,11 +33,11 @@ export const useSettingsStore = defineStore('settings', () => {
   const subscriptionDaysLeft = computed(() => {
     const status = tenant.value?.subscription_status
     if (status === 'trialing' && tenant.value?.trial_ends_at) {
-      const diff = new Date(tenant.value.trial_ends_at).getTime() - Date.now()
+      const diff = parseAppTimestamp(tenant.value.trial_ends_at).getTime() - Date.now()
       return Math.max(0, Math.ceil(diff / 86_400_000))
     }
     if (status === 'active' && subscription.value?.current_period_end) {
-      const diff = new Date(subscription.value.current_period_end).getTime() - Date.now()
+      const diff = parseAppTimestamp(subscription.value.current_period_end).getTime() - Date.now()
       return Math.max(0, Math.ceil(diff / 86_400_000))
     }
     return null
@@ -130,7 +131,7 @@ export const useSettingsStore = defineStore('settings', () => {
   function applyBranding(t: Tenant) {
     document.documentElement.style.setProperty('--color-primary', t.primary_color)
     document.documentElement.style.setProperty('--color-accent', t.accent_color)
-    document.documentElement.style.setProperty('--font-family', `'${t.font_family}', sans-serif`)
+    document.documentElement.style.setProperty('--font-family', storeFontStack(t.font_family))
   }
 
   function toggleDarkMode() {

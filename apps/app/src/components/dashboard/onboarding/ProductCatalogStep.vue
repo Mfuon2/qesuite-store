@@ -1,20 +1,20 @@
 <template>
-  <div class="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_300px]">
-    <div class="space-y-4">
-      <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+  <div class="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_240px]">
+    <div class="space-y-3">
+      <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h3 class="text-base font-extrabold text-slate-950">Products</h3>
-          <p class="text-sm font-medium text-slate-500">{{ localProducts.length }} item{{ localProducts.length === 1 ? '' : 's' }} ready for launch</p>
+          <h3 class="text-sm font-extrabold text-slate-950">Products</h3>
+          <p class="text-xs font-medium text-slate-500">{{ localProducts.length }} item{{ localProducts.length === 1 ? '' : 's' }} ready for launch</p>
         </div>
         <div class="flex gap-2">
-          <label class="inline-flex h-10 cursor-pointer items-center gap-2 rounded-2xl border border-slate-100 bg-white px-3 text-sm font-extrabold text-slate-700 shadow-[0_8px_20px_rgba(15,23,42,0.035)] transition hover:bg-emerald-50">
+          <label class="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-xl border border-slate-100 bg-white px-3 text-xs font-extrabold text-slate-700 shadow-[0_8px_20px_rgba(15,23,42,0.035)] transition hover:bg-emerald-50">
             <ArrowUpTrayIcon class="h-4 w-4" />
             Import CSV
             <input type="file" accept=".csv" class="hidden" @change="handleCsvImport" />
           </label>
           <button
             @click="showForm = true"
-            class="inline-flex h-10 items-center gap-2 rounded-2xl bg-emerald-700 px-3 text-sm font-extrabold text-white shadow-[0_12px_24px_rgba(20,132,71,0.20)] transition hover:bg-emerald-800"
+            class="inline-flex h-9 items-center gap-1.5 rounded-xl bg-emerald-700 px-3 text-xs font-extrabold text-white shadow-[0_12px_24px_rgba(20,132,71,0.20)] transition hover:bg-emerald-800"
           >
             <PlusIcon class="h-4 w-4" />
             Add Product
@@ -23,7 +23,7 @@
       </div>
 
       <Transition name="slide">
-        <div v-if="showForm" class="qs-card-soft border-emerald-100 bg-emerald-50/40 p-4">
+        <div v-if="showForm" class="qs-card-soft border-emerald-100 bg-emerald-50/40 p-3">
           <div class="mb-3 flex items-center justify-between">
             <h4 class="flex items-center gap-2 text-sm font-extrabold text-slate-950">
               <PlusCircleIcon class="h-4 w-4 text-emerald-700" />
@@ -32,14 +32,15 @@
             <button class="text-sm font-bold text-slate-500" @click="cancelForm">Cancel</button>
           </div>
 
-          <div class="grid grid-cols-1 gap-3 md:grid-cols-[180px_minmax(0,1fr)]">
+          <div class="grid grid-cols-1 gap-2 md:grid-cols-[140px_minmax(0,1fr)]">
             <div class="row-span-4">
               <label class="admin-label">Product Image</label>
               <ImageUpload
                 ref="imageUploadRef"
                 :model-value="newProduct.image_url"
                 :disabled="imageUploading"
-                class="h-[148px]"
+                class="h-[108px]"
+                compact
                 @file-selected="handleProductImage"
               />
             </div>
@@ -87,14 +88,14 @@
             </div>
           </div>
 
-          <div class="mt-3 flex justify-end gap-2">
-            <button @click="cancelForm" class="h-10 rounded-xl border border-slate-100 bg-white px-4 text-sm font-extrabold text-slate-600">
+          <div class="mt-2 flex justify-end gap-2">
+            <button @click="cancelForm" class="h-9 rounded-xl border border-slate-100 bg-white px-3 text-xs font-extrabold text-slate-600">
               Cancel
             </button>
             <button
               @click="saveProduct"
               :disabled="!newProduct.name || !newProduct.price"
-              class="h-10 rounded-xl bg-emerald-700 px-4 text-sm font-extrabold text-white shadow-[0_10px_22px_rgba(20,132,71,0.18)] disabled:opacity-60"
+              class="h-9 rounded-xl bg-emerald-700 px-3 text-xs font-extrabold text-white shadow-[0_10px_22px_rgba(20,132,71,0.18)] disabled:opacity-60"
             >
               {{ editingIdx !== null ? 'Update' : 'Add Product' }}
             </button>
@@ -106,9 +107,9 @@
         <div
           v-for="(product, idx) in localProducts"
           :key="idx"
-          class="qs-card qs-card-interactive flex items-center gap-3 p-3"
+          class="qs-card qs-card-interactive flex items-center gap-2 p-2"
         >
-          <div class="h-12 w-12 shrink-0 overflow-hidden rounded-2xl bg-emerald-50">
+          <div class="h-10 w-10 shrink-0 overflow-hidden rounded-xl bg-emerald-50">
             <img v-if="product.image_url" :src="product.image_url" :alt="product.name" class="h-full w-full object-cover" />
             <div v-else class="grid h-full w-full place-items-center text-emerald-700">
               <CubeIcon class="h-5 w-5" />
@@ -136,26 +137,26 @@
             </div>
           </div>
           <div class="flex items-center gap-1">
-            <button @click="editProduct(idx)" class="grid h-9 w-9 place-items-center rounded-xl text-slate-400 transition hover:bg-emerald-50 hover:text-emerald-700">
+            <button @click="editProduct(idx)" class="grid h-8 w-8 place-items-center rounded-lg text-slate-400 transition hover:bg-emerald-50 hover:text-emerald-700">
               <PencilIcon class="h-4 w-4" />
             </button>
-            <button @click="removeProduct(idx)" class="grid h-9 w-9 place-items-center rounded-xl text-slate-400 transition hover:bg-red-50 hover:text-red-500">
+            <button @click="removeProduct(idx)" class="grid h-8 w-8 place-items-center rounded-lg text-slate-400 transition hover:bg-red-50 hover:text-red-500">
               <TrashIcon class="h-4 w-4" />
             </button>
           </div>
         </div>
       </div>
 
-      <div v-else-if="!showForm" class="qs-card-soft flex flex-col items-center justify-center border-dashed py-12 text-center">
-        <CubeIcon class="mb-3 h-10 w-10 text-slate-300" />
+      <div v-else-if="!showForm" class="qs-card-soft flex flex-col items-center justify-center border-dashed py-8 text-center">
+        <CubeIcon class="mb-2 h-8 w-8 text-slate-300" />
         <p class="text-sm font-extrabold text-slate-700">No products yet</p>
         <p class="mt-1 text-sm font-medium text-slate-500">Add a product or import a CSV to continue.</p>
       </div>
     </div>
 
-    <aside class="qs-card-soft h-fit p-4">
+    <aside class="qs-card-soft hidden h-fit p-3 lg:block">
       <h4 class="text-sm font-extrabold text-slate-950">Catalog checklist</h4>
-      <div class="mt-3 space-y-3">
+      <div class="mt-2 space-y-2">
         <div class="flex items-center gap-3">
           <span class="grid h-8 w-8 place-items-center rounded-xl bg-emerald-50 text-emerald-700">
             <CubeIcon class="h-4 w-4" />

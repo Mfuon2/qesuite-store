@@ -2,14 +2,10 @@ import { Hono } from 'hono'
 import { Env, Variables } from '../types'
 import { authMiddleware } from '../middleware/auth'
 import { tenantGuard } from '../middleware/tenant'
+import { addDays } from '@qesuite/shared'
+import { inclusiveDateRange } from '../lib/time'
 
 const analytics = new Hono<{ Bindings: Env; Variables: Variables }>()
-
-function daysAgo(n: number): string {
-  const d = new Date()
-  d.setUTCDate(d.getUTCDate() - n)
-  return d.toISOString().substring(0, 10)
-}
 
 interface DateRange {
   dateFrom: string  // YYYY-MM-DD inclusive start
@@ -20,32 +16,79 @@ interface DateRange {
 }
 
 function parseDateRange(period?: string | null, from?: string | null, to?: string | null): DateRange {
-  if (from && to) {
-    const ms = new Date(to).getTime() - new Date(from).getTime()
-    const days = Math.max(1, Math.round(ms / 86_400_000) + 1)
-    const prevTo = new Date(new Date(from).getTime() - 86_400_000).toISOString().substring(0, 10)
-    const prevFrom = new Date(new Date(from).getTime() - days * 86_400_000).toISOString().substring(0, 10)
-    return { dateFrom: from, dateTo: to, prevFrom, prevTo, days }
-  }
-  const p = period ?? 'month'
-  const days = p === 'today' ? 1 : p === 'week' ? 7 : 30
+  const { dateFrom, dateTo } = inclusiveDateRange(period ?? 'month', from, to)
+  const ms = new Date(dateTo).getTime() - new Date(dateFrom).getTime()
+  const days = Math.max(1, Math.round(ms / 86_400_000) + 1)
+  const prevTo = addDays(dateFrom, -1)
+  const prevFrom = addDays(prevTo, -(days - 1))
   return {
-    dateFrom: daysAgo(days),
-    dateTo: daysAgo(0),
-    prevFrom: daysAgo(days * 2),
-    prevTo: daysAgo(days),
+    dateFrom,
+    dateTo,
+    prevFrom,
+    prevTo,
     days,
   }
+}
+
+interface SalesSummaryRow {
+  total_orders: number
+  total_revenue: number
+  avg_order_value: number
+  delivered_orders: number
+  cancelled_orders: number
+  online_orders: number
+  pos_sales: number
+}
+
+async function getSalesSummary(
+  db: D1Database,
+  tenantId: string,
+  dateFrom: string,
+  dateTo: string,
+): Promise<SalesSummaryRow | null> {
+  return db.prepare(
+    `WITH sales AS (
+       SELECT total,
+              CASE WHEN status != 'CANCELLED' THEN 1 ELSE 0 END AS included,
+              CASE WHEN status = 'DELIVERED' THEN 1 ELSE 0 END AS completed,
+              CASE WHEN status = 'CANCELLED' THEN 1 ELSE 0 END AS cancelled,
+              CASE WHEN status != 'CANCELLED' THEN 1 ELSE 0 END AS online_order,
+              0 AS pos_sale
+       FROM orders
+       WHERE tenant_id = ? AND date(created_at, '+3 hours') BETWEEN ? AND ?
+
+       UNION ALL
+
+       SELECT total,
+              CASE WHEN status = 'completed' THEN 1 ELSE 0 END AS included,
+              CASE WHEN status = 'completed' THEN 1 ELSE 0 END AS completed,
+              CASE WHEN status = 'voided' THEN 1 ELSE 0 END AS cancelled,
+              0 AS online_order,
+              CASE WHEN status = 'completed' THEN 1 ELSE 0 END AS pos_sale
+       FROM pos_sales
+       WHERE tenant_id = ? AND date(created_at, '+3 hours') BETWEEN ? AND ?
+     )
+     SELECT COALESCE(SUM(included), 0) AS total_orders,
+            COALESCE(SUM(CASE WHEN included = 1 THEN total ELSE 0 END), 0) AS total_revenue,
+            COALESCE(AVG(CASE WHEN included = 1 THEN total END), 0) AS avg_order_value,
+            COALESCE(SUM(completed), 0) AS delivered_orders,
+            COALESCE(SUM(cancelled), 0) AS cancelled_orders,
+            COALESCE(SUM(online_order), 0) AS online_orders,
+            COALESCE(SUM(pos_sale), 0) AS pos_sales
+     FROM sales`
+  ).bind(
+    tenantId, dateFrom, dateTo,
+    tenantId, dateFrom, dateTo,
+  ).first<SalesSummaryRow>()
 }
 
 // Generate every date between two ISO date strings (inclusive)
 function datesBetween(from: string, to: string): string[] {
   const dates: string[] = []
-  const end = new Date(to).getTime()
-  let cur = new Date(from).getTime()
-  while (cur <= end) {
-    dates.push(new Date(cur).toISOString().substring(0, 10))
-    cur += 86_400_000
+  let current = from
+  while (current <= to) {
+    dates.push(current)
+    current = addDays(current, 1)
   }
   return dates
 }
@@ -60,32 +103,10 @@ analytics.get('/summary', authMiddleware, tenantGuard, async (c) => {
       c.req.query('to'),
     )
 
-    const current = await c.env.qesuite_db.prepare(
-      `SELECT
-         COUNT(*) FILTER (WHERE status != 'CANCELLED') as total_orders,
-         COALESCE(SUM(total) FILTER (WHERE status != 'CANCELLED'), 0) as total_revenue,
-         COALESCE(AVG(total) FILTER (WHERE status != 'CANCELLED'), 0) as avg_order_value,
-         COUNT(*) FILTER (WHERE status = 'DELIVERED') as delivered_orders,
-         COUNT(*) FILTER (WHERE status = 'CANCELLED') as cancelled_orders
-       FROM orders
-       WHERE tenant_id = ? AND date(created_at) >= ? AND date(created_at) <= ?`
-    ).bind(tenantId, range.dateFrom, range.dateTo).first<{
-      total_orders: number; total_revenue: number; avg_order_value: number
-      delivered_orders: number; cancelled_orders: number
-    }>()
-
-    const previous = await c.env.qesuite_db.prepare(
-      `SELECT
-         COUNT(*) FILTER (WHERE status != 'CANCELLED') as total_orders,
-         COALESCE(SUM(total) FILTER (WHERE status != 'CANCELLED'), 0) as total_revenue,
-         COUNT(*) FILTER (WHERE status = 'DELIVERED') as delivered_orders,
-         COUNT(*) FILTER (WHERE status = 'CANCELLED') as cancelled_orders
-       FROM orders
-       WHERE tenant_id = ? AND date(created_at) >= ? AND date(created_at) <= ?`
-    ).bind(tenantId, range.prevFrom, range.prevTo).first<{
-      total_orders: number; total_revenue: number
-      delivered_orders: number; cancelled_orders: number
-    }>()
+    const [current, previous] = await Promise.all([
+      getSalesSummary(c.env.qesuite_db, tenantId, range.dateFrom, range.dateTo),
+      getSalesSummary(c.env.qesuite_db, tenantId, range.prevFrom, range.prevTo),
+    ])
 
     const totalOrders = current?.total_orders ?? 0
     const prevTotalOrders = previous?.total_orders ?? 0
@@ -102,13 +123,17 @@ analytics.get('/summary', authMiddleware, tenantGuard, async (c) => {
         avg_order_value: Math.round(current?.avg_order_value ?? 0),
         cancelled_orders: current?.cancelled_orders ?? 0,
         completion_rate: completionRate,
+        online_orders: current?.online_orders ?? 0,
+        pos_sales: current?.pos_sales ?? 0,
         period_days: range.days,
         prev: {
           total_revenue: Math.round(previous?.total_revenue ?? 0),
           total_orders: prevTotalOrders,
-          avg_order_value: 0,
+          avg_order_value: Math.round(previous?.avg_order_value ?? 0),
           cancelled_orders: previous?.cancelled_orders ?? 0,
           completion_rate: prevCompletionRate,
+          online_orders: previous?.online_orders ?? 0,
+          pos_sales: previous?.pos_sales ?? 0,
           period_days: range.days,
         },
       },
@@ -117,6 +142,81 @@ analytics.get('/summary', authMiddleware, tenantGuard, async (c) => {
   } catch (err) {
     console.error('analytics summary error', err)
     return c.json({ success: false, error: 'Failed to load analytics', data: null }, 500)
+  }
+})
+
+// GET /api/analytics/employees — attributed online and POS performance by staff member
+analytics.get('/employees', authMiddleware, tenantGuard, async (c) => {
+  try {
+    const tenantId = c.get('user').tenant_id!
+    const range = parseDateRange(
+      c.req.query('period') ?? c.req.query('range'),
+      c.req.query('from'),
+      c.req.query('to'),
+    )
+    const rows = await c.env.qesuite_db.prepare(
+      `WITH attributed_sales AS (
+         SELECT handled_by_user_id AS user_id,
+                1 AS total_sales,
+                1 AS online_orders,
+                0 AS pos_sales,
+                CASE WHEN status != 'CANCELLED' THEN total ELSE 0 END AS revenue,
+                CASE WHEN status = 'DELIVERED' THEN 1 ELSE 0 END AS completed_sales,
+                CASE WHEN status = 'CANCELLED' THEN 1 ELSE 0 END AS cancelled_or_voided,
+                updated_at AS sale_at
+         FROM orders
+         WHERE tenant_id = ? AND handled_by_user_id IS NOT NULL
+           AND date(updated_at, '+3 hours') BETWEEN ? AND ?
+
+         UNION ALL
+
+         SELECT served_by_user_id AS user_id,
+                1 AS total_sales,
+                0 AS online_orders,
+                1 AS pos_sales,
+                CASE WHEN status = 'completed' THEN total ELSE 0 END AS revenue,
+                CASE WHEN status = 'completed' THEN 1 ELSE 0 END AS completed_sales,
+                CASE WHEN status = 'voided' THEN 1 ELSE 0 END AS cancelled_or_voided,
+                COALESCE(voided_at, created_at) AS sale_at
+         FROM pos_sales
+         WHERE tenant_id = ? AND served_by_user_id IS NOT NULL
+           AND date(COALESCE(voided_at, created_at), '+3 hours') BETWEEN ? AND ?
+       )
+       SELECT u.id AS user_id, u.name, u.job_title, u.is_active,
+              COALESCE(SUM(s.total_sales), 0) AS total_sales,
+              COALESCE(SUM(s.online_orders), 0) AS online_orders,
+              COALESCE(SUM(s.pos_sales), 0) AS pos_sales,
+              COALESCE(SUM(s.revenue), 0) AS revenue,
+              CASE WHEN SUM(s.completed_sales) > 0
+                THEN ROUND(CAST(SUM(s.revenue) AS REAL) / SUM(s.completed_sales)) ELSE 0 END AS avg_sale,
+              COALESCE(SUM(s.completed_sales), 0) AS completed_sales,
+              COALESCE(SUM(s.cancelled_or_voided), 0) AS cancelled_or_voided,
+              CASE WHEN SUM(s.total_sales) > 0
+                THEN ROUND(CAST(SUM(s.completed_sales) AS REAL) * 100 / SUM(s.total_sales), 1) ELSE 0 END AS completion_rate,
+              MAX(s.sale_at) AS last_sale_at
+       FROM users u
+       LEFT JOIN attributed_sales s ON s.user_id = u.id
+       WHERE u.tenant_id = ? AND u.role = 'staff'
+       GROUP BY u.id, u.name, u.job_title, u.is_active
+       ORDER BY revenue DESC, total_sales DESC, u.name ASC`
+    ).bind(
+      tenantId, range.dateFrom, range.dateTo,
+      tenantId, range.dateFrom, range.dateTo,
+      tenantId,
+    ).all<{
+      user_id: string; name: string; job_title: string | null; is_active: number
+      total_sales: number; online_orders: number; pos_sales: number; revenue: number
+      avg_sale: number; completed_sales: number; cancelled_or_voided: number
+      completion_rate: number; last_sale_at: string | null
+    }>()
+    return c.json({
+      success: true,
+      data: rows.results.map(row => ({ ...row, is_active: Boolean(row.is_active) })),
+      error: null,
+    })
+  } catch (error) {
+    console.error(JSON.stringify({ message: 'employee analytics failed', error: error instanceof Error ? error.message : String(error) }))
+    return c.json({ success: false, error: 'Failed to load employee performance', data: null }, 500)
   }
 })
 
@@ -131,15 +231,27 @@ analytics.get('/revenue', authMiddleware, tenantGuard, async (c) => {
     )
 
     const rows = await c.env.qesuite_db.prepare(
-      `SELECT date(created_at) as date,
-              COUNT(*) as order_count,
-              COALESCE(SUM(total), 0) as revenue
-       FROM orders
-       WHERE tenant_id = ? AND date(created_at) >= ? AND date(created_at) <= ?
-         AND status NOT IN ('CANCELLED')
-       GROUP BY date(created_at)
+      `WITH sales AS (
+         SELECT date(created_at, '+3 hours') AS date, total
+         FROM orders
+         WHERE tenant_id = ? AND status != 'CANCELLED'
+           AND date(created_at, '+3 hours') BETWEEN ? AND ?
+         UNION ALL
+         SELECT date(created_at, '+3 hours') AS date, total
+         FROM pos_sales
+         WHERE tenant_id = ? AND status = 'completed'
+           AND date(created_at, '+3 hours') BETWEEN ? AND ?
+       )
+       SELECT date,
+              COUNT(*) AS order_count,
+              COALESCE(SUM(total), 0) AS revenue
+       FROM sales
+       GROUP BY date
        ORDER BY date ASC`
-    ).bind(tenantId, range.dateFrom, range.dateTo).all<{ date: string; order_count: number; revenue: number }>()
+    ).bind(
+      tenantId, range.dateFrom, range.dateTo,
+      tenantId, range.dateFrom, range.dateTo,
+    ).all<{ date: string; order_count: number; revenue: number }>()
 
     const dataMap = new Map(rows.results.map((r) => [r.date, r]))
     const series = datesBetween(range.dateFrom, range.dateTo).map((d) =>
@@ -153,6 +265,130 @@ analytics.get('/revenue', authMiddleware, tenantGuard, async (c) => {
   }
 })
 
+interface ExpenseTotalRow {
+  expenses: number
+  expense_count: number
+}
+
+function financialPeriod(revenueValue: number, expenseValue: number) {
+  const revenue = Math.round(revenueValue)
+  const expenses = Math.round(expenseValue)
+  const variance = revenue - expenses
+  return {
+    revenue,
+    expenses,
+    variance,
+    expense_ratio: revenue > 0 ? Number(((expenses / revenue) * 100).toFixed(1)) : null,
+    margin: revenue > 0 ? Number(((variance / revenue) * 100).toFixed(1)) : null,
+  }
+}
+
+// GET /api/analytics/profit-loss — sales, recorded expenses, and operating variance
+analytics.get('/profit-loss', authMiddleware, tenantGuard, async (c) => {
+  try {
+    const tenantId = c.get('user').tenant_id!
+    const range = parseDateRange(
+      c.req.query('period') ?? c.req.query('range'),
+      c.req.query('from'),
+      c.req.query('to'),
+    )
+
+    const expenseTotalSql = `SELECT COALESCE(SUM(amount), 0) AS expenses,
+                                    COUNT(*) AS expense_count
+                             FROM expenses
+                             WHERE tenant_id = ? AND expense_date BETWEEN ? AND ?`
+
+    const [
+      currentSales,
+      previousSales,
+      currentExpenses,
+      previousExpenses,
+      salesRows,
+      expenseRows,
+      categoryRows,
+    ] = await Promise.all([
+      getSalesSummary(c.env.qesuite_db, tenantId, range.dateFrom, range.dateTo),
+      getSalesSummary(c.env.qesuite_db, tenantId, range.prevFrom, range.prevTo),
+      c.env.qesuite_db.prepare(expenseTotalSql)
+        .bind(tenantId, range.dateFrom, range.dateTo).first<ExpenseTotalRow>(),
+      c.env.qesuite_db.prepare(expenseTotalSql)
+        .bind(tenantId, range.prevFrom, range.prevTo).first<ExpenseTotalRow>(),
+      c.env.qesuite_db.prepare(
+        `WITH sales AS (
+           SELECT date(created_at, '+3 hours') AS date, total
+           FROM orders
+           WHERE tenant_id = ? AND status != 'CANCELLED'
+             AND date(created_at, '+3 hours') BETWEEN ? AND ?
+           UNION ALL
+           SELECT date(created_at, '+3 hours') AS date, total
+           FROM pos_sales
+           WHERE tenant_id = ? AND status = 'completed'
+             AND date(created_at, '+3 hours') BETWEEN ? AND ?
+         )
+         SELECT date, COALESCE(SUM(total), 0) AS revenue
+         FROM sales GROUP BY date ORDER BY date`
+      ).bind(
+        tenantId, range.dateFrom, range.dateTo,
+        tenantId, range.dateFrom, range.dateTo,
+      ).all<{ date: string; revenue: number }>(),
+      c.env.qesuite_db.prepare(
+        `SELECT expense_date AS date, COALESCE(SUM(amount), 0) AS expenses
+         FROM expenses
+         WHERE tenant_id = ? AND expense_date BETWEEN ? AND ?
+         GROUP BY expense_date ORDER BY expense_date`
+      ).bind(tenantId, range.dateFrom, range.dateTo)
+        .all<{ date: string; expenses: number }>(),
+      c.env.qesuite_db.prepare(
+        `SELECT category, COALESCE(SUM(amount), 0) AS total, COUNT(*) AS count
+         FROM expenses
+         WHERE tenant_id = ? AND expense_date BETWEEN ? AND ?
+         GROUP BY category ORDER BY total DESC`
+      ).bind(tenantId, range.dateFrom, range.dateTo)
+        .all<{ category: string; total: number; count: number }>(),
+    ])
+
+    const current = financialPeriod(
+      currentSales?.total_revenue ?? 0,
+      currentExpenses?.expenses ?? 0,
+    )
+    const previous = financialPeriod(
+      previousSales?.total_revenue ?? 0,
+      previousExpenses?.expenses ?? 0,
+    )
+    const salesByDate = new Map(salesRows.results.map(row => [row.date, row.revenue]))
+    const expensesByDate = new Map(expenseRows.results.map(row => [row.date, row.expenses]))
+    const daily = datesBetween(range.dateFrom, range.dateTo).map(date => {
+      const revenue = Math.round(salesByDate.get(date) ?? 0)
+      const expenses = Math.round(expensesByDate.get(date) ?? 0)
+      return { date, revenue, expenses, variance: revenue - expenses }
+    })
+
+    return c.json({
+      success: true,
+      data: {
+        date_from: range.dateFrom,
+        date_to: range.dateTo,
+        ...current,
+        expense_count: currentExpenses?.expense_count ?? 0,
+        online_orders: currentSales?.online_orders ?? 0,
+        pos_sales: currentSales?.pos_sales ?? 0,
+        previous: {
+          ...previous,
+          expense_count: previousExpenses?.expense_count ?? 0,
+          online_orders: previousSales?.online_orders ?? 0,
+          pos_sales: previousSales?.pos_sales ?? 0,
+        },
+        daily,
+        by_category: categoryRows.results,
+      },
+      error: null,
+    })
+  } catch (err) {
+    console.error('analytics profit-loss error', err)
+    return c.json({ success: false, error: 'Failed to load sales and expense performance', data: null }, 500)
+  }
+})
+
 // GET /api/analytics/top-products — top 5 by revenue and volume
 analytics.get('/top-products', authMiddleware, tenantGuard, async (c) => {
   try {
@@ -163,31 +399,45 @@ analytics.get('/top-products', authMiddleware, tenantGuard, async (c) => {
       c.req.query('to'),
     )
 
-    const byRevenue = await c.env.qesuite_db.prepare(
-      `SELECT oi.product_name,
-              SUM(oi.quantity * oi.price) as total_revenue,
-              SUM(oi.quantity) as total_quantity
+    const productSalesSql = `WITH product_sales AS (
+       SELECT oi.product_name, oi.quantity, oi.quantity * oi.price AS line_total
        FROM order_items oi
        JOIN orders o ON o.id = oi.order_id
-       WHERE o.tenant_id = ? AND date(o.created_at) >= ? AND date(o.created_at) <= ?
-         AND o.status NOT IN ('CANCELLED')
-       GROUP BY oi.product_name
+       WHERE o.tenant_id = ? AND o.status != 'CANCELLED'
+         AND date(o.created_at, '+3 hours') BETWEEN ? AND ?
+       UNION ALL
+       SELECT psi.product_name, psi.quantity, psi.line_total
+       FROM pos_sale_items psi
+       JOIN pos_sales ps ON ps.id = psi.sale_id
+       WHERE ps.tenant_id = ? AND ps.status = 'completed'
+         AND date(ps.created_at, '+3 hours') BETWEEN ? AND ?
+     )`
+    const productSalesParams = [
+      tenantId, range.dateFrom, range.dateTo,
+      tenantId, range.dateFrom, range.dateTo,
+    ]
+
+    const byRevenue = await c.env.qesuite_db.prepare(
+      `${productSalesSql}
+       SELECT product_name,
+              SUM(line_total) AS total_revenue,
+              SUM(quantity) AS total_quantity
+       FROM product_sales
+       GROUP BY product_name
        ORDER BY total_revenue DESC
        LIMIT 5`
-    ).bind(tenantId, range.dateFrom, range.dateTo).all()
+    ).bind(...productSalesParams).all()
 
     const byVolume = await c.env.qesuite_db.prepare(
-      `SELECT oi.product_name,
-              SUM(oi.quantity) as total_quantity,
-              SUM(oi.quantity * oi.price) as total_revenue
-       FROM order_items oi
-       JOIN orders o ON o.id = oi.order_id
-       WHERE o.tenant_id = ? AND date(o.created_at) >= ? AND date(o.created_at) <= ?
-         AND o.status NOT IN ('CANCELLED')
-       GROUP BY oi.product_name
+      `${productSalesSql}
+       SELECT product_name,
+              SUM(quantity) AS total_quantity,
+              SUM(line_total) AS total_revenue
+       FROM product_sales
+       GROUP BY product_name
        ORDER BY total_quantity DESC
        LIMIT 5`
-    ).bind(tenantId, range.dateFrom, range.dateTo).all()
+    ).bind(...productSalesParams).all()
 
     return c.json({
       success: true,
@@ -211,14 +461,26 @@ analytics.get('/peak-hours', authMiddleware, tenantGuard, async (c) => {
     )
 
     const rows = await c.env.qesuite_db.prepare(
-      `SELECT strftime('%H', created_at) as hour,
-              COUNT(*) as order_count
-       FROM orders
-       WHERE tenant_id = ? AND date(created_at) >= ? AND date(created_at) <= ?
-         AND status NOT IN ('CANCELLED')
+      `WITH sales AS (
+         SELECT created_at
+         FROM orders
+         WHERE tenant_id = ? AND status != 'CANCELLED'
+           AND date(created_at, '+3 hours') BETWEEN ? AND ?
+         UNION ALL
+         SELECT created_at
+         FROM pos_sales
+         WHERE tenant_id = ? AND status = 'completed'
+           AND date(created_at, '+3 hours') BETWEEN ? AND ?
+       )
+       SELECT strftime('%H', created_at, '+3 hours') AS hour,
+              COUNT(*) AS order_count
+       FROM sales
        GROUP BY hour
        ORDER BY hour ASC`
-    ).bind(tenantId, range.dateFrom, range.dateTo).all<{ hour: string; order_count: number }>()
+    ).bind(
+      tenantId, range.dateFrom, range.dateTo,
+      tenantId, range.dateFrom, range.dateTo,
+    ).all<{ hour: string; order_count: number }>()
 
     const dataMap = new Map(rows.results.map((r) => [r.hour, r.order_count]))
     const series = Array.from({ length: 24 }, (_, i) => ({
@@ -244,15 +506,27 @@ analytics.get('/payment-methods', authMiddleware, tenantGuard, async (c) => {
     )
 
     const rows = await c.env.qesuite_db.prepare(
-      `SELECT payment_method,
-              COUNT(*) as order_count,
-              COALESCE(SUM(total), 0) as revenue
-       FROM orders
-       WHERE tenant_id = ? AND date(created_at) >= ? AND date(created_at) <= ?
-         AND status NOT IN ('CANCELLED')
+      `WITH sales AS (
+         SELECT payment_method, total
+         FROM orders
+         WHERE tenant_id = ? AND status != 'CANCELLED'
+           AND date(created_at, '+3 hours') BETWEEN ? AND ?
+         UNION ALL
+         SELECT payment_method, total
+         FROM pos_sales
+         WHERE tenant_id = ? AND status = 'completed'
+           AND date(created_at, '+3 hours') BETWEEN ? AND ?
+       )
+       SELECT payment_method,
+              COUNT(*) AS order_count,
+              COALESCE(SUM(total), 0) AS revenue
+       FROM sales
        GROUP BY payment_method
        ORDER BY order_count DESC`
-    ).bind(tenantId, range.dateFrom, range.dateTo).all<{ payment_method: string; order_count: number; revenue: number }>()
+    ).bind(
+      tenantId, range.dateFrom, range.dateTo,
+      tenantId, range.dateFrom, range.dateTo,
+    ).all<{ payment_method: string; order_count: number; revenue: number }>()
 
     const totalOrders = rows.results.reduce((s, r) => s + r.order_count, 0)
     const data = rows.results.map((r) => ({
@@ -283,24 +557,24 @@ analytics.get('/order-status', authMiddleware, tenantGuard, async (c) => {
       c.env.qesuite_db.prepare(
         `SELECT status, COUNT(*) as count
          FROM orders
-         WHERE tenant_id = ? AND date(created_at) >= ? AND date(created_at) <= ?
+         WHERE tenant_id = ? AND date(created_at, '+3 hours') >= ? AND date(created_at, '+3 hours') <= ?
          GROUP BY status`
       ).bind(tenantId, range.dateFrom, range.dateTo).all<{ status: string; count: number }>(),
 
       c.env.qesuite_db.prepare(
         `SELECT COUNT(DISTINCT customer_phone) as count
          FROM orders
-         WHERE tenant_id = ? AND date(created_at) >= ? AND date(created_at) <= ?`
+         WHERE tenant_id = ? AND date(created_at, '+3 hours') >= ? AND date(created_at, '+3 hours') <= ?`
       ).bind(tenantId, range.dateFrom, range.dateTo).first<{ count: number }>(),
 
       // New customers = phones that had no order before this period
       c.env.qesuite_db.prepare(
         `SELECT COUNT(DISTINCT customer_phone) as count
          FROM orders
-         WHERE tenant_id = ? AND date(created_at) >= ? AND date(created_at) <= ?
+         WHERE tenant_id = ? AND date(created_at, '+3 hours') >= ? AND date(created_at, '+3 hours') <= ?
            AND customer_phone NOT IN (
              SELECT DISTINCT customer_phone FROM orders
-             WHERE tenant_id = ? AND date(created_at) < ?
+             WHERE tenant_id = ? AND date(created_at, '+3 hours') < ?
            )`
       ).bind(tenantId, range.dateFrom, range.dateTo, tenantId, range.dateFrom)
         .first<{ count: number }>(),

@@ -1,15 +1,14 @@
 <template>
-  <div class="owner-page">
+  <div class="owner-page owner-page-dense">
     <section class="owner-page-hero">
       <div class="owner-page-header">
         <div class="min-w-0">
-          <div class="owner-eyebrow">Delivery operations</div>
           <h1 class="owner-title">Delivery Team</h1>
           <p class="owner-subtitle">
             Invite riders, keep contact details close, and control who can receive delivery assignments.
           </p>
         </div>
-        <button @click="showAddForm = true" class="owner-primary-action">
+        <button v-if="accessStore.can('delivery.manage_staff')" @click="showAddForm = true" class="owner-primary-action">
           <PlusIcon class="h-4 w-4" />
           Add rider
         </button>
@@ -57,14 +56,14 @@
 
     <!-- Edit rider form -->
     <Transition name="slide">
-      <section v-if="editingRider" class="owner-soft-form mt-5">
-        <div class="mb-4 flex items-start justify-between gap-4">
+      <section v-if="editingRider" class="owner-soft-form mt-3">
+        <div class="mb-2 flex items-start justify-between gap-3">
           <div>
-            <h2 class="flex items-center gap-2 text-base font-bold text-slate-950">
-              <PencilIcon class="h-5 w-5 text-primary" />
+            <h2 class="flex items-center gap-2 text-sm font-bold text-slate-950">
+              <PencilIcon class="h-4 w-4 text-primary" />
               Edit rider — {{ editingRider.name }}
             </h2>
-            <p class="mt-1 text-sm font-medium text-slate-500">Update the rider's name, phone number, or vehicle type.</p>
+            <p class="mt-0.5 text-xs font-medium text-slate-500">Update name, phone, or vehicle.</p>
           </div>
           <button @click="cancelEdit" class="owner-icon-button h-10 w-10">
             <NoSymbolIcon class="h-4 w-4" />
@@ -83,7 +82,7 @@
           </select>
         </div>
 
-        <div class="mt-4 flex justify-end gap-2">
+        <div class="mt-3 flex justify-end gap-2">
           <button @click="cancelEdit" class="owner-secondary-action">Cancel</button>
           <button
             @click="saveRider"
@@ -101,14 +100,14 @@
     </Transition>
 
     <Transition name="slide">
-      <section v-if="showAddForm" class="owner-soft-form mt-5">
-        <div class="mb-4 flex items-start justify-between gap-4">
+      <section v-if="showAddForm" class="owner-soft-form mt-3">
+        <div class="mb-2 flex items-start justify-between gap-3">
           <div>
-            <h2 class="flex items-center gap-2 text-base font-bold text-slate-950">
-              <UserPlusIcon class="h-5 w-5 text-primary" />
+            <h2 class="flex items-center gap-2 text-sm font-bold text-slate-950">
+              <UserPlusIcon class="h-4 w-4 text-primary" />
               Invite new rider
             </h2>
-            <p class="mt-1 text-sm font-medium text-slate-500">A magic link will be sent by SMS after the rider is added.</p>
+            <p class="mt-0.5 text-xs font-medium text-slate-500">An SMS sign-in link is sent after adding the rider.</p>
           </div>
           <button @click="showAddForm = false; newRider = { name: '', phone: '', vehicle_type: '' }" class="owner-icon-button h-10 w-10">
             <NoSymbolIcon class="h-4 w-4" />
@@ -127,7 +126,7 @@
           </select>
         </div>
 
-        <div class="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div class="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <p class="flex items-center gap-2 text-xs font-medium text-slate-500">
             <InformationCircleIcon class="h-4 w-4 shrink-0" />
             Rider sign-in stays passwordless through the delivery app magic link.
@@ -148,9 +147,9 @@
       </section>
     </Transition>
 
-    <section class="mt-5">
-      <div v-if="loading" class="space-y-3">
-        <div v-for="i in 5" :key="i" class="skeleton h-20 rounded-[22px]" />
+    <section class="mt-3">
+      <div v-if="loading" class="space-y-2">
+        <div v-for="i in 5" :key="i" class="skeleton h-14 rounded-2xl" />
       </div>
 
       <div v-else-if="!riders.length" class="owner-empty">
@@ -159,15 +158,15 @@
         <p class="mt-1 text-sm text-slate-500">Add riders to handle customer deliveries.</p>
       </div>
 
-      <div v-else class="owner-panel space-y-2 p-2 sm:p-2">
+      <div v-else class="owner-panel space-y-1.5 !p-1.5">
         <div
           v-for="rider in riders"
           :key="rider.id"
-          class="owner-list-row flex items-center gap-4"
+          class="owner-list-row flex items-center gap-2.5"
         >
           <div class="relative shrink-0">
-            <div class="owner-brand-surface flex h-12 w-12 items-center justify-center rounded-2xl text-primary ring-1">
-              <span class="text-base font-black">{{ rider.name[0].toUpperCase() }}</span>
+            <div class="owner-brand-surface flex h-9 w-9 items-center justify-center rounded-xl text-primary ring-1">
+              <span class="text-sm font-black">{{ rider.name[0].toUpperCase() }}</span>
             </div>
             <span :class="['absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border-2 border-white', rider.is_active ? 'bg-emerald-500' : 'bg-slate-300']" />
           </div>
@@ -191,7 +190,7 @@
             </span>
           </div>
 
-          <div class="flex shrink-0 items-center gap-1">
+          <div v-if="accessStore.can('delivery.manage_staff')" class="flex shrink-0 items-center gap-1">
             <button
               @click="startEdit(rider)"
               class="owner-action-icon"
@@ -226,9 +225,11 @@ import { timeAgo } from '@/composables/useDateFormat'
 import { PlusIcon, PhoneIcon, TruckIcon, UserPlusIcon, LinkIcon, InformationCircleIcon, CheckCircleIcon, NoSymbolIcon, PencilIcon } from '@heroicons/vue/24/outline'
 import { apiGetDeliveryStaff, apiCreateDeliveryStaff, apiUpdateDeliveryStaff, apiSendMagicLink } from '@/api/delivery'
 import { useToast } from '@/composables/useToast'
+import { useAccessStore } from '@/stores/access'
 import type { DeliveryStaff, VehicleType } from '@qesuite/types'
 
 const { showToast } = useToast()
+const accessStore = useAccessStore()
 const riders = ref<DeliveryStaff[]>([])
 const loading = ref(true)
 const showAddForm = ref(false)

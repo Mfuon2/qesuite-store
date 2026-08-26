@@ -36,11 +36,13 @@ const props = defineProps<{
   change?: number
   icon?: Component
   loading?: boolean
+  lowerIsBetter?: boolean
 }>()
 
 const changeClass = computed(() => {
   if (props.change === undefined) return ''
-  return props.change >= 0
+  const isFavourable = props.lowerIsBetter ? props.change <= 0 : props.change >= 0
+  return isFavourable
     ? 'bg-emerald-50 text-emerald-700  '
     : 'bg-red-50 text-red-600  '
 })

@@ -21,6 +21,7 @@ export interface Env {
   WHATSAPP_TOKEN: string
   WHATSAPP_PHONE_ID: string
   APP_BASE_URL: string
+  APP_TIME_ZONE: 'Africa/Nairobi'
   CDN_URL?: string
   SUPABASE_URL: string
   SUPABASE_ANON_KEY: string

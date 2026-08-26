@@ -1,5 +1,5 @@
 <template>
-  <div class="space-y-5">
+  <div class="space-y-3">
     <!-- Loading -->
     <div v-if="loading" class="space-y-4">
       <div v-for="i in 3" :key="i" class="admin-card p-5 animate-pulse">
@@ -79,26 +79,28 @@
       </div>
 
       <!-- ── Adjust Subscription Days ─────────────────────────── -->
-      <div v-if="data.subscription && data.tenant.subscription_status === 'active'" class="admin-card p-5">
-        <div class="flex items-center justify-between mb-4">
-          <div>
-            <h3 class="text-sm font-bold text-slate-950">Adjust Subscription Days</h3>
-            <p class="text-xs text-slate-400 mt-0.5">
-              Current end: <span class="font-semibold text-slate-700">{{ fmtDate(data.subscription.current_period_end) }}</span>
-              <span v-if="daysRemaining !== null" class="ml-2" :class="daysRemaining <= 3 ? 'text-red-600 font-bold' : daysRemaining <= 7 ? 'text-amber-600 font-semibold' : 'text-emerald-600 font-semibold'">
-                ({{ daysRemaining }} day{{ daysRemaining !== 1 ? 's' : '' }} remaining)
-              </span>
-            </p>
-          </div>
+      <div v-if="data.subscription && data.tenant.subscription_status === 'active'" class="admin-card !p-3">
+        <div class="mb-2 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+          <h3 class="text-sm font-bold text-slate-950">Adjust subscription days</h3>
+          <p class="text-[11px] text-slate-400">
+            Ends <span class="font-semibold text-slate-700">{{ fmtDate(data.subscription.current_period_end) }}</span>
+            <span v-if="daysRemaining !== null" class="ml-1" :class="daysRemaining <= 3 ? 'font-bold text-red-600' : daysRemaining <= 7 ? 'font-semibold text-amber-600' : 'font-semibold text-emerald-600'">
+              · {{ daysRemaining }} day{{ daysRemaining !== 1 ? 's' : '' }} left
+            </span>
+          </p>
         </div>
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div class="grid grid-cols-1 gap-2 lg:grid-cols-2">
           <!-- Add days -->
-          <div class="rounded-xl border border-emerald-100 bg-emerald-50/40 p-4">
-            <p class="text-xs font-bold text-emerald-800 mb-3">Extend period</p>
-            <div class="flex items-center gap-2">
+          <div class="flex flex-col gap-2 rounded-xl border border-emerald-100 bg-emerald-50/40 p-2 sm:flex-row sm:items-center">
+            <div class="min-w-[106px] shrink-0">
+              <p class="text-[11px] font-bold text-emerald-800">Extend</p>
+              <p class="text-[10px] font-medium text-emerald-700">New end: {{ previewEnd(adjustAddDays) }}</p>
+            </div>
+            <div class="flex min-w-0 flex-1 items-center gap-1.5">
               <button
-                class="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 transition hover:bg-slate-50 active:scale-95 text-lg font-bold"
+                class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-base font-bold text-slate-700 transition hover:bg-slate-50 active:scale-95"
+                aria-label="Remove one day from extension"
                 @click="adjustAddDays = Math.max(1, adjustAddDays - 1)"
               >−</button>
               <input
@@ -106,31 +108,33 @@
                 type="number"
                 min="1"
                 max="365"
-                class="admin-input text-sm text-center w-20"
+                class="admin-input !h-8 !w-14 !px-1 text-center text-xs"
               />
               <button
-                class="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 transition hover:bg-slate-50 active:scale-95 text-lg font-bold"
+                class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-base font-bold text-slate-700 transition hover:bg-slate-50 active:scale-95"
+                aria-label="Add one day to extension"
                 @click="adjustAddDays++"
               >+</button>
               <button
-                class="admin-btn-primary flex-1 text-sm"
+                class="admin-btn-primary ml-auto min-w-[92px] flex-1 !px-2 sm:flex-none"
                 :disabled="saving"
                 @click="handleAdjustDays(adjustAddDays)"
               >
-                + {{ adjustAddDays }} day{{ adjustAddDays !== 1 ? 's' : '' }}
+                Add {{ adjustAddDays }} day{{ adjustAddDays !== 1 ? 's' : '' }}
               </button>
             </div>
-            <p class="mt-2 text-[11px] text-emerald-700 font-medium">
-              New end: {{ previewEnd(adjustAddDays) }}
-            </p>
           </div>
 
           <!-- Reduce days -->
-          <div class="rounded-xl border border-red-100 bg-red-50/40 p-4">
-            <p class="text-xs font-bold text-red-700 mb-3">Reduce period</p>
-            <div class="flex items-center gap-2">
+          <div class="flex flex-col gap-2 rounded-xl border border-red-100 bg-red-50/40 p-2 sm:flex-row sm:items-center">
+            <div class="min-w-[106px] shrink-0">
+              <p class="text-[11px] font-bold text-red-700">Reduce</p>
+              <p class="text-[10px] font-medium text-red-600">New end: {{ previewEnd(-adjustRemoveDays) }}</p>
+            </div>
+            <div class="flex min-w-0 flex-1 items-center gap-1.5">
               <button
-                class="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 transition hover:bg-slate-50 active:scale-95 text-lg font-bold"
+                class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-base font-bold text-slate-700 transition hover:bg-slate-50 active:scale-95"
+                aria-label="Remove one day from reduction"
                 @click="adjustRemoveDays = Math.max(1, adjustRemoveDays - 1)"
               >−</button>
               <input
@@ -138,23 +142,21 @@
                 type="number"
                 min="1"
                 max="365"
-                class="admin-input text-sm text-center w-20"
+                class="admin-input !h-8 !w-14 !px-1 text-center text-xs"
               />
               <button
-                class="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 transition hover:bg-slate-50 active:scale-95 text-lg font-bold"
+                class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-base font-bold text-slate-700 transition hover:bg-slate-50 active:scale-95"
+                aria-label="Add one day to reduction"
                 @click="adjustRemoveDays++"
               >+</button>
               <button
-                class="admin-btn-danger flex-1 text-sm"
+                class="admin-btn-danger ml-auto min-w-[108px] flex-1 !px-2 sm:flex-none"
                 :disabled="saving"
                 @click="handleAdjustDays(-adjustRemoveDays)"
               >
-                − {{ adjustRemoveDays }} day{{ adjustRemoveDays !== 1 ? 's' : '' }}
+                Remove {{ adjustRemoveDays }} day{{ adjustRemoveDays !== 1 ? 's' : '' }}
               </button>
             </div>
-            <p class="mt-2 text-[11px] text-red-700 font-medium">
-              New end: {{ previewEnd(-adjustRemoveDays) }}
-            </p>
           </div>
         </div>
       </div>
@@ -439,6 +441,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, reactive } from 'vue'
 import { formatDate as fmtDate, formatTime } from '@/composables/useDateFormat'
+import { parseAppTimestamp } from '@qesuite/shared'
 import ConfirmModal from './ConfirmModal.vue'
 import {
   getStoreSubscription, updateStoreSubscription, activateStoreSubscription,
@@ -466,16 +469,16 @@ const adjustRemoveDays = ref(7)
 const daysRemaining = computed(() => {
   const end = data.value?.subscription?.current_period_end
   if (!end) return null
-  return Math.max(0, Math.ceil((new Date(end).getTime() - Date.now()) / 86_400_000))
+  return Math.max(0, Math.ceil((parseAppTimestamp(end).getTime() - Date.now()) / 86_400_000))
 })
 
 function previewEnd(days: number): string {
   const end = data.value?.subscription?.current_period_end
-  const base = end ? new Date(end) : new Date()
+  const base = end ? parseAppTimestamp(end) : new Date()
   base.setDate(base.getDate() + days)
   const min = new Date(); min.setHours(0, 0, 0, 0)
   if (base < min) base.setTime(min.getTime())
-  return base.toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' })
+  return fmtDate(base.toISOString())
 }
 const showActivatePanel = ref(false)
 const showBillingEdit = ref(false)
@@ -501,7 +504,7 @@ const canRevive = computed(() => data.value?.tenant.subscription_status === 'can
 
 const trialDaysLeft = computed(() => {
   if (!data.value?.tenant.trial_ends_at) return 0
-  return Math.max(0, Math.ceil((new Date(data.value.tenant.trial_ends_at).getTime() - Date.now()) / 86400000))
+  return Math.max(0, Math.ceil((parseAppTimestamp(data.value.tenant.trial_ends_at).getTime() - Date.now()) / 86400000))
 })
 
 // ── Helpers ────────────────────────────────────────────────────

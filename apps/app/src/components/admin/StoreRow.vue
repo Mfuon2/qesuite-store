@@ -120,6 +120,7 @@
 import type { AdminStore } from '@/stores/stores'
 import { formatDate } from '@/composables/useDateFormat'
 import StatusBadge from './StatusBadge.vue'
+import { parseAppTimestamp } from '@qesuite/shared'
 
 defineProps<{ store: AdminStore }>()
 defineEmits<{
@@ -137,7 +138,7 @@ function formatMoney(n: number) {
 }
 
 function isExpiringSoon(d: string) {
-  const diff = new Date(d).getTime() - Date.now()
+  const diff = parseAppTimestamp(d).getTime() - Date.now()
   return diff > 0 && diff < 3 * 24 * 60 * 60 * 1000 // < 3 days
 }
 </script>

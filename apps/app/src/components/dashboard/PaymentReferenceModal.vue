@@ -5,10 +5,10 @@
 
       <div class="relative w-full max-w-md bg-white  rounded-2xl shadow-2xl overflow-hidden">
         <!-- Header -->
-        <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100 ">
+        <div class="flex items-center justify-between border-b border-gray-100 px-3 py-3">
           <div class="flex items-center gap-2.5">
-            <div class="p-2 bg-emerald-50  rounded-xl">
-              <BanknotesIcon class="w-5 h-5 text-emerald-600 " />
+            <div class="rounded-lg bg-emerald-50 p-1.5">
+              <BanknotesIcon class="h-4 w-4 text-emerald-600" />
             </div>
             <div>
               <h2 class="text-base font-bold text-gray-900 ">Record Payment</h2>
@@ -21,12 +21,12 @@
         </div>
 
         <!-- Body -->
-        <div class="p-5 space-y-4">
+        <div class="space-y-3 p-3">
           <!-- Amount (read-only) -->
           <div>
             <p class="text-xs font-semibold text-gray-500  uppercase tracking-wide mb-1.5">Amount Due</p>
-            <div class="px-4 py-3 bg-gray-50  rounded-xl">
-              <span class="text-xl font-bold text-gray-900 ">KES {{ total.toLocaleString() }}</span>
+            <div class="rounded-xl bg-gray-50 px-3 py-2">
+              <span class="text-base font-bold text-gray-900">KES {{ total.toLocaleString() }}</span>
             </div>
           </div>
 
@@ -39,13 +39,13 @@
                 :key="m.value"
                 @click="method = m.value"
                 :class="[
-                  'flex flex-col items-center gap-1 py-2.5 rounded-xl border text-xs font-semibold transition-all',
+                  'flex min-h-9 items-center justify-center gap-1.5 rounded-xl border px-2 py-1.5 text-xs font-semibold transition-all',
                   method === m.value
                     ? 'border-primary bg-primary/5 text-primary'
                     : 'border-gray-200  text-gray-500  hover:border-gray-300 '
                 ]"
               >
-                <component :is="m.icon" class="h-5 w-5" />
+                <component :is="m.icon" class="h-4 w-4" />
                 {{ m.label }}
               </button>
             </div>
@@ -62,7 +62,7 @@
             <input
               v-model="reference"
               :placeholder="method === 'mpesa' ? 'e.g. QGR7Y8ZX2F' : 'Optional'"
-              class="w-full px-4 py-3 rounded-xl border border-gray-200  bg-white  text-gray-900  placeholder:text-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition"
+              class="owner-input"
               @keydown.enter="confirm"
             />
           </div>
@@ -73,23 +73,23 @@
             <input
               v-model="note"
               placeholder="e.g. Paid at door"
-              class="w-full px-4 py-3 rounded-xl border border-gray-200  bg-white  text-gray-900  placeholder:text-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition"
+              class="owner-input"
             />
           </div>
         </div>
 
         <!-- Footer -->
-        <div class="flex gap-2.5 px-5 pb-5">
+        <div class="flex gap-2 px-3 pb-3">
           <button
             @click="$emit('cancel')"
-            class="flex-1 py-3 rounded-xl border border-gray-200  text-sm font-semibold text-gray-600  hover:bg-gray-50  transition-colors"
+            class="owner-secondary-action flex-1"
           >
             Cancel
           </button>
           <button
             @click="confirm"
             :disabled="loading || (method === 'mpesa' && !reference.trim())"
-            class="flex-1 py-3 rounded-xl bg-emerald-500 text-white text-sm font-semibold hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+            class="owner-primary-action flex-1"
           >
             <span v-if="loading" class="h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
             <CheckIcon v-else class="w-4 h-4" />

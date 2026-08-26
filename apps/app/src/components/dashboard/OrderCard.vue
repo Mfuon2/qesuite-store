@@ -46,6 +46,7 @@
             <PhoneIcon class="w-3.5 h-3.5" />
           </a>
           <button
+            v-if="allowStatusUpdates"
             v-for="action in availableActions"
             :key="action.status"
             @click.stop="handleStatusChange(action.status)"
@@ -91,10 +92,12 @@ import { computed } from 'vue'
 import { PhoneIcon, CubeIcon, CreditCardIcon, ClockIcon } from '@heroicons/vue/24/outline'
 import StatusBadge from './StatusBadge.vue'
 import type { Order, OrderStatus } from '@qesuite/types'
+import { parseAppTimestamp } from '@qesuite/shared'
 
 const props = defineProps<{
   order: Order
   viewMode: 'kanban' | 'list'
+  allowStatusUpdates?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -117,7 +120,7 @@ const paymentMethodLabel = computed(() => {
 })
 
 const timeAgo = computed(() => {
-  const diff = Date.now() - new Date(props.order.created_at).getTime()
+  const diff = Date.now() - parseAppTimestamp(props.order.created_at).getTime()
   const mins = Math.floor(diff / 60000)
   if (mins < 1) return 'Just now'
   if (mins < 60) return `${mins}m ago`

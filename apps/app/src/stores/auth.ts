@@ -1,15 +1,16 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { setTokens, clearTokens, getAccessToken, apiFetch } from '@/api/index'
-import { apiLogin, apiRegister, apiGetMe, apiLogout, apiSelectStore } from '@/api/auth'
-import type { StoreChoice, StoreSelectionData } from '@/api/auth'
+import { apiLogin, apiRegister, apiGetMe, apiLogout, apiSelectStore, apiUpdateMe } from '@/api/auth'
+import type { StoreChoice, StoreSelectionData, UpdateProfileRequest } from '@/api/auth'
 import { verifyMagicLinkApi, requestMagicLinkApi } from '@/api/delivery'
 import { adminLogin, type AdminUser } from '@/api/admin'
 import { beginNetworkActivity, endNetworkActivity } from '@/composables/useNetworkActivity'
 import type { PublicUser } from '@qesuite/types'
 import type { RegisterRequest } from '@/api/auth'
+import { useAccessStore } from '@/stores/access'
 
-export type UserRole = 'owner' | 'rider' | 'superadmin'
+export type UserRole = 'owner' | 'staff' | 'rider' | 'superadmin'
 
 export interface AppUser {
   id: string
@@ -78,6 +79,7 @@ export const useAuthStore = defineStore('auth', () => {
         token.value = data.data.access_token
         setTokens(data.data.access_token)
         scheduleRefresh(data.data.access_token)
+        await fetchMe()
       } else {
         logout()
       }
@@ -127,7 +129,14 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function _finalizeLogin(data: { access_token: string; user: AppUser & { tenant_id: string | null } }) {
     const { user: u, access_token } = data
-    user.value = { id: u.id, name: u.name, role: u.role as UserRole, tenant_id: u.tenant_id ?? null }
+    user.value = {
+      id: u.id,
+      name: u.name,
+      role: u.role as UserRole,
+      tenant_id: u.tenant_id ?? null,
+      email: u.email,
+      phone: u.phone,
+    }
     token.value = access_token
     setTokens(access_token)
     scheduleRefresh(access_token)
@@ -139,6 +148,9 @@ export const useAuthStore = defineStore('auth', () => {
           sessionStorage.setItem('onboarding_complete', 'true')
         }
       } catch { /* ignore */ }
+    } else if (u.role === 'staff') {
+      onboardingComplete.value = true
+      sessionStorage.setItem('onboarding_complete', 'true')
     }
   }
 
@@ -163,14 +175,28 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function fetchMe() {
-    if (!token.value || role.value !== 'owner') return
+    if (!token.value || !['owner', 'staff'].includes(role.value ?? '')) return
     try {
       const res = await apiGetMe()
       if (res.success && res.data) {
         const u = res.data as PublicUser
-        user.value = { id: u.id, name: u.name, role: u.role as UserRole, tenant_id: u.tenant_id ?? null }
+        user.value = {
+          id: u.id,
+          name: u.name,
+          role: u.role as UserRole,
+          tenant_id: u.tenant_id ?? null,
+          email: u.email ?? undefined,
+          phone: u.phone ?? undefined,
+        }
       }
     } catch { /* ignore */ }
+  }
+
+  async function updateProfile(payload: UpdateProfileRequest) {
+    const res = await apiUpdateMe(payload)
+    if (!res.success) throw new Error(res.error || 'Failed to update personal information')
+    await fetchMe()
+    return user.value
   }
 
   // ─── Rider magic link ────────────────────────────────────────────
@@ -225,7 +251,7 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function logout() {
-    if (role.value === 'owner') {
+    if (role.value === 'owner' || role.value === 'staff') {
       try { await apiLogout() } catch { /* ignore */ }
     }
     user.value = null
@@ -234,6 +260,7 @@ export const useAuthStore = defineStore('auth', () => {
     clearTokens()
     sessionStorage.removeItem('onboarding_complete')
     sessionStorage.removeItem('admin_session')
+    useAccessStore().reset()
     if (refreshTimer) clearTimeout(refreshTimer)
   }
 
@@ -261,6 +288,7 @@ export const useAuthStore = defineStore('auth', () => {
     register,
     logout,
     fetchMe,
+    updateProfile,
     setOnboardingComplete,
     requestRiderLink,
     verifyRiderLink,

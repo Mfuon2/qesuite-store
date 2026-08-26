@@ -115,7 +115,7 @@
           <!-- Action -->
           <div class="flex justify-end">
             <button
-              v-if="n.channel === 'sms'"
+              v-if="n.channel === 'sms' && accessStore.can('notifications.send')"
               :disabled="sending === n.id"
               :class="['flex items-center gap-1 rounded-lg border px-2.5 py-1 text-[11px] font-bold transition active:scale-95',
                 n.status === 'failed'
@@ -185,6 +185,7 @@ import {
   CheckCircleIcon, XCircleIcon,
 } from '@heroicons/vue/24/outline'
 import { apiFetch } from '@/api/index'
+import { useAccessStore } from '@/stores/access'
 
 // ── Types ──────────────────────────────────────────────────────
 interface NotifRow {
@@ -215,6 +216,7 @@ const CHANNEL_FILTERS = [
 
 // ── State ──────────────────────────────────────────────────────
 const loading = ref(true)
+const accessStore = useAccessStore()
 const rows = ref<NotifRow[]>([])
 const meta = ref<Meta>({ total: 0, page: 1, limit: 25, total_pages: 1 })
 const summary = ref<Summary>({})

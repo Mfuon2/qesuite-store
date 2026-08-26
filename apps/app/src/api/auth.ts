@@ -73,7 +73,7 @@ export interface UpdateProfileRequest {
   new_password?: string
 }
 
-export async function apiUpdateMe(payload: UpdateProfileRequest): Promise<ApiResponse<null>> {
+export async function apiUpdateMe(payload: UpdateProfileRequest): Promise<ApiResponse<PublicUser | null>> {
   return apiFetch('/api/auth/me', {
     method: 'PATCH',
     body: JSON.stringify(payload),

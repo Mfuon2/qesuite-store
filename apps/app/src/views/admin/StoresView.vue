@@ -4,7 +4,6 @@
     <section class="admin-page-hero">
       <div class="admin-page-header">
         <div class="min-w-0">
-          <div class="owner-eyebrow">Store operations</div>
           <h1 class="owner-title">Stores</h1>
           <p class="owner-subtitle">
             Review storefronts, subscription state, trial windows, and platform performance.

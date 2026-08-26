@@ -1,60 +1,60 @@
 <template>
-  <div class="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
-    <div class="space-y-5">
-      <section class="qs-card-soft p-4 sm:p-5">
-        <div class="mb-4">
-          <h3 class="text-base font-extrabold text-slate-950">Fulfilment options</h3>
-          <p class="text-sm font-medium text-slate-500">Choose how customers receive orders.</p>
+  <div class="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_240px]">
+    <div class="grid grid-cols-1 gap-3 xl:grid-cols-2">
+      <section class="qs-card-soft p-3">
+        <div class="mb-2">
+          <h3 class="text-sm font-extrabold text-slate-950">Fulfilment options</h3>
+          <p class="text-xs font-medium text-slate-500">Choose how customers receive orders.</p>
         </div>
 
-        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
           <button
             @click="form.delivery_enabled = !form.delivery_enabled"
             :class="[
-              'rounded-2xl border p-4 text-left transition',
+              'rounded-xl border p-2.5 text-left transition',
               form.delivery_enabled ? 'border-emerald-200 bg-emerald-50 text-emerald-900' : 'border-slate-100 bg-white text-slate-700 hover:bg-slate-50'
             ]"
           >
             <div class="flex items-center justify-between gap-3">
-              <span class="grid h-10 w-10 place-items-center rounded-xl bg-white text-emerald-700 shadow-[0_8px_20px_rgba(15,23,42,0.035)]">
-                <TruckIcon class="h-5 w-5" />
+              <span class="grid h-8 w-8 place-items-center rounded-lg bg-white text-emerald-700 shadow-[0_8px_20px_rgba(15,23,42,0.035)]">
+                <TruckIcon class="h-4 w-4" />
               </span>
               <span :class="['relative inline-flex h-6 w-11 items-center rounded-full transition-colors', form.delivery_enabled ? 'bg-emerald-700' : 'bg-slate-200']">
                 <span :class="['inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform', form.delivery_enabled ? 'translate-x-6' : 'translate-x-1']" />
               </span>
             </div>
-            <p class="mt-3 text-sm font-extrabold">Delivery</p>
-            <p class="mt-1 text-xs font-medium text-slate-500">Riders deliver to customer locations.</p>
+            <p class="mt-2 text-xs font-extrabold">Delivery</p>
+            <p class="mt-0.5 text-[11px] font-medium text-slate-500">Riders deliver to customers.</p>
           </button>
 
           <button
             @click="form.pickup_enabled = !form.pickup_enabled"
             :class="[
-              'rounded-2xl border p-4 text-left transition',
+              'rounded-xl border p-2.5 text-left transition',
               form.pickup_enabled ? 'border-emerald-200 bg-emerald-50 text-emerald-900' : 'border-slate-100 bg-white text-slate-700 hover:bg-slate-50'
             ]"
           >
             <div class="flex items-center justify-between gap-3">
-              <span class="grid h-10 w-10 place-items-center rounded-xl bg-white text-emerald-700 shadow-[0_8px_20px_rgba(15,23,42,0.035)]">
-                <BuildingStorefrontIcon class="h-5 w-5" />
+              <span class="grid h-8 w-8 place-items-center rounded-lg bg-white text-emerald-700 shadow-[0_8px_20px_rgba(15,23,42,0.035)]">
+                <BuildingStorefrontIcon class="h-4 w-4" />
               </span>
               <span :class="['relative inline-flex h-6 w-11 items-center rounded-full transition-colors', form.pickup_enabled ? 'bg-emerald-700' : 'bg-slate-200']">
                 <span :class="['inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform', form.pickup_enabled ? 'translate-x-6' : 'translate-x-1']" />
               </span>
             </div>
-            <p class="mt-3 text-sm font-extrabold">Pickup</p>
-            <p class="mt-1 text-xs font-medium text-slate-500">Customers collect from your store.</p>
+            <p class="mt-2 text-xs font-extrabold">Pickup</p>
+            <p class="mt-0.5 text-[11px] font-medium text-slate-500">Customers collect from your store.</p>
           </button>
         </div>
       </section>
 
-      <section v-if="form.delivery_enabled" class="qs-card-soft p-4 sm:p-5">
-        <div class="mb-4">
-          <h3 class="text-base font-extrabold text-slate-950">Delivery settings</h3>
-          <p class="text-sm font-medium text-slate-500">Fees, area, speed, and order minimums.</p>
+      <section v-if="form.delivery_enabled" class="qs-card-soft p-3">
+        <div class="mb-2">
+          <h3 class="text-sm font-extrabold text-slate-950">Delivery settings</h3>
+          <p class="text-xs font-medium text-slate-500">Fees, area, speed, and order minimums.</p>
         </div>
 
-        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
           <div>
             <label class="admin-label">Delivery Fee (KES)</label>
             <input v-model.number="form.delivery_fee" type="number" min="0" step="10" placeholder="150" class="admin-input" />
@@ -78,12 +78,12 @@
         </div>
       </section>
 
-      <section v-if="form.delivery_enabled" class="qs-card-soft p-4 sm:p-5">
-        <div class="mb-4">
-          <h3 class="flex items-center gap-2 text-base font-extrabold text-slate-950">
-            <UserGroupIcon class="h-5 w-5 text-emerald-700" /> Delivery riders
+      <section v-if="form.delivery_enabled" class="qs-card-soft p-3 xl:col-span-2">
+        <div class="mb-2">
+          <h3 class="flex items-center gap-1.5 text-sm font-extrabold text-slate-950">
+            <UserGroupIcon class="h-4 w-4 text-emerald-700" /> Delivery riders
           </h3>
-          <p class="text-sm font-medium text-slate-500">Invite riders now or add them later from Delivery.</p>
+          <p class="text-xs font-medium text-slate-500">Invite riders now or add them later from Delivery.</p>
         </div>
 
         <div class="flex gap-2">
@@ -91,7 +91,7 @@
           <button
             @click="addRider"
             :disabled="!riderPhone"
-            class="h-10 rounded-xl bg-emerald-700 px-4 text-sm font-extrabold text-white shadow-[0_10px_22px_rgba(20,132,71,0.18)] disabled:opacity-60"
+            class="h-9 rounded-xl bg-emerald-700 px-3 text-xs font-extrabold text-white shadow-[0_10px_22px_rgba(20,132,71,0.18)] disabled:opacity-60"
           >
             Add
           </button>
@@ -113,18 +113,18 @@
       </section>
     </div>
 
-    <aside class="qs-card-soft h-fit p-4">
+    <aside class="qs-card-soft hidden h-fit p-3 lg:block">
       <h4 class="text-sm font-extrabold text-slate-950">Launch summary</h4>
-      <div class="mt-4 grid gap-3">
-        <div class="flex items-center justify-between rounded-2xl bg-slate-50 p-3">
+      <div class="mt-2 grid gap-2">
+        <div class="flex items-center justify-between rounded-xl bg-slate-50 p-2.5">
           <span class="text-sm font-bold text-slate-600">Delivery</span>
           <span class="text-sm font-extrabold" :class="form.delivery_enabled ? 'text-emerald-700' : 'text-slate-400'">{{ form.delivery_enabled ? 'On' : 'Off' }}</span>
         </div>
-        <div class="flex items-center justify-between rounded-2xl bg-slate-50 p-3">
+        <div class="flex items-center justify-between rounded-xl bg-slate-50 p-2.5">
           <span class="text-sm font-bold text-slate-600">Pickup</span>
           <span class="text-sm font-extrabold" :class="form.pickup_enabled ? 'text-emerald-700' : 'text-slate-400'">{{ form.pickup_enabled ? 'On' : 'Off' }}</span>
         </div>
-        <div v-if="form.delivery_enabled" class="rounded-2xl bg-emerald-50 p-3">
+        <div v-if="form.delivery_enabled" class="rounded-xl bg-emerald-50 p-2.5">
           <p class="text-xs font-bold uppercase tracking-wide text-emerald-700">Customer promise</p>
           <p class="mt-1 text-sm font-extrabold text-slate-950">{{ form.estimated_delivery_minutes }} min delivery</p>
           <p class="text-xs font-semibold text-slate-500">KES {{ form.delivery_fee.toLocaleString() }} fee · {{ form.delivery_radius_km }} km radius</p>

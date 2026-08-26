@@ -1,8 +1,8 @@
 <template>
   <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
     <div class="bg-white  rounded-2xl shadow-2xl w-full max-w-md animate-bounce-in">
-      <div class="flex items-center justify-between p-5 border-b border-gray-100 ">
-        <h3 class="text-lg font-semibold text-gray-900  flex items-center gap-2">
+      <div class="flex items-center justify-between border-b border-gray-100 p-3">
+        <h3 class="flex items-center gap-1.5 text-base font-semibold text-gray-900">
           <DocumentTextIcon class="w-5 h-5 text-primary" />
           Packing Slip
         </h3>
@@ -11,19 +11,19 @@
         </button>
       </div>
 
-      <div class="p-5">
+      <div class="p-3">
         <div v-if="loading" class="space-y-2">
           <div v-for="i in 8" :key="i" class="skeleton h-4 rounded" />
         </div>
-        <pre v-else class="font-mono text-xs text-gray-700  bg-gray-50  border border-gray-200  rounded-xl p-4 overflow-x-auto whitespace-pre-wrap leading-relaxed max-h-96 overflow-y-auto">{{ text }}</pre>
+        <pre v-else class="max-h-80 overflow-x-auto overflow-y-auto whitespace-pre-wrap rounded-xl border border-gray-200 bg-gray-50 p-3 font-mono text-xs leading-relaxed text-gray-700">{{ text }}</pre>
       </div>
 
-      <div class="flex items-center gap-3 px-5 pb-5">
-        <button @click="download" class="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-100  hover:bg-gray-200  text-gray-700  text-sm font-medium rounded-xl transition-colors">
+      <div class="flex items-center gap-2 px-3 pb-3">
+        <button @click="download" class="owner-secondary-action flex-1">
           <ArrowDownTrayIcon class="w-4 h-4" />
           Download .txt
         </button>
-        <button @click="print" class="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-primary text-white text-sm font-medium rounded-xl hover:opacity-90 transition-opacity">
+        <button @click="print" class="owner-primary-action flex-1">
           <PrinterIcon class="w-4 h-4" />
           Print
         </button>

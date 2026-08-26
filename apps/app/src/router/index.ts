@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useAccessStore } from '@/stores/access'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -15,6 +16,12 @@ const router = createRouter({
       path: '/register',
       name: 'register',
       component: () => import('@/views/RegisterView.vue'),
+      meta: { public: true }
+    },
+    {
+      path: '/accept-invite',
+      name: 'accept-invite',
+      component: () => import('@/views/AcceptInviteView.vue'),
       meta: { public: true }
     },
     {
@@ -34,19 +41,21 @@ const router = createRouter({
     {
       path: '/',
       component: () => import('@/layouts/DashboardLayout.vue'),
-      meta: { requiresAuth: true, role: 'owner', requiresOnboardingComplete: true },
+      meta: { requiresAuth: true, roles: ['owner', 'staff'], requiresOnboardingComplete: true },
       children: [
         { path: '', redirect: '/dashboard' },
-        { path: 'dashboard', name: 'dashboard', component: () => import('@/views/dashboard/DashboardView.vue') },
-        { path: 'orders', name: 'orders', component: () => import('@/views/dashboard/OrdersView.vue') },
-        { path: 'orders/:id', name: 'order-detail', component: () => import('@/views/dashboard/OrderDetailView.vue') },
-        { path: 'products', name: 'products', component: () => import('@/views/dashboard/ProductsView.vue') },
-        { path: 'categories', name: 'categories', component: () => import('@/views/dashboard/CategoriesView.vue') },
-        { path: 'delivery', name: 'delivery-team', component: () => import('@/views/dashboard/DeliveryTeamView.vue') },
-        { path: 'analytics', name: 'analytics', component: () => import('@/views/dashboard/AnalyticsView.vue') },
-        { path: 'settings', name: 'settings', component: () => import('@/views/dashboard/SettingsView.vue') },
-        { path: 'billing', name: 'billing', component: () => import('@/views/dashboard/BillingView.vue') },
-        { path: 'notifications', name: 'notifications', component: () => import('@/views/dashboard/NotificationsView.vue') },
+        { path: 'dashboard', name: 'dashboard', component: () => import('@/views/dashboard/DashboardView.vue'), meta: { permission: 'dashboard.view' } },
+        { path: 'orders', name: 'orders', component: () => import('@/views/dashboard/OrdersView.vue'), meta: { permission: 'orders.view' } },
+        { path: 'orders/:id', name: 'order-detail', component: () => import('@/views/dashboard/OrderDetailView.vue'), meta: { permission: 'orders.view' } },
+        { path: 'products', name: 'products', component: () => import('@/views/dashboard/ProductsView.vue'), meta: { permission: 'products.view' } },
+        { path: 'categories', name: 'categories', component: () => import('@/views/dashboard/CategoriesView.vue'), meta: { permission: 'categories.view' } },
+        { path: 'delivery', name: 'delivery-team', component: () => import('@/views/dashboard/DeliveryTeamView.vue'), meta: { permission: 'delivery.view' } },
+        { path: 'pos', name: 'pos', component: () => import('@/views/dashboard/SalesTerminalView.vue'), meta: { permission: 'pos.view' } },
+        { path: 'expenses', name: 'expenses', component: () => import('@/views/dashboard/ExpensesView.vue'), meta: { permission: 'expenses.view' } },
+        { path: 'analytics', name: 'analytics', component: () => import('@/views/dashboard/AnalyticsView.vue'), meta: { permission: 'analytics.view' } },
+        { path: 'settings', name: 'settings', component: () => import('@/views/dashboard/SettingsView.vue'), meta: { permission: 'settings.view' } },
+        { path: 'billing', name: 'billing', component: () => import('@/views/dashboard/BillingView.vue'), meta: { permission: 'billing.view' } },
+        { path: 'notifications', name: 'notifications', component: () => import('@/views/dashboard/NotificationsView.vue'), meta: { permission: 'notifications.view' } },
       ]
     },
 
@@ -83,6 +92,7 @@ const router = createRouter({
 
 function getHomeForRole(role: string): string {
   if (role === 'owner') return '/dashboard'
+  if (role === 'staff') return '/dashboard'
   if (role === 'rider') return '/rider'
   if (role === 'superadmin') return '/admin/stores'
   return '/login'
@@ -92,6 +102,7 @@ router.beforeEach(async (to) => {
   // Read from the Pinia auth store (memory token) — NOT sessionStorage,
   // which no longer holds the access token after the security hardening.
   const authStore = useAuthStore()
+  const accessStore = useAccessStore()
 
   // On first navigation after a page reload, wait for the cookie-based
   // rehydration attempt to complete before deciding auth state.
@@ -103,7 +114,7 @@ router.beforeEach(async (to) => {
 
   // Already authenticated → redirect away from public routes
   if (to.meta.public && token && role) {
-    if (to.name === 'rider-verify') return true // always allow verify
+    if (to.name === 'rider-verify' || to.name === 'accept-invite') return true
     if (role === 'owner') return onboardingComplete ? '/dashboard' : '/onboarding'
     return getHomeForRole(role)
   }
@@ -113,10 +124,32 @@ router.beforeEach(async (to) => {
 
     // Role mismatch → send to correct section
     const requiredRole = to.meta.role as string | undefined
-    if (requiredRole && role !== requiredRole) return getHomeForRole(role)
+    const requiredRoles = to.meta.roles as string[] | undefined
+    if ((requiredRole && role !== requiredRole) || (requiredRoles && !requiredRoles.includes(role))) {
+      return getHomeForRole(role)
+    }
+
+    if (role === 'owner' || role === 'staff') {
+      try {
+        await accessStore.fetchCurrent()
+      } catch {
+        return '/login'
+      }
+    }
+
+    const permission = to.meta.permission as string | undefined
+    if (role === 'staff' && permission && !accessStore.can(permission)) {
+      const firstAllowed = [
+        ['dashboard.view', '/dashboard'], ['orders.view', '/orders'], ['pos.view', '/pos'],
+        ['expenses.view', '/expenses'], ['products.view', '/products'], ['categories.view', '/categories'],
+        ['delivery.view', '/delivery'], ['analytics.view', '/analytics'],
+        ['notifications.view', '/notifications'], ['settings.view', '/settings'], ['billing.view', '/billing'],
+      ].find(([required]) => accessStore.can(required))
+      return firstAllowed?.[1] ?? '/login'
+    }
 
     // Owner onboarding gate
-    if (to.meta.requiresOnboardingComplete && !onboardingComplete) return '/onboarding'
+    if (role === 'owner' && to.meta.requiresOnboardingComplete && !onboardingComplete) return '/onboarding'
     if (to.name === 'onboarding' && onboardingComplete) return '/dashboard'
   }
 

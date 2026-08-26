@@ -19,10 +19,24 @@ import billingRoutes from './routes/billing'
 import notificationsRoutes from './routes/notifications'
 import customersRoutes from './routes/customers'
 import placesRoutes from './routes/places'
+import posRoutes from './routes/pos'
+import expensesRoutes from './routes/expenses'
+import accessRoutes from './routes/access'
+import { enforceAccessPolicy } from './middleware/access'
 import { handleQueue } from './handlers/notifications'
 import { handleCron } from './handlers/cron'
+import { BUSINESS_TIME_ZONE, businessDate } from './lib/time'
 
 const app = new Hono<{ Bindings: Env; Variables: Variables }>()
+
+// Fail closed if a deployment is configured with any timezone other than EAT.
+app.use('*', async (c, next) => {
+  if (c.env.APP_TIME_ZONE !== BUSINESS_TIME_ZONE) {
+    console.error(`Invalid APP_TIME_ZONE: expected ${BUSINESS_TIME_ZONE}, received ${c.env.APP_TIME_ZONE || 'unset'}`)
+    return c.json({ success: false, error: 'Server timezone configuration is invalid', data: null }, 500)
+  }
+  await next()
+})
 
 app.use('*', logger())
 
@@ -47,7 +61,7 @@ app.use(
     },
     credentials: true,
     allowHeaders: ['Authorization', 'Content-Type', 'X-Admin-Request'],
-    allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     exposeHeaders: ['Set-Cookie'],
     maxAge: 86400,
   })
@@ -80,6 +94,8 @@ app.use('*', async (c, next) => {
 })
 
 // Routes
+app.use('/api/*', enforceAccessPolicy)
+
 app.route('/api/auth', authRoutes)
 app.route('/api/store', storeRoutes)
 app.route('/api/products', productRoutes)
@@ -97,6 +113,9 @@ app.route('/api/billing', billingRoutes)
 app.route('/api/notifications', notificationsRoutes)
 app.route('/api/customers', customersRoutes)
 app.route('/api/places', placesRoutes)
+app.route('/api/pos', posRoutes)
+app.route('/api/expenses', expensesRoutes)
+app.route('/api/access', accessRoutes)
 
 // ── SEO endpoints (served at the storefront domain via Cloudflare routing) ──
 
@@ -108,10 +127,10 @@ app.get('/sitemap.xml', async (c) => {
       `SELECT slug, name FROM tenants
        WHERE is_suspended = 0
          AND (subscription_status = 'active'
-              OR (subscription_status = 'trialing' AND trial_ends_at > datetime('now')))`
+              OR (subscription_status = 'trialing' AND unixepoch(trial_ends_at) > unixepoch('now')))`
     ).all<{ slug: string; name: string }>()
 
-    const now = new Date().toISOString().split('T')[0]
+    const now = businessDate()
     const storeUrls = stores.results.map(s =>
       `  <url><loc>${base}/${s.slug}</loc><lastmod>${now}</lastmod><changefreq>daily</changefreq><priority>0.8</priority></url>`
     ).join('\n')
@@ -158,7 +177,7 @@ app.get('/render/:slug', async (c) => {
      LEFT JOIN store_settings ss ON ss.tenant_id = t.id
      WHERE t.slug = ? AND t.is_suspended = 0
        AND (t.subscription_status = 'active'
-            OR (t.subscription_status = 'trialing' AND t.trial_ends_at > datetime('now')))`
+            OR (t.subscription_status = 'trialing' AND unixepoch(t.trial_ends_at) > unixepoch('now')))`
   ).bind(slug).first<{
     id: string; name: string; slug: string; logo_url: string | null
     banner_url: string | null; address: string | null; phone: string | null

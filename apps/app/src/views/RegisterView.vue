@@ -1,7 +1,12 @@
 <template>
-  <div class="qs-auth-bg relative min-h-screen overflow-hidden px-4 py-8">
-    <div class="absolute inset-0 bg-gradient-to-b from-white/10 via-[#f7fbf4]/40 to-[#eef8ec]/80" />
-    <div class="relative mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-6xl flex-col items-center justify-center gap-8 pt-32 sm:pt-40">
+  <div class="relative min-h-screen overflow-hidden px-4 py-8">
+    <img
+      src="/auth-marketplace-wallpaper.webp"
+      alt=""
+      class="absolute inset-0 h-full w-full object-cover object-left"
+    />
+    <div class="absolute inset-0 bg-gradient-to-b from-white/20 via-white/45 to-[#eef8ec]/80 backdrop-blur-[1px]" />
+    <div class="relative mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-[1680px] flex-col items-center justify-center gap-8 pt-32 sm:pt-40 lg:items-end lg:pt-8">
       <div class="w-full max-w-xl rounded-2xl border border-white/80 bg-white/95 p-6 shadow-2xl shadow-emerald-950/10 backdrop-blur-xl sm:p-8">
         <div class="mb-5 text-center">
           <h1 class="text-2xl font-extrabold text-emerald-800">Create your account</h1>

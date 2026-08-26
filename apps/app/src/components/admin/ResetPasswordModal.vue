@@ -1,30 +1,30 @@
 <template>
   <div class="fixed inset-0 z-50 flex items-center justify-center p-4">
     <div class="absolute inset-0 bg-slate-950/45 backdrop-blur-sm" @click="!result && emit('cancel')"></div>
-    <div class="admin-card relative w-full max-w-sm animate-fade-in p-6">
+    <div class="admin-card relative w-full max-w-sm animate-fade-in p-4">
 
       <!-- Icon + title -->
-      <div class="flex items-center gap-3 mb-4">
-        <div class="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-2xl bg-amber-50 ring-1 ring-amber-100">
+      <div class="mb-3 flex items-center gap-2.5">
+        <div class="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-amber-50 ring-1 ring-amber-100">
           <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
               d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
           </svg>
         </div>
         <div>
-          <h2 class="text-lg font-bold text-slate-950">Reset Password</h2>
-          <p class="text-slate-500 text-sm">{{ storeName }}</p>
+          <h2 class="text-base font-bold text-slate-950">Reset Password</h2>
+          <p class="text-xs text-slate-500">{{ storeName }}</p>
         </div>
       </div>
 
       <!-- ── Step 1: choose mode ── -->
       <template v-if="!result">
-        <p class="text-slate-600 text-sm mb-4">
+        <p class="mb-3 text-xs leading-5 text-slate-600">
           Reset the store owner's login password. The new password will be shown once — copy and share it securely.
         </p>
 
         <!-- Mode toggle -->
-        <div class="owner-segmented mb-4 grid w-full grid-cols-2">
+        <div class="owner-segmented mb-3 grid w-full grid-cols-2">
           <button
             :class="['owner-segment-button', mode === 'auto' ? 'owner-segment-button-active' : '']"
             @click="mode = 'auto'"
@@ -40,7 +40,7 @@
         </div>
 
         <!-- Custom password input -->
-        <div v-if="mode === 'custom'" class="mb-4">
+        <div v-if="mode === 'custom'" class="mb-3">
           <label class="admin-label">New password</label>
           <div class="relative">
             <input
@@ -71,7 +71,7 @@
           </p>
         </div>
 
-        <div class="flex gap-3 mt-2">
+        <div class="mt-2 flex gap-2">
           <button class="admin-btn-secondary flex-1 justify-center" @click="emit('cancel')">
             Cancel
           </button>

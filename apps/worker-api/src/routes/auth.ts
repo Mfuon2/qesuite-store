@@ -43,16 +43,6 @@ async function storeRefreshToken(db: D1Database, token: string, userId: string):
 // D1Database type shim for the helper above
 type D1Database = { prepare: (sql: string) => { bind: (...args: unknown[]) => { run: () => Promise<unknown> } } }
 
-const DEMO_PRODUCTS = [
-  { name: 'Tomatoes 2kg', description: 'Fresh farm tomatoes', price: 80, stock: 50, featured: 1 },
-  { name: 'Fresh Milk 500ml', description: 'Pasteurised whole milk', price: 60, stock: 40, featured: 1 },
-  { name: 'White Bread', description: 'Sliced white bread loaf', price: 55, stock: 30, featured: 0 },
-  { name: 'Rice 1kg', description: 'Long grain white rice', price: 120, stock: 25, featured: 0 },
-  { name: 'Bananas (bunch)', description: 'Sweet ripe bananas', price: 50, stock: 20, featured: 1 },
-  { name: 'Orange Juice 1L', description: 'Fresh-squeezed orange juice', price: 150, stock: 15, featured: 0 },
-  { name: 'Cooking Oil 500ml', description: 'Refined vegetable oil', price: 110, stock: 30, featured: 0 },
-]
-
 function slugify(name: string): string {
   return name
     .toLowerCase()
@@ -172,14 +162,6 @@ auth.post('/register', async (c) => {
     await c.env.qesuite_db.prepare(
       `INSERT INTO categories (id, tenant_id, name, icon, sort_order, is_active) VALUES (?, ?, 'General', '🛒', 0, 1)`
     ).bind(categoryId, tenantId).run()
-
-    // Seed demo products
-    for (const p of DEMO_PRODUCTS) {
-      await c.env.qesuite_db.prepare(
-        `INSERT INTO products (id, tenant_id, category_id, name, description, price, stock, featured, on_sale, is_active, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, 1, datetime('now'), datetime('now'))`
-      ).bind(generateId(), tenantId, categoryId, p.name, p.description, p.price, p.stock, p.featured).run()
-    }
 
     // Issue tokens
     const accessToken = await signJWT(
@@ -319,6 +301,9 @@ auth.post('/login', async (c) => {
     if (!valid) {
       return c.json({ error: 'Invalid credentials', data: null }, 401)
     }
+
+    await c.env.qesuite_db.prepare("UPDATE users SET last_login_at = datetime('now') WHERE id = ?")
+      .bind(user.id).run()
 
     const role = user.role as 'owner' | 'staff' | 'rider' | 'superadmin'
     const accessToken = await signJWT(
@@ -887,6 +872,36 @@ auth.patch('/me', async (c) => {
       new_password?: string
     }>()
 
+    const name = body.name?.trim()
+    const email = body.email === undefined ? undefined : body.email.trim().toLowerCase()
+    const phone = body.phone === undefined ? undefined : body.phone.trim()
+
+    if (body.name !== undefined && (!name || name.length > MAX_NAME)) {
+      return c.json({ error: `Display name must be between 1 and ${MAX_NAME} characters`, data: null }, 400)
+    }
+    if (email !== undefined && email && (email.length > MAX_IDENTIFIER || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))) {
+      return c.json({ error: 'Enter a valid email address', data: null }, 400)
+    }
+    if (phone !== undefined && phone.length > MAX_PHONE) {
+      return c.json({ error: 'Phone number is too long', data: null }, 400)
+    }
+    if (!(email ?? user.email) && !(phone ?? user.phone)) {
+      return c.json({ error: 'Keep either an email address or phone number for login', data: null }, 400)
+    }
+
+    if (email && email !== user.email) {
+      const duplicate = await c.env.qesuite_db.prepare(
+        "SELECT id FROM users WHERE email = ? AND role = 'owner' AND id != ? LIMIT 1"
+      ).bind(email, user.id).first()
+      if (duplicate) return c.json({ error: 'This email address is already in use', data: null }, 409)
+    }
+    if (phone && phone !== user.phone) {
+      const duplicate = await c.env.qesuite_db.prepare(
+        "SELECT id FROM users WHERE phone = ? AND role = 'owner' AND id != ? LIMIT 1"
+      ).bind(phone, user.id).first()
+      if (duplicate) return c.json({ error: 'This phone number is already in use', data: null }, 409)
+    }
+
     // If changing password, verify current password first
     if (body.new_password) {
       if (!body.current_password) {
@@ -906,17 +921,17 @@ auth.patch('/me', async (c) => {
     const updates: string[] = []
     const bindings: unknown[] = []
 
-    if (body.name && body.name !== user.name) {
+    if (name && name !== user.name) {
       updates.push('name = ?')
-      bindings.push(body.name)
+      bindings.push(name)
     }
-    if (body.email !== undefined && body.email !== user.email) {
+    if (email !== undefined && email !== user.email) {
       updates.push('email = ?')
-      bindings.push(body.email || null)
+      bindings.push(email || null)
     }
-    if (body.phone !== undefined && body.phone !== user.phone) {
+    if (phone !== undefined && phone !== user.phone) {
       updates.push('phone = ?')
-      bindings.push(body.phone || null)
+      bindings.push(phone || null)
     }
     if (body.new_password) {
       const { hashPassword } = await import('../lib/password')

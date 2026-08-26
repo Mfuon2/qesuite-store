@@ -184,6 +184,11 @@ export async function getPlatformBilling(params: {
   return api.get<PaginatedResponse<PlatformBillingRecord>>(`/api/admin/billing?${qs.toString()}`)
 }
 
+export async function verifyBillingReference(recordId: string, action: 'approve' | 'reject'): Promise<void> {
+  const res = await api.post<ApiResponse<{ status: string }>>(`/api/admin/billing/${recordId}/verify`, { action })
+  if (!res.success) throw new Error(res.error || 'Failed to review payment reference')
+}
+
 export interface StoreBillingHistory {
   id: string
   amount: number

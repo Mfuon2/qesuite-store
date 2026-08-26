@@ -24,3 +24,21 @@ export async function tenantGuard(
 
   await next()
 }
+
+// Restricts a route to tenants registered under the 'food' (restaurant) category —
+// gates the Sales Terminal (POS) and Expenses features.
+export async function restaurantGuard(
+  c: Context<{ Bindings: Env; Variables: Variables }>,
+  next: Next
+) {
+  const user = c.get('user')
+  const tenant = await c.env.qesuite_db.prepare('SELECT store_category FROM tenants WHERE id = ?')
+    .bind(user.tenant_id)
+    .first<{ store_category: string }>()
+
+  if (!tenant || tenant.store_category !== 'food') {
+    return c.json({ error: 'This feature is only available for restaurant stores', data: null }, 403)
+  }
+
+  await next()
+}

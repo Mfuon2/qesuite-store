@@ -6,7 +6,8 @@
       @drop.prevent="handleDrop"
       @click="fileInput?.click()"
       :class="[
-        'relative flex flex-col items-center justify-center border-2 border-dashed rounded-xl cursor-pointer transition-all min-h-[120px]',
+        'relative flex flex-col items-center justify-center border-2 border-dashed rounded-xl cursor-pointer transition-all',
+        compact ? 'min-h-[88px]' : 'min-h-[120px]',
         isDragging ? 'border-primary bg-primary/5' : 'border-gray-200  hover:border-primary/50 bg-gray-50 ',
         disabled ? 'opacity-60 cursor-not-allowed' : ''
       ]"
@@ -30,12 +31,12 @@
 
       <!-- Upload prompt -->
       <template v-else>
-        <div class="p-4 text-center">
-          <PhotoIcon class="w-10 h-10 text-gray-300  mx-auto mb-2" />
-          <p class="text-sm font-medium text-gray-600 ">
+        <div :class="compact ? 'p-2 text-center' : 'p-4 text-center'">
+          <PhotoIcon :class="compact ? 'mx-auto mb-1 h-7 w-7 text-gray-300' : 'mx-auto mb-2 h-10 w-10 text-gray-300'" />
+          <p :class="compact ? 'text-xs font-medium text-gray-600' : 'text-sm font-medium text-gray-600'">
             {{ isDragging ? 'Drop to upload' : 'Click or drag & drop' }}
           </p>
-          <p class="text-xs text-gray-400  mt-1">JPEG, PNG, WebP — max 10MB</p>
+          <p :class="compact ? 'mt-0.5 text-[10px] text-gray-400' : 'mt-1 text-xs text-gray-400'">JPEG, PNG, WebP — max 10MB</p>
         </div>
       </template>
     </div>
@@ -65,10 +66,12 @@ const props = withDefaults(defineProps<{
   accept?: string
   maxSize?: number // bytes
   disabled?: boolean
+  compact?: boolean
 }>(), {
   accept: 'image/jpeg,image/png,image/webp',
   maxSize: 10 * 1024 * 1024,
-  disabled: false
+  disabled: false,
+  compact: false,
 })
 
 const emit = defineEmits<{

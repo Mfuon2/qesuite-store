@@ -1,5 +1,5 @@
 import { apiFetch } from './index'
-import type { ApiResponse, AnalyticsSummary, RevenueDataPoint, TopProduct } from '@qesuite/types'
+import type { ApiResponse, AnalyticsSummary, EmployeePerformance, RevenueDataPoint, TopProduct } from '@qesuite/types'
 
 export interface PeakHour {
   hour: number
@@ -11,6 +11,30 @@ export interface PaymentMethodBreakdown {
   count: number
   total: number
   percentage: number
+}
+
+export interface FinancialPeriodSummary {
+  revenue: number
+  expenses: number
+  variance: number
+  expense_ratio: number | null
+  margin: number | null
+  expense_count: number
+  online_orders: number
+  pos_sales: number
+}
+
+export interface FinancialPerformance extends FinancialPeriodSummary {
+  date_from: string
+  date_to: string
+  previous: FinancialPeriodSummary
+  daily: Array<{
+    date: string
+    revenue: number
+    expenses: number
+    variance: number
+  }>
+  by_category: Array<{ category: string; total: number; count: number }>
 }
 
 export interface AnalyticsParams {
@@ -32,8 +56,16 @@ export async function apiGetAnalyticsSummary(params?: AnalyticsParams): Promise<
   return apiFetch(`/api/analytics/summary${buildParams(params)}`)
 }
 
+export async function apiGetEmployeePerformance(params?: AnalyticsParams): Promise<ApiResponse<EmployeePerformance[]>> {
+  return apiFetch(`/api/analytics/employees${buildParams(params)}`)
+}
+
 export async function apiGetRevenueChart(params?: AnalyticsParams): Promise<ApiResponse<RevenueDataPoint[]>> {
   return apiFetch(`/api/analytics/revenue${buildParams(params)}`)
+}
+
+export async function apiGetFinancialPerformance(params?: AnalyticsParams): Promise<ApiResponse<FinancialPerformance>> {
+  return apiFetch(`/api/analytics/profit-loss${buildParams(params)}`)
 }
 
 export async function apiGetTopProducts(params?: AnalyticsParams): Promise<ApiResponse<{ by_revenue: TopProduct[]; by_volume: TopProduct[] }>> {

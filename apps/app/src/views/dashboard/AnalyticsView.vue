@@ -1,5 +1,5 @@
 <template>
-  <div class="p-3 sm:p-4">
+  <div class="owner-page">
     <!-- Header + date range -->
     <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
       <h2 class="text-base font-bold text-gray-900 ">Analytics</h2>
@@ -24,8 +24,16 @@
     </div>
 
     <!-- KPI Cards -->
-    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2.5 mb-4">
+    <section class="mb-4">
+      <div
+        ref="metricScroller"
+        class="scrollbar-hide -mx-3 flex snap-x snap-mandatory gap-3 overflow-x-auto px-3 pb-1 sm:-mx-4 sm:px-4 md:mx-0 md:grid md:grid-cols-4 md:overflow-visible md:px-0 md:pb-0 xl:grid-cols-7"
+        role="region"
+        aria-label="Analytics metrics"
+        @scroll.passive="updateActiveMetric"
+      >
       <KpiCard
+        class="w-[82vw] max-w-[19rem] shrink-0 snap-center md:w-auto md:max-w-none"
         title="Revenue"
         :value="summary ? `KES ${summary.total_revenue.toLocaleString()}` : '-'"
         :change="changePercent('total_revenue')"
@@ -33,20 +41,40 @@
         :loading="analyticsStore.loading"
       />
       <KpiCard
-        title="Orders"
+        class="w-[82vw] max-w-[19rem] shrink-0 snap-center md:w-auto md:max-w-none"
+        title="Recorded expenses"
+        :value="financial ? `KES ${financial.expenses.toLocaleString()}` : '-'"
+        :change="financialChange('expenses')"
+        :icon="ReceiptRefundIcon"
+        :loading="analyticsStore.loading"
+        lower-is-better
+      />
+      <KpiCard
+        class="w-[82vw] max-w-[19rem] shrink-0 snap-center md:w-auto md:max-w-none"
+        title="Estimated result"
+        :value="financial ? formatSignedKes(financial.variance) : '-'"
+        :change="financialChange('variance')"
+        :icon="ScaleIcon"
+        :loading="analyticsStore.loading"
+      />
+      <KpiCard
+        class="w-[82vw] max-w-[19rem] shrink-0 snap-center md:w-auto md:max-w-none"
+        title="Sales"
         :value="summary?.total_orders ?? '-'"
         :change="changePercent('total_orders')"
         :icon="ShoppingCartIcon"
         :loading="analyticsStore.loading"
       />
       <KpiCard
-        title="Avg. Order"
+        class="w-[82vw] max-w-[19rem] shrink-0 snap-center md:w-auto md:max-w-none"
+        title="Avg. Sale"
         :value="summary ? `KES ${summary.avg_order_value.toLocaleString()}` : '-'"
         :change="changePercent('avg_order_value')"
         :icon="CurrencyDollarIcon"
         :loading="analyticsStore.loading"
       />
       <KpiCard
+        class="w-[82vw] max-w-[19rem] shrink-0 snap-center md:w-auto md:max-w-none"
         title="Completion Rate"
         :value="summary ? `${summary.completion_rate.toFixed(1)}%` : '-'"
         :change="changePercent('completion_rate')"
@@ -54,22 +82,140 @@
         :loading="analyticsStore.loading"
       />
       <KpiCard
+        class="w-[82vw] max-w-[19rem] shrink-0 snap-center md:w-auto md:max-w-none"
         title="Cancellations"
         :value="summary?.cancelled_orders ?? '-'"
         :change="cancelChange"
         :icon="XCircleIcon"
         :loading="analyticsStore.loading"
+        lower-is-better
+      />
+      </div>
+
+      <div class="mt-2 flex items-center justify-center gap-1.5 md:hidden" aria-label="Analytics metric carousel pages">
+        <button
+          v-for="i in 7"
+          :key="i"
+          type="button"
+          :class="[
+            'h-1.5 rounded-full transition-all duration-200',
+            activeMetric === i - 1 ? 'w-5 bg-primary' : 'w-1.5 bg-slate-300'
+          ]"
+          :aria-label="`Show analytics metric ${i} of 7`"
+          :aria-current="activeMetric === i - 1 ? 'true' : undefined"
+          @click="scrollToMetric(i - 1)"
+        />
+      </div>
+    </section>
+
+    <!-- Primary reports: swipeable on mobile, balanced two-column row on desktop. -->
+    <div
+      ref="reportScroller"
+      class="scrollbar-hide -mx-3 mb-3 flex snap-x snap-mandatory gap-3 overflow-x-auto px-3 pb-1 sm:-mx-4 sm:px-4 lg:mx-0 lg:grid lg:overflow-visible lg:px-0 lg:pb-0"
+      :class="accessStore.can('analytics.view_employees') ? 'lg:grid-cols-2' : 'lg:grid-cols-1'"
+      role="region"
+      aria-label="Employee and financial performance reports"
+      @scroll.passive="updateActiveReport"
+    >
+      <section
+        v-if="accessStore.can('analytics.view_employees')"
+        class="w-[88vw] max-w-[38rem] shrink-0 snap-center overflow-hidden rounded-xl border border-gray-100 bg-white lg:w-auto lg:max-w-none lg:min-w-0"
+      >
+        <div class="border-b border-slate-100 px-3 py-2 sm:flex sm:items-center sm:gap-2">
+          <div class="min-w-0 flex-1">
+            <h3 class="text-xs font-bold text-slate-800">Employee performance</h3>
+            <p class="hidden text-[10px] text-slate-400 sm:block">Online orders and POS sales attributed to each staff account.</p>
+          </div>
+          <div class="mt-2 grid grid-cols-[minmax(0,1fr)_112px] gap-2 sm:mt-0 sm:flex sm:shrink-0">
+            <input v-model="employeeSearch" class="owner-input !min-h-8 min-w-0 !rounded-lg !py-1.5 !text-xs sm:w-40" placeholder="Find employee" />
+            <select v-model="employeeSort" class="owner-input !min-h-8 min-w-0 !rounded-lg !py-1.5 !text-xs sm:w-32">
+              <option value="revenue">Revenue</option>
+              <option value="sales">Sales</option>
+              <option value="completion">Completion</option>
+            </select>
+          </div>
+        </div>
+        <div class="max-h-64 overflow-auto">
+          <table class="w-full min-w-full text-left text-[11px] lg:min-w-[760px]">
+            <thead class="sticky top-0 bg-slate-50 text-[9px] uppercase tracking-wide text-slate-400">
+              <tr><th class="px-3 py-1.5">Employee</th><th class="px-1.5 py-1.5 text-right">Sales</th><th class="hidden px-2 py-1.5 text-right lg:table-cell">Online</th><th class="hidden px-2 py-1.5 text-right lg:table-cell">POS</th><th class="px-1.5 py-1.5 text-right">Revenue</th><th class="hidden px-2 py-1.5 text-right lg:table-cell">Avg sale</th><th class="px-2 py-1.5 text-right">Completion</th><th class="hidden px-3 py-1.5 text-right lg:table-cell">Cancelled / void</th></tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+              <tr v-for="employee in visibleEmployees" :key="employee.user_id" class="hover:bg-slate-50/70">
+                <td class="px-3 py-2"><div class="flex items-center gap-1.5"><span class="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-primary/10 text-[9px] font-black text-primary">{{ employeeInitials(employee.name) }}</span><span class="min-w-0"><span class="block truncate font-bold text-slate-800">{{ employee.name }}</span><span class="block truncate text-[9px] text-slate-400">{{ employee.job_title || 'Staff' }} · {{ employee.is_active ? 'Active' : 'Suspended' }}</span></span></div></td>
+                <td class="px-1.5 py-2 text-right font-bold text-slate-700">{{ employee.total_sales }}</td>
+                <td class="hidden px-2 py-2 text-right text-slate-500 lg:table-cell">{{ employee.online_orders }}</td>
+                <td class="hidden px-2 py-2 text-right text-slate-500 lg:table-cell">{{ employee.pos_sales }}</td>
+                <td class="whitespace-nowrap px-1.5 py-2 text-right font-black text-slate-900">KES {{ employee.revenue.toLocaleString() }}</td>
+                <td class="hidden px-2 py-2 text-right text-slate-600 lg:table-cell">KES {{ employee.avg_sale.toLocaleString() }}</td>
+                <td class="px-2 py-2 text-right"><span class="rounded-full px-1.5 py-0.5 font-bold" :class="employee.completion_rate >= 80 ? 'bg-emerald-50 text-emerald-700' : employee.completion_rate >= 50 ? 'bg-amber-50 text-amber-700' : 'bg-red-50 text-red-700'">{{ employee.completion_rate.toFixed(1) }}%</span></td>
+                <td class="hidden px-3 py-2 text-right font-bold text-slate-600 lg:table-cell">{{ employee.cancelled_or_voided }}</td>
+              </tr>
+              <tr v-if="!visibleEmployees.length"><td colspan="8" class="px-3 py-8 text-center text-xs text-slate-400">No employee activity in this period</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section
+        class="w-[88vw] max-w-[38rem] shrink-0 snap-center rounded-xl border border-gray-100 bg-white p-3.5 lg:w-auto lg:max-w-none lg:min-w-0"
+      >
+        <div class="mb-2 flex flex-wrap items-start justify-between gap-2">
+          <div>
+            <h3 class="text-xs font-semibold text-gray-700">Sales, expenses &amp; variance</h3>
+            <p class="mt-0.5 text-[11px] text-gray-400">Variance is sales minus the expenses recorded for each day.</p>
+          </div>
+          <div v-if="financial" class="flex items-center gap-1.5 text-[10px] font-semibold text-slate-500">
+            <span class="rounded-full bg-emerald-50 px-2 py-1">Online {{ financial.online_orders }}</span>
+            <span class="rounded-full bg-blue-50 px-2 py-1">POS {{ financial.pos_sales }}</span>
+          </div>
+        </div>
+        <div v-if="analyticsStore.loading" class="skeleton h-36 rounded-lg" />
+        <Line v-else-if="financialChartData" :data="financialChartData" :options="financialLineOptions" class="max-h-48" />
+        <p v-else class="py-10 text-center text-xs text-gray-400">No data</p>
+        <p class="mt-2 rounded-lg bg-slate-50 px-2.5 py-2 text-[10px] leading-4 text-slate-500">
+          Estimated result uses recorded expenses only. Missing stock costs, wages, rent, tax, or other costs will make it look higher than the business's actual profit.
+        </p>
+      </section>
+    </div>
+
+    <div
+      v-if="reportCount > 1"
+      class="-mt-1 mb-3 flex items-center justify-center gap-1.5 lg:hidden"
+      aria-label="Performance report carousel pages"
+    >
+      <button
+        v-for="i in reportCount"
+        :key="i"
+        type="button"
+        :class="[
+          'h-1.5 rounded-full transition-all duration-200',
+          activeReport === i - 1 ? 'w-5 bg-primary' : 'w-1.5 bg-slate-300'
+        ]"
+        :aria-label="`Show performance report ${i} of ${reportCount}`"
+        :aria-current="activeReport === i - 1 ? 'true' : undefined"
+        @click="scrollToReport(i - 1)"
       />
     </div>
 
     <!-- Charts grid -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
-      <!-- Revenue over time -->
-      <div class="bg-white  rounded-xl border border-gray-100  p-3.5">
-        <h3 class="text-xs font-semibold text-gray-700  mb-2">Daily Revenue</h3>
+      <!-- Expense mix -->
+      <div class="rounded-xl border border-gray-100 bg-white p-3.5">
+        <h3 class="mb-2 text-xs font-semibold text-gray-700">Where expenses went</h3>
         <div v-if="analyticsStore.loading" class="skeleton h-36 rounded-lg" />
-        <Line v-else-if="revenueChartData" :data="revenueChartData" :options="lineOptions" class="max-h-40" />
-        <p v-else class="text-center text-gray-400 py-10 text-xs">No data</p>
+        <div v-else-if="financial?.by_category.length" class="space-y-2">
+          <div v-for="item in financial.by_category" :key="item.category">
+            <div class="mb-1 flex items-center justify-between gap-2 text-xs">
+              <span class="truncate text-slate-600">{{ expenseCategoryLabel(item.category) }}</span>
+              <span class="shrink-0 font-semibold text-slate-900">KES {{ item.total.toLocaleString() }}</span>
+            </div>
+            <div class="h-1.5 overflow-hidden rounded-full bg-slate-100">
+              <div class="h-full rounded-full bg-orange-400" :style="{ width: `${expenseCategoryShare(item.total)}%` }" />
+            </div>
+          </div>
+        </div>
+        <p v-else class="py-10 text-center text-xs text-gray-400">No expenses recorded in this period</p>
       </div>
 
       <!-- Payment methods donut -->
@@ -109,7 +255,7 @@
 
       <!-- Peak hours -->
       <div class="lg:col-span-2 bg-white  rounded-xl border border-gray-100  p-3.5">
-        <h3 class="text-xs font-semibold text-gray-700  mb-2">Peak Order Hours</h3>
+        <h3 class="text-xs font-semibold text-gray-700  mb-2">Peak Sales Hours</h3>
         <div v-if="analyticsStore.loading" class="skeleton h-36 rounded-lg" />
         <Bar v-else-if="peakHoursChartData" :data="peakHoursChartData" :options="barOptions" class="max-h-40" />
         <p v-else class="text-center text-gray-400 py-10 text-xs">No data</p>
@@ -125,14 +271,34 @@ import {
   Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement,
   BarElement, ArcElement, Title, Tooltip, Legend, Filler
 } from 'chart.js'
-import { BanknotesIcon, ShoppingCartIcon, CheckCircleIcon, XCircleIcon, CurrencyDollarIcon } from '@heroicons/vue/24/outline'
+import {
+  BanknotesIcon, ShoppingCartIcon, CheckCircleIcon, XCircleIcon,
+  CurrencyDollarIcon, ReceiptRefundIcon, ScaleIcon,
+} from '@heroicons/vue/24/outline'
 import KpiCard from '@/components/dashboard/KpiCard.vue'
 import { useAnalyticsStore } from '@/stores/analytics'
+import { useAccessStore } from '@/stores/access'
+import { useSnapCarousel } from '@/composables/useSnapCarousel'
 import type { DateRange } from '@/stores/analytics'
+import { EXPENSE_CATEGORIES } from '@qesuite/shared'
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, Title, Tooltip, Legend, Filler)
 
 const analyticsStore = useAnalyticsStore()
+const accessStore = useAccessStore()
+const {
+  scroller: metricScroller,
+  activeIndex: activeMetric,
+  updateActiveIndex: updateActiveMetric,
+  scrollToIndex: scrollToMetric,
+} = useSnapCarousel()
+const {
+  scroller: reportScroller,
+  activeIndex: activeReport,
+  updateActiveIndex: updateActiveReport,
+  scrollToIndex: scrollToReport,
+} = useSnapCarousel()
+const reportCount = computed(() => accessStore.can('analytics.view_employees') ? 2 : 1)
 
 const ranges = [
   { value: 'today' as DateRange, label: 'Today' },
@@ -143,10 +309,28 @@ const ranges = [
 
 const customFrom = ref('')
 const customTo = ref('')
+const employeeSearch = ref('')
+const employeeSort = ref<'revenue' | 'sales' | 'completion'>('revenue')
 
 const paymentColors = ['#10b981', '#0d9488', '#6366f1', '#f59e0b', '#ef4444']
 
 const summary = computed(() => analyticsStore.summary)
+const financial = computed(() => analyticsStore.financialPerformance)
+const visibleEmployees = computed(() => {
+  const query = employeeSearch.value.trim().toLowerCase()
+  return analyticsStore.employeePerformance
+    .filter(employee => !query || employee.name.toLowerCase().includes(query) || employee.job_title?.toLowerCase().includes(query))
+    .slice()
+    .sort((a, b) => employeeSort.value === 'sales'
+      ? b.total_sales - a.total_sales
+      : employeeSort.value === 'completion'
+        ? b.completion_rate - a.completion_rate
+        : b.revenue - a.revenue)
+})
+
+function employeeInitials(name: string) {
+  return name.trim().split(/\s+/).slice(0, 2).map(part => part[0]?.toUpperCase()).join('') || '?'
+}
 
 function changePercent(field: 'total_revenue' | 'total_orders' | 'avg_order_value' | 'completion_rate') {
   const s = analyticsStore.summary
@@ -162,13 +346,35 @@ const cancelChange = computed(() => {
   if (!s || !s.prev) return undefined
   const curr = s.cancelled_orders
   const prev = s.prev.cancelled_orders
-  if (prev === 0) return 0
-  // Inverse: more cancellations = negative
-  return -((curr - prev) / prev) * 100
+  if (prev === 0) return curr > 0 ? 100 : 0
+  return ((curr - prev) / prev) * 100
 })
+
+function financialChange(field: 'expenses' | 'variance') {
+  const data = financial.value
+  if (!data) return undefined
+  const current = data[field]
+  const previous = data.previous[field]
+  if (previous === 0) return current === 0 ? 0 : current > 0 ? 100 : -100
+  return ((current - previous) / Math.abs(previous)) * 100
+}
+
+function formatSignedKes(value: number) {
+  return value < 0 ? `-KES ${Math.abs(value).toLocaleString()}` : `KES ${value.toLocaleString()}`
+}
+
+function expenseCategoryLabel(category: string) {
+  return EXPENSE_CATEGORIES[category as keyof typeof EXPENSE_CATEGORIES]?.label ?? category
+}
+
+function expenseCategoryShare(total: number) {
+  const expenseTotal = financial.value?.expenses ?? 0
+  return expenseTotal > 0 ? Math.max(2, Math.round((total / expenseTotal) * 100)) : 0
+}
 
 function paymentLabel(m: string) {
   const labels: Record<string, string> = {
+    cash: 'Cash',
     pay_on_delivery: 'Pay on Delivery',
     mpesa: 'M-Pesa',
     stripe: 'Card'
@@ -176,20 +382,38 @@ function paymentLabel(m: string) {
   return labels[m] || m
 }
 
-const revenueChartData = computed(() => {
-  const data = analyticsStore.revenueChart
+const financialChartData = computed(() => {
+  const data = financial.value?.daily ?? []
   if (!data.length) return null
   return {
     labels: data.map(d => d.date),
-    datasets: [{
-      label: 'Revenue (KES)',
-      data: data.map(d => d.revenue),
-      borderColor: '#10b981',
-      backgroundColor: 'rgba(16,185,129,0.1)',
-      fill: true,
-      tension: 0.4,
-      pointRadius: 3,
-    }]
+    datasets: [
+      {
+        label: 'Sales',
+        data: data.map(d => d.revenue),
+        borderColor: '#10b981',
+        backgroundColor: 'rgba(16,185,129,0.08)',
+        tension: 0.35,
+        pointRadius: 2,
+      },
+      {
+        label: 'Expenses',
+        data: data.map(d => d.expenses),
+        borderColor: '#f97316',
+        backgroundColor: 'rgba(249,115,22,0.08)',
+        tension: 0.35,
+        pointRadius: 2,
+      },
+      {
+        label: 'Variance',
+        data: data.map(d => d.variance),
+        borderColor: '#2563eb',
+        backgroundColor: 'rgba(37,99,235,0.08)',
+        borderDash: [5, 4],
+        tension: 0.35,
+        pointRadius: 2,
+      },
+    ]
   }
 })
 
@@ -241,7 +465,7 @@ const peakHoursChartData = computed(() => {
   return {
     labels: Array.from({ length: 24 }, (_, i) => `${String(i).padStart(2, '0')}:00`),
     datasets: [{
-      label: 'Orders',
+      label: 'Sales',
       data: Array.from({ length: 24 }, (_, h) => data.find(d => d.hour === h)?.orders || 0),
       backgroundColor: data.map((_, i) => {
         const v = data[i]?.orders || 0
@@ -279,7 +503,17 @@ const baseChartOptions = {
   }
 }
 
-const lineOptions = { ...baseChartOptions }
+const financialLineOptions = {
+  ...baseChartOptions,
+  plugins: {
+    ...baseChartOptions.plugins,
+    legend: {
+      display: true,
+      position: 'bottom' as const,
+      labels: { usePointStyle: true, boxWidth: 7, padding: 12, color: '#64748b', font: { size: 10 } },
+    },
+  },
+}
 const barOptions = { ...baseChartOptions }
 const horizontalBarOptions = {
   ...baseChartOptions,

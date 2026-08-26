@@ -338,6 +338,7 @@ import LiveMap from '@/components/LiveMap.vue'
 import { useStorefrontStore } from '@/stores/store'
 import { useCart } from '@/composables/useCart'
 import type { TrackOrderResponse, OrderStatus } from '@qesuite/types'
+import { formatDate as formatNairobiDateTime } from '@qesuite/shared'
 
 const route = useRoute()
 const router = useRouter()
@@ -468,12 +469,7 @@ function formatPrice(amount: number) {
 }
 
 function formatDateTime(value: string) {
-  return new Date(value).toLocaleString('en-KE', {
-    day: 'numeric',
-    month: 'short',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
+  return formatNairobiDateTime(value)
 }
 
 async function fetchTrackData() {

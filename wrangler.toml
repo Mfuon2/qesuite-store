@@ -6,6 +6,7 @@ compatibility_date = "2024-12-01"
 # Secrets (JWT_SECRET, SMS_API_KEY, etc.) must be set via: wrangler secret put <KEY>
 [vars]
 APP_BASE_URL = "https://store.qesuite.com"
+APP_TIME_ZONE = "Africa/Nairobi"
 SMS_BASE_URL = "https://sms.textsms.co.ke/api/services/sendsms/"
 AT_SENDER_ID = "QeSuite"
 CDN_URL = "https://images.qesuite.com"
@@ -29,4 +30,5 @@ max_batch_size = 10
 max_batch_timeout = 5
 
 [triggers]
-crons = ["0 0 * * *"]
+# Cloudflare cron expressions are UTC. 21:00 UTC is midnight in Nairobi (UTC+03:00).
+crons = ["0 21 * * *"]

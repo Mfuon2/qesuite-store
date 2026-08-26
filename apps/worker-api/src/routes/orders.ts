@@ -3,6 +3,7 @@ import { Env, Variables } from '../types'
 import { authMiddleware } from '../middleware/auth'
 import { tenantGuard } from '../middleware/tenant'
 import { generateId, generateTrackingCode } from '../lib/jwt'
+import { businessDateDaysAgo } from '../lib/time'
 
 const orders = new Hono<{ Bindings: Env; Variables: Variables }>()
 
@@ -310,15 +311,13 @@ orders.get('/', authMiddleware, tenantGuard, async (c) => {
 
     // Optional date filter (from dashboard period selector or custom range)
     if (fromParam && toParam) {
-      conditions.push('date(o.created_at) >= ?')
-      conditions.push('date(o.created_at) <= ?')
+      conditions.push("date(o.created_at, '+3 hours') >= ?")
+      conditions.push("date(o.created_at, '+3 hours') <= ?")
       params.push(fromParam, toParam)
     } else if (periodParam) {
       const days = periodParam === 'today' ? 0 : periodParam === 'week' ? 6 : 29
-      const since = new Date()
-      since.setUTCDate(since.getUTCDate() - days)
-      conditions.push('date(o.created_at) >= ?')
-      params.push(since.toISOString().substring(0, 10))
+      conditions.push("date(o.created_at, '+3 hours') >= ?")
+      params.push(businessDateDaysAgo(days))
     }
 
     const whereClause = conditions.join(' AND ')
@@ -435,8 +434,10 @@ orders.put('/:id/status', authMiddleware, tenantGuard, async (c) => {
     }
 
     await c.env.qesuite_db.prepare(
-      `UPDATE orders SET status = ?, cancellation_reason = ?, updated_at = datetime('now') WHERE id = ?`
-    ).bind(status, cancellation_reason ?? null, id).run()
+      `UPDATE orders
+       SET status = ?, cancellation_reason = ?, handled_by_user_id = ?, updated_at = datetime('now')
+       WHERE id = ? AND tenant_id = ?`
+    ).bind(status, cancellation_reason ?? null, user.sub, id, tenantId).run()
 
     // Queue notification based on new status
     const tenant = await c.env.qesuite_db.prepare(
@@ -520,8 +521,10 @@ orders.post('/:id/payment', authMiddleware, tenantGuard, async (c) => {
          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
       ).bind(paymentId, id, tenantId, order.total, method, body.reference ?? null, body.note ?? null, user.sub),
       c.env.qesuite_db.prepare(
-        `UPDATE orders SET payment_status = 'paid', updated_at = datetime('now') WHERE id = ?`
-      ).bind(id),
+        `UPDATE orders
+         SET payment_status = 'paid', handled_by_user_id = ?, updated_at = datetime('now')
+         WHERE id = ? AND tenant_id = ?`
+      ).bind(user.sub, id, tenantId),
     ])
 
     return c.json({

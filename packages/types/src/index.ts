@@ -37,6 +37,7 @@ export interface Tenant {
   lng: number | null;
   whatsapp_number: string | null;
   store_category: StoreCategory;
+  timezone: 'Africa/Nairobi';
   plan: Plan;
   trial_ends_at: string | null;
   subscription_status: SubscriptionStatus;
@@ -74,6 +75,39 @@ export interface PublicUser {
   role: UserRole;
   is_active: boolean;
   created_at: string;
+}
+
+export interface StoreMember {
+  id: string;
+  tenant_id: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  role: 'owner' | 'staff';
+  job_title: string | null;
+  is_active: boolean;
+  permissions: string[];
+  last_login_at: string | null;
+  created_at: string;
+}
+
+export interface StaffInvitation {
+  id: string;
+  tenant_id: string;
+  name: string;
+  email: string;
+  phone: string | null;
+  job_title: string | null;
+  permissions: string[];
+  status: 'pending' | 'accepted' | 'revoked' | 'expired';
+  expires_at: string;
+  created_at: string;
+}
+
+export interface CurrentAccess {
+  role: UserRole;
+  permissions: string[];
+  is_owner: boolean;
 }
 
 export interface JWTPayload {
@@ -304,6 +338,124 @@ export interface OrderFilters {
 }
 
 // ─────────────────────────────────────────────────────────────
+// Restaurant POS (Sales Terminal) — store_category === 'food' only
+// ─────────────────────────────────────────────────────────────
+
+export type PosPaymentMethod = 'cash' | 'mpesa';
+export type PosSaleStatus = 'completed' | 'voided';
+export type PosCashMovementType =
+  | 'opening_float'
+  | 'cash_sale'
+  | 'cash_void'
+  | 'paid_in'
+  | 'paid_out'
+  | 'correction';
+
+export interface PosCashMovement {
+  id: string;
+  till_session_id: string;
+  movement_type: PosCashMovementType;
+  amount: number;
+  reason: string;
+  reference_id: string;
+  recorded_by: string;
+  created_at: string;
+}
+
+export interface PosTillSession {
+  id: string;
+  tenant_id: string;
+  business_date: string;
+  opening_float: number;
+  status: 'open' | 'closed';
+  opened_by: string;
+  opened_at: string;
+  closed_by: string | null;
+  closed_at: string | null;
+  counted_cash: number | null;
+  expected_cash: number | null;
+  variance: number | null;
+  running_float: number;
+  cash_sales: number;
+  paid_in: number;
+  paid_out: number;
+  corrections: number;
+  movement_count: number;
+  recent_movements?: PosCashMovement[];
+}
+
+export interface PosSaleItem {
+  id: string;
+  sale_id: string;
+  product_id: string | null;
+  product_name: string;
+  quantity: number;
+  unit_price: number;
+  line_total: number;
+}
+
+export interface PosSale {
+  id: string;
+  tenant_id: string;
+  receipt_code: string;
+  subtotal: number;
+  discount: number;
+  total: number;
+  payment_method: PosPaymentMethod;
+  amount_tendered: number | null;
+  change_due: number | null;
+  mpesa_reference: string | null;
+  status: PosSaleStatus;
+  void_reason: string | null;
+  table_label: string | null;
+  note: string | null;
+  served_by: string;
+  created_at: string;
+  voided_at: string | null;
+  till_session_id: string | null;
+  // joined
+  items?: PosSaleItem[];
+  items_summary?: string;
+}
+
+export interface PosSaleCreate {
+  items: { product_id: string; quantity: number }[];
+  payment_method: PosPaymentMethod;
+  amount_tendered?: number;
+  mpesa_reference?: string;
+  discount?: number;
+  table_label?: string;
+  note?: string;
+}
+
+export type ExpenseCategory =
+  | 'supplies'
+  | 'rent'
+  | 'utilities'
+  | 'staff_wages'
+  | 'maintenance'
+  | 'other';
+
+export interface Expense {
+  id: string;
+  tenant_id: string;
+  category: ExpenseCategory;
+  description: string | null;
+  amount: number;
+  expense_date: string;
+  recorded_by: string;
+  created_at: string;
+  cash_movement_id: string | null;
+}
+
+export interface ExpenseCreate {
+  category: ExpenseCategory;
+  description?: string;
+  amount: number;
+  expense_date: string;
+}
+
+// ─────────────────────────────────────────────────────────────
 // Delivery
 // ─────────────────────────────────────────────────────────────
 
@@ -472,7 +624,25 @@ export interface AnalyticsSummary {
   avg_order_value: number;
   cancelled_orders: number;
   completion_rate: number;
+  online_orders?: number;
+  pos_sales?: number;
   period_days: number;
+}
+
+export interface EmployeePerformance {
+  user_id: string;
+  name: string;
+  job_title: string | null;
+  is_active: boolean;
+  total_sales: number;
+  online_orders: number;
+  pos_sales: number;
+  revenue: number;
+  avg_sale: number;
+  completed_sales: number;
+  cancelled_or_voided: number;
+  completion_rate: number;
+  last_sale_at: string | null;
 }
 
 export interface RevenueDataPoint {

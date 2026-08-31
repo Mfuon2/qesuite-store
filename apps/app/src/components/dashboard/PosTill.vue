@@ -88,16 +88,12 @@
 
         <div class="owner-segmented" aria-label="Payment method">
           <button
-            @click="form.method = 'cash'"
-            :class="['owner-segment-button flex-1 py-1.5 text-xs', form.method === 'cash' ? 'owner-segment-button-active' : '']"
+            v-for="opt in PAYMENT_METHOD_OPTIONS"
+            :key="opt.value"
+            @click="form.method = opt.value"
+            :class="['owner-segment-button flex-1 py-1.5 text-xs', form.method === opt.value ? 'owner-segment-button-active' : '']"
           >
-            Cash
-          </button>
-          <button
-            @click="form.method = 'mpesa'"
-            :class="['owner-segment-button flex-1 py-1.5 text-xs', form.method === 'mpesa' ? 'owner-segment-button-active' : '']"
-          >
-            M-Pesa
+            {{ opt.label }}
           </button>
         </div>
 
@@ -114,12 +110,83 @@
           </span>
         </div>
         <input
-          v-else
+          v-else-if="form.method === 'mpesa'"
           v-model="form.mpesaReference"
           type="text"
           placeholder="M-Pesa reference *"
           class="owner-input h-8 w-full text-xs uppercase"
         />
+
+        <div v-else-if="form.method === 'credit'" class="space-y-1.5">
+          <div v-if="selectedCustomer" class="flex items-center justify-between gap-2 rounded-lg border border-slate-100 bg-slate-50 px-2.5 py-1.5">
+            <div class="min-w-0">
+              <p class="truncate text-xs font-bold text-slate-950">{{ selectedCustomer.name || selectedCustomer.phone }}</p>
+              <p class="text-[10px] font-semibold" :class="availableCredit >= cartTotal ? 'text-emerald-600' : 'text-amber-600'">
+                {{ availableCredit >= cartTotal ? `KES ${availableCredit.toLocaleString()} credit available` : `Only KES ${Math.max(0, availableCredit).toLocaleString()} available — needs manager approval` }}
+              </p>
+            </div>
+            <button type="button" class="shrink-0 text-slate-300 hover:text-red-500" @click="clearCustomer">
+              <XMarkIcon class="h-3.5 w-3.5" />
+            </button>
+          </div>
+          <template v-else>
+            <input
+              v-model="customerSearch"
+              type="text"
+              placeholder="Search customer by name or phone *"
+              class="owner-input h-8 w-full text-xs"
+              @input="searchCustomers"
+            />
+            <div v-if="customerResults.length" class="max-h-32 space-y-0.5 overflow-y-auto rounded-lg border border-slate-100 p-1">
+              <button
+                v-for="cust in customerResults"
+                :key="cust.id"
+                type="button"
+                class="flex w-full items-center justify-between gap-2 rounded-md px-2 py-1 text-left hover:bg-slate-50"
+                @click="pickCustomer(cust)"
+              >
+                <span class="truncate text-xs font-semibold text-slate-800">{{ cust.name || cust.phone }}</span>
+                <span class="shrink-0 text-[10px] font-medium text-slate-400">{{ displayPhone(cust.phone) }}</span>
+              </button>
+            </div>
+            <p v-else-if="customerSearch.trim().length >= 2" class="px-1 text-[11px] text-slate-400">
+              No match — add them under Customers first.
+            </p>
+          </template>
+        </div>
+
+        <div v-else-if="form.method === 'split'" class="space-y-1.5 rounded-xl border border-slate-100 p-2">
+          <div v-for="(leg, idx) in form.splitPayments" :key="idx" class="grid grid-cols-[70px_minmax(0,1fr)_24px] items-center gap-1.5">
+            <select v-model="leg.method" class="owner-input h-7 !px-1.5 text-[11px]">
+              <option value="cash">Cash</option>
+              <option value="mpesa">M-Pesa</option>
+              <option value="card">Card</option>
+            </select>
+            <input
+              v-if="leg.method === 'mpesa'"
+              v-model="leg.reference"
+              type="text"
+              placeholder="Ref *"
+              class="owner-input h-7 min-w-0 !px-1.5 text-[11px] uppercase"
+            />
+            <input
+              v-model.number="leg.amount"
+              type="number"
+              min="0"
+              placeholder="Amount"
+              :class="['owner-input h-7 min-w-0 !px-1.5 text-[11px]', leg.method !== 'mpesa' ? 'col-span-1' : '']"
+            />
+            <button type="button" class="grid h-6 w-6 place-items-center rounded text-slate-300 hover:text-red-500" @click="form.splitPayments.splice(idx, 1)">
+              <XMarkIcon class="h-3.5 w-3.5" />
+            </button>
+          </div>
+          <div class="flex items-center justify-between pt-0.5">
+            <button type="button" class="text-[11px] font-bold text-primary" @click="form.splitPayments.push({ method: 'cash', amount: null, reference: '' })">+ Add leg</button>
+            <span :class="['text-[11px] font-bold', splitRemaining === 0 ? 'text-emerald-700' : 'text-amber-600']">
+              {{ splitRemaining === 0 ? 'Fully allocated' : `Remaining ${splitRemaining.toLocaleString()}` }}
+            </span>
+          </div>
+        </div>
 
         <input v-model="form.tableLabel" type="text" placeholder="Table / note (optional)" class="owner-input h-8 w-full text-xs" />
 
@@ -141,18 +208,37 @@
 </template>
 
 <script setup lang="ts">
+import { ref, computed, watch } from 'vue'
 import { CubeIcon, PlusIcon, MinusIcon, XMarkIcon, BanknotesIcon } from '@heroicons/vue/24/outline'
-import type { Product, PosPaymentMethod } from '@qesuite/types'
+import type { Product, PosPaymentMethod, PosSplitLegMethod, Customer } from '@qesuite/types'
+import { displayPhone } from '@qesuite/shared'
+import { apiGetCustomers } from '@/api/customers'
+
+export interface TillSplitLeg {
+  method: PosSplitLegMethod
+  amount: number | null
+  reference: string
+}
 
 export interface TillForm {
   discount: number | null
   method: PosPaymentMethod
   amountTendered: number | null
   mpesaReference: string
+  splitPayments: TillSplitLeg[]
   tableLabel: string
+  customerId: string | null
 }
 
-defineProps<{
+const PAYMENT_METHOD_OPTIONS: { value: PosPaymentMethod; label: string }[] = [
+  { value: 'cash', label: 'Cash' },
+  { value: 'mpesa', label: 'M-Pesa' },
+  { value: 'card', label: 'Card' },
+  { value: 'split', label: 'Split' },
+  { value: 'credit', label: 'Credit' },
+]
+
+const props = defineProps<{
   cart: Array<{ product: Product; quantity: number }>
   subtotal: number
   cartTotal: number
@@ -175,7 +261,57 @@ const emit = defineEmits<{
 
 const form = defineModel<TillForm>('form', { required: true })
 
+const splitRemaining = computed(() => {
+  const allocated = form.value.splitPayments.reduce((sum, leg) => sum + (leg.amount || 0), 0)
+  return props.cartTotal - allocated
+})
+
+// Seed two blank legs the first time the cashier switches to Split, so
+// there's something to fill in rather than an empty box.
+watch(() => form.value.method, (method) => {
+  if (method === 'split' && form.value.splitPayments.length === 0) {
+    form.value.splitPayments = [
+      { method: 'cash', amount: null, reference: '' },
+      { method: 'mpesa', amount: null, reference: '' },
+    ]
+  }
+})
+
 function unitPrice(product: Product): number {
   return product.sale_price ?? product.price
 }
+
+const customerSearch = ref('')
+const customerResults = ref<Customer[]>([])
+const selectedCustomer = ref<Customer | null>(null)
+const availableCredit = computed(() => selectedCustomer.value ? selectedCustomer.value.credit_limit - selectedCustomer.value.credit_balance : 0)
+
+let customerSearchTimeout: ReturnType<typeof setTimeout> | undefined
+function searchCustomers() {
+  clearTimeout(customerSearchTimeout)
+  const q = customerSearch.value.trim()
+  if (q.length < 2) { customerResults.value = []; return }
+  customerSearchTimeout = setTimeout(async () => {
+    const res = await apiGetCustomers({ search: q, limit: 8 })
+    if (res.success && res.data) customerResults.value = res.data
+  }, 250)
+}
+
+function pickCustomer(customer: Customer) {
+  selectedCustomer.value = customer
+  form.value.customerId = customer.id
+  customerResults.value = []
+  customerSearch.value = ''
+}
+
+function clearCustomer() {
+  selectedCustomer.value = null
+  form.value.customerId = null
+}
+
+// Switching away from Credit drops whatever customer was picked, so a stale
+// customerId can never ride along on a cash/mpesa/card/split sale.
+watch(() => form.value.method, (method) => {
+  if (method !== 'credit') clearCustomer()
+})
 </script>

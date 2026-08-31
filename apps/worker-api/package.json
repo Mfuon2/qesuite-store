@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "hono": "^4.13.5",
+    "pdf-lib": "^1.17.1",
     "@qesuite/types": "*",
     "@qesuite/shared": "*"
   },

@@ -108,30 +108,72 @@ const accessRules: AccessRule[] = [
   { method: 'GET', path: /^\/api\/pos(?:\/|$)/, permissions: ['pos.view'] },
 
   { method: 'POST', path: /^\/api\/expenses\/?$/, permissions: ['expenses.create'] },
+  { method: 'PUT', path: /^\/api\/expenses\/[^/]+$/, permissions: ['expenses.edit'] },
   { method: 'DELETE', path: /^\/api\/expenses\/[^/]+$/, permissions: ['expenses.delete'] },
   { method: 'GET', path: /^\/api\/expenses(?:\/|$)/, permissions: ['expenses.view'] },
 
   { method: 'POST', path: /^\/api\/notifications\/[^/]+\/(send|resend)$/, permissions: ['notifications.send'] },
   { method: 'GET', path: /^\/api\/notifications(?:\/|$)/, permissions: ['notifications.view'] },
-  { method: 'GET', path: /^\/api\/customers(?:\/|$)/, permissions: ['dashboard.view', 'orders.view'], mode: 'any' },
+  { method: 'POST', path: /^\/api\/customers\/?$/, permissions: ['customers.manage'] },
+  { method: 'PUT', path: /^\/api\/customers\/[^/]+$/, permissions: ['customers.manage'] },
+  { method: 'GET', path: /^\/api\/customers(?:\/|$)/, permissions: ['dashboard.view', 'orders.view', 'customers.view'], mode: 'any' },
 
   { method: 'PUT', path: /^\/api\/(settings\/(tenant|store)|store)\/?$/, permissions: ['settings.edit'] },
   { method: 'POST', path: /^\/api\/settings\/onboarding$/, permissions: ['settings.edit'] },
   { method: 'POST', path: /^\/api\/onboarding\//, permissions: ['settings.edit'] },
   { method: 'POST', path: /^\/api\/upload\//, permissions: ['products.edit', 'settings.edit'], mode: 'any' },
 
-  { method: 'GET', path: /^\/api\/billing\/(subscription|history)$/, permissions: ['billing.view'] },
-  { method: 'POST', path: /^\/api\/billing\//, permissions: ['billing.manage'] },
-  { method: 'POST', path: /^\/api\/payments\/subscription$/, permissions: ['billing.manage'] },
+  { method: 'GET', path: /^\/api\/billing\/(subscription|history)$/, permissions: ['subscriptions.view'] },
+  { method: 'POST', path: /^\/api\/billing\//, permissions: ['subscriptions.manage'] },
+  { method: 'POST', path: /^\/api\/payments\/subscription$/, permissions: ['subscriptions.manage'] },
+
+  { method: 'GET', path: /^\/api\/invoices(?:\/|$)/, permissions: ['billing.view'] },
+  { method: 'POST', path: /^\/api\/invoices\/[^/]+\/(payments|write-off|void|credit-notes)$/, permissions: ['billing.manage'] },
+  { method: 'POST', path: /^\/api\/invoices\/[^/]+\/send$/, permissions: ['billing.create'] },
+  { method: 'PUT', path: /^\/api\/invoices\/[^/]+$/, permissions: ['billing.create'] },
+  { method: 'POST', path: /^\/api\/invoices\/?$/, permissions: ['billing.create'] },
+
+  { method: 'GET', path: /^\/api\/suppliers(?:\/|$)/, permissions: ['suppliers.view'] },
+  { method: 'POST', path: /^\/api\/suppliers\/?/, permissions: ['suppliers.manage'] },
+  { method: 'PUT', path: /^\/api\/suppliers\/[^/]+$/, permissions: ['suppliers.manage'] },
+  { method: 'DELETE', path: /^\/api\/suppliers\/[^/]+$/, permissions: ['suppliers.manage'] },
+
+  { method: 'GET', path: /^\/api\/purchase-orders(?:\/|$)/, permissions: ['purchase_orders.view'] },
+  { method: 'POST', path: /^\/api\/purchase-orders\/[^/]+\/(approve|reject|send)$/, permissions: ['purchase_orders.approve'] },
+  { method: 'POST', path: /^\/api\/purchase-orders\/[^/]+\/receive$/, permissions: ['purchase_orders.receive'] },
+  { method: 'POST', path: /^\/api\/purchase-orders\/[^/]+\/(submit|cancel)$/, permissions: ['purchase_orders.create'] },
+  { method: 'PUT', path: /^\/api\/purchase-orders\/[^/]+$/, permissions: ['purchase_orders.create'] },
+  { method: 'POST', path: /^\/api\/purchase-orders\/?$/, permissions: ['purchase_orders.create'] },
+
+  { method: 'GET', path: /^\/api\/stock\/(movements|take)(?:\/|$)/, permissions: ['stock.view'] },
+  { method: 'POST', path: /^\/api\/stock\/take\//, permissions: ['stock.take'] },
+  { method: 'POST', path: /^\/api\/stock\/adjustments\/?$/, permissions: ['stock.adjust'] },
+
+  { method: 'GET', path: /^\/api\/approvals(?:\/|$)/, permissions: ['approvals.view'] },
+  { method: 'POST', path: /^\/api\/approvals\/[^/]+\/(approve|reject)$/, permissions: ['approvals.decide'] },
 ]
+
+// Every request only needs to test rules that could possibly match its own
+// method (its own method's rules, plus the handful with no method — meaning
+// "any method"). Pre-splitting by method at module load avoids re-testing
+// the full rule list — now 57 entries and growing — against every request.
+// `.filter()` preserves relative order, so first-match semantics are
+// unchanged; this is a pure lookup-cost optimization, not a policy change.
+const rulesByMethod = new Map<string, AccessRule[]>()
+function rulesFor(method: string): AccessRule[] {
+  let rules = rulesByMethod.get(method)
+  if (!rules) {
+    rules = accessRules.filter(candidate => !candidate.method || candidate.method === method)
+    rulesByMethod.set(method, rules)
+  }
+  return rules
+}
 
 export async function enforceAccessPolicy(
   c: Context<{ Bindings: Env; Variables: Variables }>,
   next: Next,
 ): Promise<Response | void> {
-  const rule = accessRules.find(candidate =>
-    (!candidate.method || candidate.method === c.req.method) && candidate.path.test(c.req.path)
-  )
+  const rule = rulesFor(c.req.method).find(candidate => candidate.path.test(c.req.path))
   if (!rule) {
     await next()
     return

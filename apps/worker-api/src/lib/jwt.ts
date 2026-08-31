@@ -1,12 +1,15 @@
 import { JWTPayload } from '../types'
 
-export async function signJWT(
-  payload: Omit<JWTPayload, 'exp' | 'iat'>,
+// Generic over the payload shape so a second token kind (e.g. DeviceSessionPayload)
+// can reuse this exact HMAC implementation instead of a duplicated one — defaulted
+// to JWTPayload so every existing call site keeps working unchanged.
+export async function signJWT<T extends object = JWTPayload>(
+  payload: Omit<T, 'exp' | 'iat'>,
   secret: string,
   expiresInSeconds = 900
 ): Promise<string> {
   const now = Math.floor(Date.now() / 1000)
-  const fullPayload: JWTPayload = { ...payload, iat: now, exp: now + expiresInSeconds }
+  const fullPayload = { ...payload, iat: now, exp: now + expiresInSeconds } as T & { iat: number; exp: number }
 
   const header = btoa(JSON.stringify({ alg: 'HS256', typ: 'JWT' }))
     .replace(/=/g, '')
@@ -35,7 +38,7 @@ export async function signJWT(
   return `${data}.${sig}`
 }
 
-export async function verifyJWT(token: string, secret: string): Promise<JWTPayload> {
+export async function verifyJWT<T extends object = JWTPayload>(token: string, secret: string): Promise<T & { iat: number; exp: number }> {
   const parts = token.split('.')
   if (parts.length !== 3) throw new Error('Invalid token')
 
@@ -59,7 +62,7 @@ export async function verifyJWT(token: string, secret: string): Promise<JWTPaylo
 
   const payload = JSON.parse(
     atob(body.replace(/-/g, '+').replace(/_/g, '/'))
-  ) as JWTPayload
+  ) as T & { iat: number; exp: number }
   if (payload.exp < Math.floor(Date.now() / 1000)) throw new Error('Token expired')
 
   return payload

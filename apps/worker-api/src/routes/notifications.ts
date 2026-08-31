@@ -1,13 +1,13 @@
 import { Hono } from 'hono'
 import { Env, Variables } from '../types'
 import { authMiddleware } from '../middleware/auth'
-import { tenantGuard } from '../middleware/tenant'
+import { tenantGuard, requireModule } from '../middleware/tenant'
 import { generateId } from '../lib/jwt'
 import { sendSMS } from '../lib/notifications'
 
 const notifications = new Hono<{ Bindings: Env; Variables: Variables }>()
 
-notifications.use('*', authMiddleware, tenantGuard)
+notifications.use('*', authMiddleware, tenantGuard, requireModule('notifications'))
 
 // GET /api/notifications — list all notifications for the tenant
 notifications.get('/', async (c) => {

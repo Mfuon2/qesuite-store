@@ -1,7 +1,7 @@
 import { Hono } from 'hono'
 import { Env, Variables } from '../types'
 import { authMiddleware } from '../middleware/auth'
-import { tenantGuard } from '../middleware/tenant'
+import { tenantGuard, requireModule } from '../middleware/tenant'
 import { riderMiddleware } from '../middleware/auth'
 import { generateId, generateTrackingCode } from '../lib/jwt'
 import { sendSMS } from '../lib/notifications'
@@ -10,7 +10,7 @@ import { validatePhone, normalizeKenyaPhone } from '@qesuite/shared'
 const delivery = new Hono<{ Bindings: Env; Variables: Variables }>()
 
 // POST /api/delivery/staff — add rider
-delivery.post('/staff', authMiddleware, tenantGuard, async (c) => {
+delivery.post('/staff', authMiddleware, tenantGuard, requireModule('delivery'), async (c) => {
   try {
     const user = c.get('user')
     if (user.role !== 'owner') {
@@ -70,7 +70,7 @@ delivery.post('/staff', authMiddleware, tenantGuard, async (c) => {
 })
 
 // GET /api/delivery/staff — list riders
-delivery.get('/staff', authMiddleware, tenantGuard, async (c) => {
+delivery.get('/staff', authMiddleware, tenantGuard, requireModule('delivery'), async (c) => {
   try {
     const user = c.get('user')
     const tenantId = user.tenant_id!
@@ -94,7 +94,7 @@ delivery.get('/staff', authMiddleware, tenantGuard, async (c) => {
 })
 
 // DELETE /api/delivery/staff/:id — deactivate rider
-delivery.delete('/staff/:id', authMiddleware, tenantGuard, async (c) => {
+delivery.delete('/staff/:id', authMiddleware, tenantGuard, requireModule('delivery'), async (c) => {
   try {
     const user = c.get('user')
     if (user.role !== 'owner') {
@@ -122,7 +122,7 @@ delivery.delete('/staff/:id', authMiddleware, tenantGuard, async (c) => {
 })
 
 // POST /api/delivery/assign — assign order to rider
-delivery.post('/assign', authMiddleware, tenantGuard, async (c) => {
+delivery.post('/assign', authMiddleware, tenantGuard, requireModule('delivery'), async (c) => {
   try {
     const user = c.get('user')
     if (user.role !== 'owner') {
@@ -372,7 +372,7 @@ delivery.put('/location', riderMiddleware, async (c) => {
 })
 
 // GET /api/delivery/assignments?status=active — owner: list current assignments
-delivery.get('/assignments', authMiddleware, tenantGuard, async (c) => {
+delivery.get('/assignments', authMiddleware, tenantGuard, requireModule('delivery'), async (c) => {
   try {
     const tenantId = c.get('user').tenant_id!
     const status = c.req.query('status') // 'active' or specific status
@@ -403,7 +403,7 @@ delivery.get('/assignments', authMiddleware, tenantGuard, async (c) => {
 })
 
 // PUT /api/delivery/staff/:id — update rider info
-delivery.put('/staff/:id', authMiddleware, tenantGuard, async (c) => {
+delivery.put('/staff/:id', authMiddleware, tenantGuard, requireModule('delivery'), async (c) => {
   try {
     const tenantId = c.get('user').tenant_id!
     const id = c.req.param('id')
@@ -436,7 +436,7 @@ delivery.put('/staff/:id', authMiddleware, tenantGuard, async (c) => {
 })
 
 // POST /api/delivery/staff/:id/magic-link — resend magic link
-delivery.post('/staff/:id/magic-link', authMiddleware, tenantGuard, async (c) => {
+delivery.post('/staff/:id/magic-link', authMiddleware, tenantGuard, requireModule('delivery'), async (c) => {
   try {
     const { generateTrackingCode } = await import('../lib/jwt')
     const { sendSMS } = await import('../lib/notifications')

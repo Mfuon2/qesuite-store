@@ -1,7 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import {
-  apiGetAnalyticsSummary,
   apiGetFinancialPerformance,
   apiGetTopProducts,
   apiGetPeakHours,
@@ -9,7 +8,7 @@ import {
   apiGetEmployeePerformance
 } from '@/api/analytics'
 import type { AnalyticsSummary, EmployeePerformance, TopProduct } from '@qesuite/types'
-import type { FinancialPerformance, PeakHour, PaymentMethodBreakdown } from '@/api/analytics'
+import type { FinancialPeriodSummary, FinancialPerformance, PeakHour, PaymentMethodBreakdown } from '@/api/analytics'
 import { useToast } from '@/composables/useToast'
 import { useAccessStore } from '@/stores/access'
 
@@ -38,13 +37,29 @@ export const useAnalyticsStore = defineStore('analytics', () => {
     return { period: dateRange.value as 'today' | 'week' | 'month' }
   }
 
+  // /api/analytics/profit-loss already computes everything /api/analytics/summary
+  // does (both call the same underlying sales-summary query) and now returns
+  // those fields too — deriving `summary` from it avoids a second, redundant
+  // round trip + duplicate D1 queries on every dashboard load.
+  function toSummary(period: FinancialPeriodSummary): AnalyticsSummary {
+    return {
+      total_orders: period.total_orders,
+      total_revenue: period.revenue,
+      avg_order_value: period.avg_order_value,
+      cancelled_orders: period.cancelled_orders,
+      completion_rate: period.completion_rate,
+      online_orders: period.online_orders,
+      pos_sales: period.pos_sales,
+      period_days: period.period_days,
+    }
+  }
+
   async function fetchAll() {
     loading.value = true
     const params = getParams()
     try {
       const accessStore = useAccessStore()
-      const [summaryRes, financialRes, topRes, peakRes, paymentRes, employeesRes] = await Promise.allSettled([
-        apiGetAnalyticsSummary(params),
+      const [financialRes, topRes, peakRes, paymentRes, employeesRes] = await Promise.allSettled([
         apiGetFinancialPerformance(params),
         apiGetTopProducts({ ...params }),
         apiGetPeakHours(params),
@@ -52,8 +67,10 @@ export const useAnalyticsStore = defineStore('analytics', () => {
         accessStore.can('analytics.view_employees') ? apiGetEmployeePerformance(params) : Promise.resolve(null),
       ])
 
-      if (summaryRes.status === 'fulfilled' && summaryRes.value.success) summary.value = summaryRes.value.data ?? null
-      if (financialRes.status === 'fulfilled' && financialRes.value.success) financialPerformance.value = financialRes.value.data ?? null
+      if (financialRes.status === 'fulfilled' && financialRes.value.success && financialRes.value.data) {
+        financialPerformance.value = financialRes.value.data
+        summary.value = { ...toSummary(financialRes.value.data), prev: toSummary(financialRes.value.data.previous) }
+      }
       if (topRes.status === 'fulfilled' && topRes.value.success) {
         topProductsByRevenue.value = (topRes.value.data?.by_revenue ?? []).slice(0, 5)
         topProductsByVolume.value = (topRes.value.data?.by_volume ?? []).slice(0, 5)

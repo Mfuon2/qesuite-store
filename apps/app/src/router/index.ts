@@ -54,15 +54,21 @@ const router = createRouter({
         { path: 'dashboard', name: 'dashboard', component: () => import('@/views/dashboard/DashboardView.vue'), meta: { permission: 'dashboard.view' } },
         { path: 'orders', name: 'orders', component: () => import('@/views/dashboard/OrdersView.vue'), meta: { permission: 'orders.view' } },
         { path: 'orders/:id', name: 'order-detail', component: () => import('@/views/dashboard/OrderDetailView.vue'), meta: { permission: 'orders.view' } },
+        { path: 'customers', name: 'customers', component: () => import('@/views/dashboard/CustomersView.vue'), meta: { permission: 'customers.view' } },
         { path: 'products', name: 'products', component: () => import('@/views/dashboard/ProductsView.vue'), meta: { permission: 'products.view' } },
         { path: 'categories', name: 'categories', component: () => import('@/views/dashboard/CategoriesView.vue'), meta: { permission: 'categories.view' } },
         { path: 'stock', name: 'stock', component: () => import('@/views/dashboard/StockManagementView.vue'), meta: { permission: 'products.view' } },
+        { path: 'suppliers', name: 'suppliers', component: () => import('@/views/dashboard/SuppliersView.vue'), meta: { permission: 'suppliers.view' } },
+        { path: 'purchase-orders', name: 'purchase-orders', component: () => import('@/views/dashboard/PurchaseOrdersView.vue'), meta: { permission: 'purchase_orders.view' } },
         { path: 'delivery', name: 'delivery-team', component: () => import('@/views/dashboard/DeliveryTeamView.vue'), meta: { permission: 'delivery.view' } },
         { path: 'pos', name: 'pos', component: () => import('@/views/dashboard/SalesTerminalView.vue'), meta: { permission: 'pos.view' } },
         { path: 'expenses', name: 'expenses', component: () => import('@/views/dashboard/ExpensesView.vue'), meta: { permission: 'expenses.view' } },
-        { path: 'analytics', name: 'analytics', component: () => import('@/views/dashboard/AnalyticsView.vue'), meta: { permission: 'analytics.view' } },
-        { path: 'settings', name: 'settings', component: () => import('@/views/dashboard/SettingsView.vue'), meta: { permission: 'settings.view' } },
         { path: 'billing', name: 'billing', component: () => import('@/views/dashboard/BillingView.vue'), meta: { permission: 'billing.view' } },
+        { path: 'analytics', name: 'analytics', component: () => import('@/views/dashboard/AnalyticsView.vue'), meta: { permission: 'analytics.view' } },
+        { path: 'approvals', name: 'approvals', component: () => import('@/views/dashboard/ApprovalsView.vue'), meta: { permission: 'approvals.view' } },
+        { path: 'settings', name: 'settings', component: () => import('@/views/dashboard/SettingsView.vue'), meta: { permission: 'settings.view' } },
+        { path: 'subscriptions', name: 'subscriptions', component: () => import('@/views/dashboard/SubscriptionsView.vue'), meta: { permission: 'subscriptions.view' } },
+        { path: 'sync-diagnostics', name: 'sync-diagnostics', component: () => import('@/views/dashboard/SyncDiagnosticsView.vue'), meta: { permission: 'settings.view' } },
         { path: 'notifications', name: 'notifications', component: () => import('@/views/dashboard/NotificationsView.vue'), meta: { permission: 'notifications.view' } },
       ]
     },
@@ -128,7 +134,17 @@ router.beforeEach(async (to) => {
   }
 
   if (to.meta.requiresAuth) {
-    if (!token || !role) return '/login'
+    if (!token || !role) {
+      // A genuinely-offline reload with a recognized device (see
+      // stores/auth.ts's offlineDeviceMode) is not the same as an invalid
+      // session — /pos is the one route this architecture supports working
+      // that way, using the last confirmed permission grant already loaded
+      // into accessStore. Anything else still needs a real session, so it
+      // goes to /pos too rather than a login screen this device has no way
+      // to reach a server to satisfy right now.
+      if (authStore.offlineDeviceMode) return to.path === '/pos' ? true : '/pos'
+      return '/login'
+    }
 
     // Role mismatch → send to correct section
     const requiredRole = to.meta.role as string | undefined
@@ -151,7 +167,9 @@ router.beforeEach(async (to) => {
         ['dashboard.view', '/dashboard'], ['orders.view', '/orders'], ['pos.view', '/pos'],
         ['expenses.view', '/expenses'], ['products.view', '/products'], ['categories.view', '/categories'],
         ['delivery.view', '/delivery'], ['analytics.view', '/analytics'],
-        ['notifications.view', '/notifications'], ['settings.view', '/settings'], ['billing.view', '/billing'],
+        ['suppliers.view', '/suppliers'], ['purchase_orders.view', '/purchase-orders'], ['approvals.view', '/approvals'],
+        ['billing.view', '/billing'], ['customers.view', '/customers'],
+        ['notifications.view', '/notifications'], ['settings.view', '/settings'], ['subscriptions.view', '/subscriptions'],
       ].find(([required]) => accessStore.can(required))
       return firstAllowed?.[1] ?? '/login'
     }

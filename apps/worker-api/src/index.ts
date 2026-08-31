@@ -22,6 +22,13 @@ import placesRoutes from './routes/places'
 import posRoutes from './routes/pos'
 import expensesRoutes from './routes/expenses'
 import accessRoutes from './routes/access'
+import suppliersRoutes from './routes/suppliers'
+import purchaseOrdersRoutes from './routes/purchase-orders'
+import stockRoutes from './routes/stock'
+import approvalsRoutes from './routes/approvals'
+import invoicesRoutes from './routes/invoices'
+import posDevicesRoutes from './routes/pos-devices'
+import syncRoutes from './routes/sync'
 import { enforceAccessPolicy } from './middleware/access'
 import { handleQueue } from './handlers/notifications'
 import { handleCron } from './handlers/cron'
@@ -116,6 +123,13 @@ app.route('/api/places', placesRoutes)
 app.route('/api/pos', posRoutes)
 app.route('/api/expenses', expensesRoutes)
 app.route('/api/access', accessRoutes)
+app.route('/api/suppliers', suppliersRoutes)
+app.route('/api/purchase-orders', purchaseOrdersRoutes)
+app.route('/api/stock', stockRoutes)
+app.route('/api/approvals', approvalsRoutes)
+app.route('/api/invoices', invoicesRoutes)
+app.route('/api/pos-devices', posDevicesRoutes)
+app.route('/api/sync/v1', syncRoutes)
 
 // ── SEO endpoints (served at the storefront domain via Cloudflare routing) ──
 

@@ -35,7 +35,7 @@
       >
         <BanknotesIcon class="h-4 w-4 shrink-0 text-emerald-700" />
         <span class="min-w-0 flex-1 text-[11px] font-bold text-emerald-800">
-          Expected in till <strong class="ml-1 text-xs font-black">KES {{ posStore.till.running_float.toLocaleString() }}</strong>
+          Expected in till <strong class="ml-1 text-xs font-black">KES {{ expectedTillFloat.toLocaleString() }}</strong>
         </span>
         <span class="text-[10px] font-extrabold text-emerald-700">Manage</span>
       </button>
@@ -126,7 +126,7 @@
         :can-charge="canCharge"
         :charging="charging"
         :opening-float="posStore.till?.opening_float ?? null"
-        :running-float="posStore.till?.running_float ?? null"
+        :running-float="posStore.till ? expectedTillFloat : null"
         :can-manage-till="accessStore.can('pos.manage_till')"
         class="hidden h-fit lg:fixed lg:right-8 lg:top-[13rem] lg:z-30 lg:flex lg:max-h-[calc(100vh-14rem)] lg:w-[340px] lg:shadow-[0_24px_70px_rgba(15,23,42,0.16)]"
         @increment="increment"
@@ -184,7 +184,7 @@
         <div v-for="i in 6" :key="i" class="skeleton h-16 rounded-2xl" />
       </div>
 
-      <div v-else-if="!posStore.sales.length" class="owner-empty">
+      <div v-else-if="!mergedSales.length" class="owner-empty">
         <ReceiptPercentIcon class="mx-auto mb-4 h-12 w-12 text-slate-300" />
         <p class="text-base font-bold text-slate-800">No sales yet</p>
         <p class="mt-1 text-sm text-slate-500">Sales you ring up in POS will show up here.</p>
@@ -192,7 +192,7 @@
 
       <div v-else class="owner-panel p-2">
         <div class="space-y-2">
-          <div v-for="sale in posStore.sales" :key="sale.id" class="owner-list-row flex items-center gap-3">
+          <div v-for="sale in mergedSales" :key="sale.id" class="owner-list-row flex items-center gap-3">
             <div class="min-w-0 flex-1">
               <p class="truncate text-sm font-bold text-slate-950">
                 #{{ sale.receipt_code }}
@@ -202,9 +202,16 @@
             </div>
             <div class="hidden shrink-0 text-xs font-medium text-slate-400 sm:block">{{ formatTime(sale.created_at) }}</div>
             <span
+              v-if="sale.isPendingSync"
+              class="shrink-0 rounded-full bg-amber-100 px-2 py-1 text-[11px] font-black uppercase text-amber-700"
+              title="Saved on this device — hasn't reached the server yet"
+            >
+              Pending sync
+            </span>
+            <span
               :class="[
                 'shrink-0 rounded-full px-2 py-1 text-[11px] font-black uppercase',
-                sale.payment_method === 'cash' ? 'bg-emerald-100 text-emerald-700' : 'bg-sky-100 text-sky-700'
+                PAYMENT_METHOD_BADGE_CLASS[sale.payment_method as keyof typeof PAYMENT_METHOD_BADGE_CLASS] ?? 'bg-sky-100 text-sky-700'
               ]"
             >
               {{ sale.payment_method }}
@@ -217,8 +224,17 @@
             </span>
             <p class="w-24 shrink-0 text-right text-sm font-black text-slate-950">KES {{ sale.total.toLocaleString() }}</p>
             <button
-              v-if="sale.status === 'completed' && accessStore.can('pos.void_sale')"
-              @click="voidTarget = sale"
+              v-if="!sale.isPendingSync"
+              :disabled="pdf.opening.value"
+              @click="pdf.openPdf(`/api/pos/${sale.id}/receipt`)"
+              class="owner-action-icon"
+              title="Download receipt"
+            >
+              <ArrowDownTrayIcon class="h-4 w-4" />
+            </button>
+            <button
+              v-if="!sale.isPendingSync && sale.status === 'completed' && accessStore.can('pos.void_sale')"
+              @click="voidTarget = sale as unknown as PosSale"
               class="owner-action-icon hover:bg-red-50 hover:text-red-500"
               title="Void sale"
             >
@@ -412,7 +428,7 @@
             :can-charge="canCharge"
             :charging="charging"
             :opening-float="posStore.till?.opening_float ?? null"
-            :running-float="posStore.till?.running_float ?? null"
+            :running-float="posStore.till ? expectedTillFloat : null"
             :can-manage-till="accessStore.can('pos.manage_till')"
             class="!rounded-t-[28px] !rounded-b-none max-h-[85vh]"
             @increment="increment"
@@ -504,7 +520,7 @@
               </div>
               <div class="rounded-xl bg-emerald-50 px-3 py-2 ring-1 ring-emerald-100 sm:px-4 sm:py-3">
                 <p class="text-[10px] font-bold uppercase tracking-wide text-emerald-700">Expected in till</p>
-                <p class="mt-0.5 text-sm font-black text-emerald-800">KES {{ posStore.till.running_float.toLocaleString() }}</p>
+                <p class="mt-0.5 text-sm font-black text-emerald-800">KES {{ expectedTillFloat.toLocaleString() }}</p>
               </div>
             </div>
 
@@ -600,8 +616,23 @@
             </template>
 
             <form v-else class="mt-4 space-y-3" @submit.prevent="requestTillClose">
+              <div v-if="posStore.till.credit_sales?.length" class="rounded-xl border border-rose-200 bg-rose-50 p-3">
+                <p class="text-[11px] font-extrabold uppercase tracking-wide text-rose-800">
+                  KES {{ (posStore.till.credit_sales_total ?? 0).toLocaleString() }} given out on credit this session
+                </p>
+                <p class="mt-0.5 text-[11px] leading-4 text-rose-900">This didn't go into the till and isn't part of the cash count below — it's owed by these customers instead.</p>
+                <ul class="mt-2 space-y-1">
+                  <li v-for="sale in posStore.till.credit_sales" :key="sale.id" class="flex items-center justify-between text-[11px] font-semibold text-rose-900">
+                    <span class="truncate">{{ sale.customer_name }} &middot; {{ sale.receipt_code }}</span>
+                    <span class="shrink-0">KES {{ sale.total.toLocaleString() }}</span>
+                  </li>
+                </ul>
+                <RouterLink :to="{ path: '/billing', query: { tab: 'ar' } }" class="mt-2 inline-block text-[11px] font-extrabold text-primary">
+                  Go settle outstanding credit in Billing &rarr;
+                </RouterLink>
+              </div>
               <div class="rounded-xl border border-amber-200 bg-amber-50 p-3 text-[11px] leading-4 text-amber-900">
-                Count all the cash in the till and enter it below. The app currently expects KES {{ posStore.till.running_float.toLocaleString() }}.
+                Count all the cash in the till and enter it below. The app currently expects KES {{ expectedTillFloat.toLocaleString() }}.
               </div>
               <div>
                 <label for="counted-cash" class="mb-1 block text-xs font-bold text-slate-700">Cash you counted (KES)</label>
@@ -697,10 +728,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import {
   CubeIcon, XMarkIcon, BanknotesIcon, ReceiptPercentIcon,
-  ReceiptRefundIcon, ChartBarIcon, ShoppingCartIcon, TrashIcon
+  ReceiptRefundIcon, ChartBarIcon, ShoppingCartIcon, TrashIcon, ArrowDownTrayIcon
 } from '@heroicons/vue/24/outline'
 import { QeSelect } from '@qesuite/ui'
 import PosTill, { type TillForm } from '@/components/dashboard/PosTill.vue'
@@ -708,18 +739,34 @@ import VoidSaleModal from '@/components/dashboard/VoidSaleModal.vue'
 import { usePosStore } from '@/stores/pos'
 import { useSettingsStore } from '@/stores/settings'
 import { useAccessStore } from '@/stores/access'
+import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
+import { ringSaleOffline } from '@/offline/localPos'
+import { capabilityForPaymentMethod, canProceed, capabilityMessage } from '@/offline/capability'
+import { offlineDb, type LocalSaleRecord, productCacheToDisplayProduct } from '@/offline/db'
+import { onOutboxChanged } from '@/offline/outbox'
+import { useDocumentPdf } from '@/composables/useDocumentPdf'
 import { formatTime } from '@/composables/useDateFormat'
 import { useSnapCarousel } from '@/composables/useSnapCarousel'
 import { useRouter } from 'vue-router'
-import type { ExpenseCategory, PosCashMovementType, Product, PosSale } from '@qesuite/types'
+import type { ExpenseCategory, PosCashMovementType, Product, PosSale, PosPaymentMethod } from '@qesuite/types'
 import { EXPENSE_CATEGORIES, todayNairobi } from '@qesuite/shared'
+
+const PAYMENT_METHOD_BADGE_CLASS: Record<PosPaymentMethod, string> = {
+  cash: 'bg-emerald-100 text-emerald-700',
+  mpesa: 'bg-sky-100 text-sky-700',
+  card: 'bg-violet-100 text-violet-700',
+  split: 'bg-amber-100 text-amber-700',
+  credit: 'bg-rose-100 text-rose-700',
+}
 
 const router = useRouter()
 const posStore = usePosStore()
 const settingsStore = useSettingsStore()
 const accessStore = useAccessStore()
+const authStore = useAuthStore()
 const { showToast } = useToast()
+const pdf = useDocumentPdf()
 
 const tab = ref<'terminal' | 'history' | 'reports'>('terminal')
 const tabs = [
@@ -807,7 +854,9 @@ const tillForm = ref<TillForm>({
   method: 'cash',
   amountTendered: null,
   mpesaReference: '',
+  splitPayments: [],
   tableLabel: '',
+  customerId: null,
 })
 const charging = ref(false)
 
@@ -854,6 +903,14 @@ const canCharge = computed(() => {
   if (!posStore.till) return false
   if (!cart.value.length) return false
   if (tillForm.value.method === 'mpesa') return tillForm.value.mpesaReference.trim().length > 0
+  if (tillForm.value.method === 'credit') return !!tillForm.value.customerId
+  if (tillForm.value.method === 'split') {
+    const legs = tillForm.value.splitPayments
+    if (legs.length < 2) return false
+    if (legs.some(leg => !leg.amount || leg.amount <= 0)) return false
+    if (legs.some(leg => leg.method === 'mpesa' && !leg.reference.trim())) return false
+    return legs.reduce((sum, leg) => sum + (leg.amount || 0), 0) === cartTotal.value
+  }
   return tillForm.value.amountTendered === null || tillForm.value.amountTendered >= cartTotal.value
 })
 
@@ -868,7 +925,7 @@ const validCashMovement = computed(() => {
   const amount = cashMovementAmount.value
   if (!Number.isSafeInteger(amount) || amount === null) return false
   if (cashMovementType.value === 'correction') {
-    if (amount < 0 || amount === posStore.till?.running_float) return false
+    if (amount < 0 || amount === expectedTillFloat.value) return false
   } else if (amount <= 0) return false
   return cashMovementReason.value.trim().length > 0
 })
@@ -876,7 +933,7 @@ const validCountedCash = computed(() =>
   Number.isSafeInteger(countedCash.value) && (countedCash.value ?? -1) >= 0
 )
 const tillVariance = computed(() =>
-  validCountedCash.value ? (countedCash.value ?? 0) - (posStore.till?.running_float ?? 0) : 0
+  validCountedCash.value ? (countedCash.value ?? 0) - expectedTillFloat.value : 0
 )
 
 const expenseTotal = computed(() => posStore.report?.expenses ?? 0)
@@ -914,7 +971,9 @@ function resetTill() {
     method: 'cash',
     amountTendered: null,
     mpesaReference: '',
+    splitPayments: [],
     tableLabel: '',
+    customerId: null,
   }
 }
 
@@ -923,11 +982,47 @@ async function handleCharge() {
   charging.value = true
   try {
     const form = tillForm.value
+    const capability = capabilityForPaymentMethod(form.method)
+
+    // Cash and credit are OFFLINE_ALLOWED / ONLINE_PREFERRED — these always
+    // go through the local-first pipeline (validate + commit locally, queue
+    // for background sync), online or not, per the offline-first design.
+    // M-Pesa/card/split are ONLINE_REQUIRED (a live third-party round trip
+    // can't be faked offline) and keep going straight to the server.
+    if (form.method === 'cash' || form.method === 'credit') {
+      const outcome = await ringSaleOffline({
+        items: cart.value.map(l => ({ productId: l.product.id, quantity: l.quantity })),
+        paymentMethod: form.method,
+        discount: form.discount ?? undefined,
+        tableLabel: form.tableLabel.trim() || undefined,
+        customerId: form.method === 'credit' ? form.customerId ?? undefined : undefined,
+      })
+      if (!outcome.ok) {
+        showToast(outcome.error, 'error')
+        return
+      }
+      showToast(`Sale ${outcome.receiptCode} saved on this device — syncing in the background`, 'success')
+      resetTill()
+      mobileTillOpen.value = false
+      // BroadcastChannel never delivers to the tab that sent it, only other
+      // tabs — this tab needs its own direct refresh to see the sale it just
+      // rang up reflected in history/the till float immediately.
+      await refreshLocalSales()
+      return
+    }
+
+    if (!canProceed(capability)) {
+      showToast(capabilityMessage(capability) ?? 'This payment method needs a live connection', 'error')
+      return
+    }
+
     const result = await posStore.createSale({
       items: cart.value.map(l => ({ product_id: l.product.id, quantity: l.quantity })),
       payment_method: form.method,
-      amount_tendered: form.method === 'cash' && form.amountTendered !== null ? form.amountTendered : undefined,
       mpesa_reference: form.method === 'mpesa' ? form.mpesaReference.trim() : undefined,
+      payments: form.method === 'split'
+        ? form.splitPayments.map(leg => ({ method: leg.method, amount: leg.amount ?? 0, reference: leg.reference.trim() || undefined }))
+        : undefined,
       discount: form.discount ?? undefined,
       table_label: form.tableLabel.trim() || undefined,
     })
@@ -978,6 +1073,10 @@ function closeCashManager() {
 function requestCashMovement() {
   if (!validCashMovement.value || cashMovementAmount.value === null) return
   const option = currentMovementOption.value
+  // Deliberately the server's own float, not expectedTillFloat — a manual
+  // cash correction is submitted straight to the server (online-only) and
+  // must anchor to what the server itself currently thinks the till holds,
+  // not a total that also folds in this device's own not-yet-synced sales.
   const expected = posStore.till?.running_float ?? 0
   const message = cashMovementType.value === 'correction'
     ? `Change the expected till balance from KES ${expected.toLocaleString()} to the counted amount of KES ${cashMovementAmount.value.toLocaleString()}? Reason: ${cashMovementReason.value.trim()}.`
@@ -1014,7 +1113,7 @@ async function submitCashMovement(): Promise<boolean> {
 }
 
 function beginTillClose() {
-  countedCash.value = posStore.till?.running_float ?? null
+  countedCash.value = posStore.till ? expectedTillFloat.value : null
   cashAdjustmentOpen.value = false
   closeTillMode.value = true
 }
@@ -1024,7 +1123,7 @@ function requestTillClose() {
   tillConfirmation.value = {
     action: 'close',
     title: 'Close this till?',
-    message: `You counted KES ${countedCash.value.toLocaleString()}. The app expected KES ${posStore.till.running_float.toLocaleString()} (${cashDifferenceLabel(tillVariance.value)}). Closing saves this final count and ends the till session.`,
+    message: `You counted KES ${countedCash.value.toLocaleString()}. The app expected KES ${expectedTillFloat.value.toLocaleString()} (${cashDifferenceLabel(tillVariance.value)}). Closing saves this final count and ends the till session.`,
     confirmLabel: 'Close till',
     danger: true,
   }
@@ -1096,14 +1195,93 @@ watch(period, (newPeriod) => {
   posStore.fetchReport({ period: newPeriod })
 })
 
+// --- Locally-pending (not yet synced) sales, merged into history/till math ---
+// so the cashier's view of "today's sales" and "cash expected in the drawer"
+// is correct even before the background sync engine has caught up.
+const localSales = ref<LocalSaleRecord[]>([])
+
+async function refreshLocalSales() {
+  localSales.value = await offlineDb.salesLocal.where('status').notEqual('synced').toArray()
+}
+
+const pendingLocalCashTotal = computed(() =>
+  localSales.value
+    .filter(s => s.paymentMethod === 'cash' && s.status === 'pending_sync')
+    .reduce((sum, s) => sum + s.total, 0)
+)
+
+// What's physically expected in the drawer right now — the server's own
+// running float plus any cash sale rung up on this device that hasn't
+// synced yet (so it isn't in the server's figure at all until it does).
+const expectedTillFloat = computed(() => (posStore.till?.running_float ?? 0) + pendingLocalCashTotal.value)
+
+interface DisplaySale {
+  id: string
+  receipt_code: string
+  table_label: string | null
+  items_summary: string
+  created_at: string
+  payment_method: string
+  status: string
+  total: number
+  isPendingSync: boolean
+}
+
+const mergedSales = computed<DisplaySale[]>(() => {
+  const local: DisplaySale[] = localSales.value.map(s => ({
+    id: s.id,
+    receipt_code: s.receiptCode,
+    table_label: null,
+    items_summary: s.items.map(i => `${i.productName} x${i.quantity}`).join(', '),
+    created_at: s.createdAt,
+    payment_method: s.paymentMethod,
+    status: s.status === 'voided' ? 'voided' : 'completed',
+    total: s.total,
+    isPendingSync: true,
+  }))
+  const remote: DisplaySale[] = posStore.sales.map(s => ({
+    id: s.id, receipt_code: s.receipt_code, table_label: s.table_label, items_summary: s.items_summary ?? '',
+    created_at: s.created_at, payment_method: s.payment_method, status: s.status, total: s.total, isPendingSync: false,
+  }))
+  return [...local, ...remote].sort((a, b) => (a.created_at < b.created_at ? 1 : -1))
+})
+
+let unsubscribeOutbox: (() => void) | undefined
+let localSalesPoll: ReturnType<typeof setInterval> | undefined
+
 onMounted(async () => {
-  if (!settingsStore.tenant) await settingsStore.fetchTenant()
-  if (settingsStore.tenant?.store_category !== 'food') {
-    showToast('POS is only available for restaurant stores', 'error')
-    router.replace('/dashboard')
-    return
+  // A genuinely-offline reload skips the live tenant-category check
+  // entirely — this device already passed that gate the last time it
+  // reached /pos normally, and there's no server to ask right now anyway.
+  if (!authStore.offlineDeviceMode) {
+    if (!settingsStore.tenant) await settingsStore.fetchTenant()
+    if (settingsStore.tenant?.store_category !== 'food') {
+      showToast('POS is only available for restaurant stores', 'error')
+      router.replace('/dashboard')
+      return
+    }
   }
   if (!accessStore.can('pos.create_sale')) tab.value = 'history'
-  await Promise.all([posStore.fetchMenuProducts(), posStore.fetchTill()])
+
+  if (authStore.offlineDeviceMode) {
+    // No live product/till fetch is possible — render the till and product
+    // grid straight from what this device already has cached locally.
+    const cachedProducts = (await offlineDb.productsCache.toArray()).filter(p => p.isActive)
+    posStore.menuProducts = cachedProducts.map(productCacheToDisplayProduct)
+  } else {
+    await Promise.all([posStore.fetchMenuProducts(), posStore.fetchTill()])
+  }
+  await refreshLocalSales()
+  // Cross-tab changes (another tab ringing a sale, or another tab's sync
+  // engine marking one synced) arrive via BroadcastChannel; this tab's own
+  // sync cycle marking a mutation synced does not (a channel never delivers
+  // to the sender), so a light poll catches that case too.
+  unsubscribeOutbox = onOutboxChanged(refreshLocalSales)
+  localSalesPoll = setInterval(refreshLocalSales, 5000)
+})
+
+onUnmounted(() => {
+  unsubscribeOutbox?.()
+  clearInterval(localSalesPoll)
 })
 </script>

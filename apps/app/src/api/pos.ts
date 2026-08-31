@@ -43,7 +43,7 @@ export interface PosSaleResult {
   subtotal: number
   discount: number
   total: number
-  payment_method: 'cash' | 'mpesa'
+  payment_method: PosSale['payment_method']
   amount_tendered: number | null
   change_due: number | null
   till_session_id: string
@@ -51,7 +51,16 @@ export interface PosSaleResult {
   items: PosSaleItem[]
 }
 
-export async function apiCreatePosSale(payload: PosSaleCreate): Promise<ApiResponse<PosSaleResult>> {
+// A credit sale that would exceed the customer's limit doesn't ring up
+// immediately — it's queued for a manager to approve (see Approvals).
+export interface PosSalePendingApproval {
+  pending_approval: true
+  approval_id: string
+  customer_name: string
+  total: number
+}
+
+export async function apiCreatePosSale(payload: PosSaleCreate): Promise<ApiResponse<PosSaleResult | PosSalePendingApproval>> {
   return apiFetch('/api/pos', {
     method: 'POST',
     body: JSON.stringify(payload),

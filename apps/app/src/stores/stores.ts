@@ -38,6 +38,7 @@ export interface AdminStoreDetail extends AdminStore {
   delivery_enabled: boolean
   pickup_enabled: boolean
   currency: string
+  disabled_modules: string[]
 }
 
 export type StoreFilter = 'all' | 'active' | 'trialing' | 'suspended' | 'expired'

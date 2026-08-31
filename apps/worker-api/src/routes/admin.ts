@@ -1,10 +1,11 @@
 import { Hono } from 'hono'
 import { Env, Variables } from '../types'
 import { superadminMiddleware } from '../middleware/auth'
+import { parseDisabledModules } from '../middleware/tenant'
 import { signJWT, generateId } from '../lib/jwt'
 import { hashPassword } from '../lib/password'
 import { businessDate, businessDateDaysAgo } from '../lib/time'
-import { validatePhone, normalizeKenyaPhone } from '@qesuite/shared'
+import { validatePhone, normalizeKenyaPhone, ALL_STORE_MODULE_KEYS } from '@qesuite/shared'
 
 const admin = new Hono<{ Bindings: Env; Variables: Variables }>()
 
@@ -150,7 +151,7 @@ admin.get('/stores/:id', async (c) => {
     return c.json({
       success: true,
       data: {
-        tenant,
+        tenant: { ...tenant, disabled_modules: parseDisabledModules((tenant as { disabled_modules: string | null }).disabled_modules) },
         settings,
         subscription,
         billing_history: billing.results,
@@ -238,6 +239,33 @@ admin.put('/stores/:id/profile', async (c) => {
   } catch (err) {
     console.error('admin update profile error', err)
     return c.json({ success: false, error: 'Failed to update profile', data: null }, 500)
+  }
+})
+
+// PUT /api/admin/stores/:id/modules — toggle which dashboard modules this
+// store owner can see, independent of their own staff's permission grants.
+admin.put('/stores/:id/modules', async (c) => {
+  try {
+    const id = c.req.param('id')
+    const { disabled_modules } = await c.req.json<{ disabled_modules?: unknown }>()
+
+    if (!Array.isArray(disabled_modules) || !disabled_modules.every(key => typeof key === 'string' && (ALL_STORE_MODULE_KEYS as readonly string[]).includes(key))) {
+      return c.json({ success: false, error: 'disabled_modules must be an array of known module keys', data: null }, 400)
+    }
+
+    const tenant = await c.env.qesuite_db.prepare('SELECT id, name FROM tenants WHERE id = ?').bind(id).first<{ id: string; name: string }>()
+    if (!tenant) return c.json({ success: false, error: 'Store not found', data: null }, 404)
+
+    const normalized = [...new Set(disabled_modules)]
+    await c.env.qesuite_db.prepare('UPDATE tenants SET disabled_modules = ? WHERE id = ?')
+      .bind(JSON.stringify(normalized), id).run()
+
+    await audit(c.env.qesuite_db, c.get('user').sub, 'UPDATE_MODULES', 'tenant', id, JSON.stringify({ disabled_modules: normalized }), c.req.header('CF-Connecting-IP'))
+
+    return c.json({ success: true, data: { disabled_modules: normalized }, error: null, message: 'Modules updated' })
+  } catch (err) {
+    console.error('admin update modules error', err)
+    return c.json({ success: false, error: 'Failed to update modules', data: null }, 500)
   }
 })
 

@@ -81,15 +81,69 @@
           </div>
         </div>
 
-        <div>
-          <label class="admin-label">Stock</label>
-          <input
-            v-model.number="form.stock"
-            type="number"
-            min="0"
-            placeholder="999"
-            class="owner-input"
-          />
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="admin-label">Stock</label>
+            <input
+              v-model.number="form.stock"
+              type="number"
+              min="0"
+              placeholder="999"
+              class="owner-input"
+            />
+          </div>
+          <div>
+            <label class="admin-label">Cost price (KES)</label>
+            <input
+              v-model.number="form.cost_price"
+              type="number"
+              min="0"
+              placeholder="What you paid per unit"
+              class="owner-input"
+            />
+          </div>
+        </div>
+
+        <button
+          type="button"
+          class="flex w-full items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-left"
+          @click="showInventoryDetails = !showInventoryDetails"
+        >
+          <span class="text-xs font-bold text-slate-700">Inventory details</span>
+          <ChevronDownIcon :class="['h-4 w-4 text-slate-400 transition-transform', showInventoryDetails ? 'rotate-180' : '']" />
+        </button>
+
+        <div v-show="showInventoryDetails" class="space-y-3">
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="admin-label">SKU</label>
+              <input v-model="form.sku" type="text" placeholder="Optional" class="owner-input" />
+            </div>
+            <div>
+              <label class="admin-label">Barcode</label>
+              <input v-model="form.barcode" type="text" placeholder="Optional" class="owner-input" />
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="admin-label">Unit of measure</label>
+              <QeSelect v-model="form.unit_of_measure" :options="unitOptions" />
+            </div>
+            <div>
+              <label class="admin-label">Reorder level</label>
+              <input v-model.number="form.reorder_level" type="number" min="0" placeholder="0" class="owner-input" />
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="admin-label">Expiry date</label>
+              <QeDatePicker v-model="form.expiry_date" placeholder="No expiry" />
+            </div>
+            <div>
+              <label class="admin-label">Supplier</label>
+              <QeSelect v-model="form.supplier_id" :options="supplierOptions" placeholder="None" />
+            </div>
+          </div>
         </div>
 
         <div class="grid gap-3 sm:grid-cols-2">
@@ -133,11 +187,12 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue'
-import { XMarkIcon } from '@heroicons/vue/24/outline'
-import { QeSelect } from '@qesuite/ui'
+import { XMarkIcon, ChevronDownIcon } from '@heroicons/vue/24/outline'
+import { QeSelect, QeDatePicker } from '@qesuite/ui'
 import ImageUpload from './ImageUpload.vue'
 import { useProductsStore } from '@/stores/products'
 import { useCategoriesStore } from '@/stores/categories'
+import { useSuppliersStore } from '@/stores/suppliers'
 import type { Product, ProductCreate, ProductUpdate } from '@qesuite/types'
 
 const props = defineProps<{ product?: Product | null }>()
@@ -148,14 +203,30 @@ const emit = defineEmits<{
 
 const productsStore = useProductsStore()
 const categoriesStore = useCategoriesStore()
+const suppliersStore = useSuppliersStore()
 const imageRef = ref<InstanceType<typeof ImageUpload> | null>(null)
 const saving = ref(false)
 const uploading = ref(false)
+const showInventoryDetails = ref(false)
 const categories = ref(categoriesStore.categories)
 const categoryOptions = computed(() => [
   { value: '', label: 'No category' },
   ...categories.value.map((cat) => ({ value: cat.id, label: cat.name })),
 ])
+const supplierOptions = computed(() => [
+  { value: '', label: 'None' },
+  ...suppliersStore.suppliers.filter(s => s.is_active).map(s => ({ value: s.id, label: s.name })),
+])
+const unitOptions = [
+  { value: 'unit', label: 'Unit' },
+  { value: 'kg', label: 'Kilogram' },
+  { value: 'g', label: 'Gram' },
+  { value: 'l', label: 'Litre' },
+  { value: 'ml', label: 'Millilitre' },
+  { value: 'pack', label: 'Pack' },
+  { value: 'box', label: 'Box' },
+  { value: 'dozen', label: 'Dozen' },
+]
 
 const form = reactive({
   name: props.product?.name || '',
@@ -166,7 +237,14 @@ const form = reactive({
   stock: props.product?.stock ?? 999,
   image_url: props.product?.image_url || '',
   featured: props.product?.featured || false,
-  on_sale: props.product?.on_sale || false
+  on_sale: props.product?.on_sale || false,
+  cost_price: props.product?.cost_price || 0,
+  sku: props.product?.sku || '',
+  barcode: props.product?.barcode || '',
+  unit_of_measure: props.product?.unit_of_measure || 'unit',
+  reorder_level: props.product?.reorder_level || 0,
+  expiry_date: props.product?.expiry_date || null as string | null,
+  supplier_id: props.product?.supplier_id || '',
 })
 
 async function handleImageSelected(file: File) {
@@ -197,7 +275,14 @@ async function handleSubmit() {
         stock: form.stock,
         image_url: form.image_url || null,
         featured: form.featured,
-        on_sale: form.on_sale
+        on_sale: form.on_sale,
+        cost_price: form.cost_price,
+        sku: form.sku.trim() || null,
+        barcode: form.barcode.trim() || null,
+        unit_of_measure: form.unit_of_measure,
+        reorder_level: form.reorder_level,
+        expiry_date: form.expiry_date || null,
+        supplier_id: form.supplier_id || null,
       }
       result = await productsStore.updateProduct(props.product.id, payload)
     } else {
@@ -210,7 +295,14 @@ async function handleSubmit() {
         stock: form.stock,
         image_url: form.image_url || undefined,
         featured: form.featured,
-        on_sale: form.on_sale
+        on_sale: form.on_sale,
+        cost_price: form.cost_price || undefined,
+        sku: form.sku.trim() || undefined,
+        barcode: form.barcode.trim() || undefined,
+        unit_of_measure: form.unit_of_measure,
+        reorder_level: form.reorder_level || undefined,
+        expiry_date: form.expiry_date || undefined,
+        supplier_id: form.supplier_id || undefined,
       }
       result = await productsStore.createProduct(payload)
     }
@@ -227,5 +319,7 @@ async function handleSubmit() {
 onMounted(async () => {
   if (!categoriesStore.categories.length) await categoriesStore.fetchCategories()
   categories.value = categoriesStore.categories
+  if (!suppliersStore.suppliers.length) await suppliersStore.fetchSuppliers()
+  showInventoryDetails.value = !!(props.product?.sku || props.product?.barcode || props.product?.expiry_date || props.product?.supplier_id)
 })
 </script>

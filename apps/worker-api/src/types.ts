@@ -20,6 +20,11 @@ export interface Env {
   GOOGLE_PLACES_KEY?: string
   WHATSAPP_TOKEN: string
   WHATSAPP_PHONE_ID: string
+  SMTP_HOST?: string
+  SMTP_PORT?: string
+  SMTP_USERNAME?: string
+  SMTP_PASSWORD?: string
+  EMAIL_FROM_NAME?: string
   APP_BASE_URL: string
   APP_TIME_ZONE: 'Africa/Nairobi'
   CDN_URL?: string
@@ -36,7 +41,24 @@ export interface JWTPayload {
   iat: number
 }
 
+// A separate credential kind from JWTPayload, not a `role` value — a device
+// session identifies *what device* is acting, orthogonal to *which user*
+// (JWTPayload) is acting. Both participate in authorization; neither replaces
+// the other. Revocation is enforced via the pos_device_sessions/pos_devices
+// DB rows the deviceSessionMiddleware checks, not by the JWT alone.
+export interface DeviceSessionPayload {
+  session_id: string
+  device_id: string
+  tenant_id: string
+  user_id: string
+  scope: 'pos'
+  exp: number
+  iat: number
+}
+
 export interface Variables {
   user: JWTPayload
   tenant_id: string
+  disabledModules?: string[]
+  deviceSession?: DeviceSessionPayload
 }

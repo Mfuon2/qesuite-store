@@ -297,6 +297,11 @@
         <SubscriptionTab :store-id="stores.currentStore.id" />
       </div>
 
+      <!-- Modules tab -->
+      <div v-else-if="activeTab === 'modules'">
+        <ModulesTab :store-id="stores.currentStore.id" :disabled-modules="stores.currentStore.disabled_modules" />
+      </div>
+
       <!-- Orders tab placeholder -->
       <div v-else-if="activeTab === 'orders'">
         <div class="admin-card p-8 text-center text-slate-500">
@@ -359,6 +364,7 @@ import SuspendModal from '@/components/admin/SuspendModal.vue'
 import ExtendTrialModal from '@/components/admin/ExtendTrialModal.vue'
 import ResetPasswordModal from '@/components/admin/ResetPasswordModal.vue'
 import SubscriptionTab from '@/components/admin/SubscriptionTab.vue'
+import ModulesTab from '@/components/admin/ModulesTab.vue'
 import { STORE_FONTS, storeFontStack } from '@qesuite/shared'
 
 const route = useRoute()
@@ -465,6 +471,7 @@ async function saveProfile() {
 const tabs = [
   { id: 'overview', label: 'Overview' },
   { id: 'subscription', label: 'Subscription & Billing' },
+  { id: 'modules', label: 'Modules' },
   { id: 'orders', label: 'Orders' },
   { id: 'settings', label: 'Settings' },
 ]

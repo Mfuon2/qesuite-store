@@ -1,13 +1,14 @@
 import { Hono } from 'hono'
 import { Env, Variables } from '../types'
 import { authMiddleware } from '../middleware/auth'
-import { tenantGuard, restaurantGuard } from '../middleware/tenant'
+import { tenantGuard, restaurantGuard, requireModule } from '../middleware/tenant'
 import { generateId } from '../lib/jwt'
 import { inclusiveDateRange } from '../lib/time'
+import { auditEntry } from '../lib/audit'
 
 const expenses = new Hono<{ Bindings: Env; Variables: Variables }>()
 
-expenses.use('*', authMiddleware, tenantGuard, restaurantGuard)
+expenses.use('*', authMiddleware, tenantGuard, restaurantGuard, requireModule('finance'))
 
 const CATEGORIES = ['supplies', 'rent', 'utilities', 'staff_wages', 'maintenance', 'other']
 
@@ -136,6 +137,49 @@ expenses.get('/summary', async (c) => {
   } catch (err) {
     console.error('expenses summary error', err)
     return c.json({ success: false, error: 'Failed to load expense summary', data: null }, 500)
+  }
+})
+
+// PUT /api/expenses/:id — proposes an edit; does not change the expense
+// directly. Financial records need a review step once recorded, so this
+// queues an approval_requests row (action_type 'expense_edit') and only
+// applies the change once a manager/owner approves it via /api/approvals.
+expenses.put('/:id', async (c) => {
+  try {
+    const user = c.get('user')
+    const tenantId = user.tenant_id!
+    const id = c.req.param('id')
+
+    const body = await c.req.json<{ category?: string; description?: string; amount?: number; expense_date?: string }>()
+    if (body.category && !CATEGORIES.includes(body.category)) {
+      return c.json({ success: false, error: `category must be one of: ${CATEGORIES.join(', ')}`, data: null }, 400)
+    }
+    if (body.amount !== undefined && body.amount <= 0) {
+      return c.json({ success: false, error: 'amount must be greater than 0', data: null }, 400)
+    }
+    if (body.expense_date && !/^\d{4}-\d{2}-\d{2}$/.test(body.expense_date)) {
+      return c.json({ success: false, error: 'expense_date must be YYYY-MM-DD', data: null }, 400)
+    }
+
+    const existing = await c.env.qesuite_db.prepare('SELECT * FROM expenses WHERE id = ? AND tenant_id = ?').bind(id, tenantId).first()
+    if (!existing) return c.json({ success: false, error: 'Expense not found', data: null }, 404)
+
+    const approvalId = generateId()
+    await c.env.qesuite_db.batch([
+      c.env.qesuite_db.prepare(
+        `INSERT INTO approval_requests (id, tenant_id, action_type, target_type, target_id, payload_json, reason, requested_by)
+         VALUES (?, ?, 'expense_edit', 'expense', ?, ?, ?, ?)`
+      ).bind(approvalId, tenantId, id, JSON.stringify(body), 'Edit requested', user.sub),
+      auditEntry(c.env.qesuite_db, {
+        actorId: user.sub, actorRole: user.role, action: 'expense.edit_requested',
+        targetType: 'expense', targetId: id, detail: body, ip: c.req.header('CF-Connecting-IP'),
+      }),
+    ])
+
+    return c.json({ success: true, data: { approval_id: approvalId }, error: null, message: 'Edit submitted for approval' }, 201)
+  } catch (err) {
+    console.error('expense edit request error', err)
+    return c.json({ success: false, error: 'Failed to submit expense edit', data: null }, 500)
   }
 })
 

@@ -324,6 +324,52 @@
               </div>
             </section>
 
+            <section v-show="activeTab === 'notifications'" class="space-y-4">
+              <div class="grid gap-3 lg:grid-cols-2">
+                <button
+                  type="button"
+                  class="owner-brand-hover rounded-2xl border border-slate-100 bg-white p-3 text-left transition"
+                  @click="storeSettings.owner_notify_sms = !storeSettings.owner_notify_sms"
+                >
+                  <div class="flex items-center justify-between gap-3">
+                    <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-50 text-slate-700 ring-1 ring-slate-100">
+                      <ChatBubbleLeftRightIcon class="h-4 w-4" />
+                    </span>
+                    <span class="qs-toggle" :class="storeSettings.owner_notify_sms ? 'bg-primary' : 'bg-slate-200'">
+                      <span class="qs-toggle-thumb" :class="storeSettings.owner_notify_sms ? 'translate-x-5' : 'translate-x-0.5'" />
+                    </span>
+                  </div>
+                  <p class="mt-2 text-sm font-bold text-slate-950">SMS alerts</p>
+                  <p class="mt-0.5 text-xs leading-5 text-slate-500">Text your store's phone number when a new order comes in.</p>
+                </button>
+
+                <button
+                  type="button"
+                  class="owner-brand-hover rounded-2xl border border-slate-100 bg-white p-3 text-left transition"
+                  @click="storeSettings.owner_notify_email = !storeSettings.owner_notify_email"
+                >
+                  <div class="flex items-center justify-between gap-3">
+                    <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-50 text-slate-700 ring-1 ring-slate-100">
+                      <EnvelopeIcon class="h-4 w-4" />
+                    </span>
+                    <span class="qs-toggle" :class="storeSettings.owner_notify_email ? 'bg-primary' : 'bg-slate-200'">
+                      <span class="qs-toggle-thumb" :class="storeSettings.owner_notify_email ? 'translate-x-5' : 'translate-x-0.5'" />
+                    </span>
+                  </div>
+                  <p class="mt-2 text-sm font-bold text-slate-950">Email alerts</p>
+                  <p class="mt-0.5 text-xs leading-5 text-slate-500">Email the address below when a new order comes in.</p>
+                </button>
+              </div>
+
+              <label class="block">
+                <span class="admin-label">Notification email address</span>
+                <input v-model="storeSettings.notification_email" type="email" maxlength="200" placeholder="orders@yourstore.co.ke" class="admin-input mt-2" />
+                <p class="mt-1 text-xs text-slate-400">Only used for store alerts — separate from your login email if you'd rather they go to a different inbox.</p>
+              </label>
+
+              <p class="text-xs leading-5 text-slate-400">Customers always get an SMS confirmation and tracking link for their own orders — these settings only control alerts sent to you.</p>
+            </section>
+
             <section v-show="activeTab === 'prefs'" class="space-y-4">
               <div class="grid gap-3 lg:grid-cols-2">
                 <button
@@ -505,7 +551,10 @@ import {
   TruckIcon,
   UserCircleIcon,
   UsersIcon,
-  XMarkIcon
+  XMarkIcon,
+  BellAlertIcon,
+  EnvelopeIcon,
+  ChatBubbleLeftRightIcon
 } from '@heroicons/vue/24/outline'
 import { QeSelect, QePhoneInput } from '@qesuite/ui'
 import ImageUpload from '@/components/dashboard/ImageUpload.vue'
@@ -577,6 +626,15 @@ const tabs = [
     kicker: 'Fulfillment',
     detail: 'Control how customers receive orders and what delivery promises they see.',
     icon: TruckIcon
+  },
+  {
+    id: 'notifications',
+    label: 'Notifications',
+    description: 'SMS and email alerts',
+    title: 'Notification settings',
+    kicker: 'Alerts',
+    detail: 'Choose how you want to hear about new orders and other store activity.',
+    icon: BellAlertIcon
   },
   {
     id: 'prefs',
@@ -657,7 +715,10 @@ const storeSettings = reactive({
   delivery_radius_km: settingsStore.storeSettings?.delivery_radius_km ?? 10,
   estimated_delivery_minutes: settingsStore.storeSettings?.estimated_delivery_minutes ?? 30,
   min_order_amount: settingsStore.storeSettings?.min_order_amount ?? 0,
-  language: (settingsStore.storeSettings?.language ?? 'en') as Language
+  language: (settingsStore.storeSettings?.language ?? 'en') as Language,
+  owner_notify_sms: settingsStore.storeSettings?.owner_notify_sms ?? true,
+  owner_notify_email: settingsStore.storeSettings?.owner_notify_email ?? false,
+  notification_email: settingsStore.storeSettings?.notification_email ?? ''
 })
 
 const previewPrimary = ref(tenant.primary_color)
@@ -689,6 +750,9 @@ watch(() => settingsStore.storeSettings, (s) => {
   storeSettings.estimated_delivery_minutes = s.estimated_delivery_minutes
   storeSettings.min_order_amount = s.min_order_amount
   storeSettings.language = s.language as Language
+  storeSettings.owner_notify_sms = s.owner_notify_sms
+  storeSettings.owner_notify_email = s.owner_notify_email
+  storeSettings.notification_email = s.notification_email ?? ''
 })
 
 watch(() => authStore.user, (u) => {
@@ -770,6 +834,10 @@ async function saveAll() {
     showToast('Keep either an email address or phone number for login', 'error')
     return
   }
+  if (storeSettings.owner_notify_email && !storeSettings.notification_email.trim()) {
+    showToast('Add a notification email address before enabling email alerts', 'error')
+    return
+  }
 
   try {
     await Promise.all([
@@ -796,7 +864,10 @@ async function saveAll() {
         min_order_amount: storeSettings.min_order_amount,
         language: storeSettings.language,
         dark_mode_enabled: settingsStore.darkMode,
-        order_view: settingsStore.orderView
+        order_view: settingsStore.orderView,
+        owner_notify_sms: storeSettings.owner_notify_sms,
+        owner_notify_email: storeSettings.owner_notify_email,
+        notification_email: storeSettings.notification_email.trim() || null
       }),
       authStore.updateProfile({ name: displayName, email, phone })
     ])

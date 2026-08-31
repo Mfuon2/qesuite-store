@@ -341,6 +341,7 @@ export const ACCESS_PERMISSION_GROUPS = [
     permissions: [
       { key: 'expenses.view', label: 'View expenses', operation: 'Menu' },
       { key: 'expenses.create', label: 'Record expenses', operation: 'Operate' },
+      { key: 'expenses.edit', label: 'Request edits to a recorded expense', operation: 'Operate' },
       { key: 'expenses.delete', label: 'Delete expenses', operation: 'Sensitive' },
     ],
   },
@@ -390,10 +391,56 @@ export const ACCESS_PERMISSION_GROUPS = [
     ],
   },
   {
-    id: 'billing', label: 'Billing', description: 'Subscription and payments',
+    id: 'subscriptions', label: 'Subscriptions', description: "The store's own QeSuite plan and payments",
     permissions: [
-      { key: 'billing.view', label: 'View billing', operation: 'Menu' },
-      { key: 'billing.manage', label: 'Change plan and submit payments', operation: 'Sensitive' },
+      { key: 'subscriptions.view', label: 'View subscription', operation: 'Menu' },
+      { key: 'subscriptions.manage', label: 'Change plan and submit payments', operation: 'Sensitive' },
+    ],
+  },
+  {
+    id: 'billing', label: 'Billing', description: 'Invoices and payments billed to customers',
+    permissions: [
+      { key: 'billing.view', label: 'View invoices', operation: 'Menu' },
+      { key: 'billing.create', label: 'Create and send invoices', operation: 'Operate' },
+      { key: 'billing.manage', label: 'Record payments and write off balances', operation: 'Sensitive' },
+    ],
+  },
+  {
+    id: 'suppliers', label: 'Suppliers', description: 'Supplier records',
+    permissions: [
+      { key: 'suppliers.view', label: 'View suppliers', operation: 'Menu' },
+      { key: 'suppliers.manage', label: 'Add, edit, and deactivate suppliers', operation: 'Operate' },
+    ],
+  },
+  {
+    id: 'purchase_orders', label: 'Purchase orders', description: 'Ordering and receiving stock from suppliers',
+    permissions: [
+      { key: 'purchase_orders.view', label: 'View purchase orders', operation: 'Menu' },
+      { key: 'purchase_orders.create', label: 'Create and submit purchase orders', operation: 'Operate' },
+      { key: 'purchase_orders.receive', label: 'Receive stock against a purchase order', operation: 'Operate' },
+      { key: 'purchase_orders.approve', label: 'Approve, reject, and send purchase orders', operation: 'Sensitive' },
+    ],
+  },
+  {
+    id: 'stock', label: 'Stock control', description: 'Stock movements, adjustments, and stock-take sessions',
+    permissions: [
+      { key: 'stock.view', label: 'View stock movement history', operation: 'Menu' },
+      { key: 'stock.adjust', label: 'Request stock adjustments', operation: 'Operate' },
+      { key: 'stock.take', label: 'Run stock-take sessions', operation: 'Operate' },
+    ],
+  },
+  {
+    id: 'approvals', label: 'Approvals', description: 'Review requests for sensitive actions before they take effect',
+    permissions: [
+      { key: 'approvals.view', label: 'View pending approvals', operation: 'Menu' },
+      { key: 'approvals.decide', label: 'Approve or reject pending requests', operation: 'Sensitive' },
+    ],
+  },
+  {
+    id: 'customers', label: 'Customers', description: 'Customer records and credit limits',
+    permissions: [
+      { key: 'customers.view', label: 'View customers', operation: 'Menu' },
+      { key: 'customers.manage', label: 'Add, edit, and set credit limits for customers', operation: 'Operate' },
     ],
   },
 ] as const;
@@ -404,20 +451,33 @@ export const ALL_ACCESS_PERMISSIONS = ACCESS_PERMISSION_GROUPS.flatMap(group =>
   group.permissions.map(permission => permission.key)
 ) as AccessPermissionKey[];
 
+// Role templates offered when inviting or editing staff access. "owner" is a
+// full-permissions template a store owner can hand to a trusted staff member
+// while keeping their account role as "staff" (for audit/attribution) — the
+// actual `owner` user role already bypasses permission checks entirely.
 export const ACCESS_PRESETS = {
-  manager: ALL_ACCESS_PERMISSIONS.filter(key => key !== 'billing.manage'),
-  sales: [
+  owner: ALL_ACCESS_PERMISSIONS,
+  manager: ALL_ACCESS_PERMISSIONS.filter(key => key !== 'subscriptions.manage'),
+  cashier: [
     'dashboard.view', 'orders.view', 'orders.update_status', 'orders.manage_payments',
     'orders.assign_delivery', 'pos.view', 'pos.create_sale', 'products.view',
-    'categories.view', 'delivery.view', 'delivery.assign',
+    'categories.view', 'delivery.view', 'delivery.assign', 'billing.view', 'billing.create',
+    'customers.view',
   ],
-  inventory: [
-    'dashboard.view', 'orders.view', 'products.view', 'products.create',
-    'products.edit', 'categories.view', 'categories.manage',
+  // Deliberately without products.edit: a stock controller corrects quantities
+  // through stock.adjust (approval-gated) and receives against purchase
+  // orders — not by editing prices/listings directly. That stays with
+  // manager/owner (or a preset that explicitly grants products.edit).
+  stock_controller: [
+    'dashboard.view', 'products.view', 'categories.view', 'suppliers.view', 'suppliers.manage',
+    'purchase_orders.view', 'purchase_orders.create', 'purchase_orders.receive',
+    'stock.view', 'stock.adjust', 'stock.take',
   ],
   accountant: [
     'dashboard.view', 'pos.view', 'expenses.view', 'expenses.create',
-    'analytics.view', 'analytics.view_employees', 'billing.view',
+    'analytics.view', 'analytics.view_employees', 'subscriptions.view',
+    'billing.view', 'billing.create', 'billing.manage',
+    'approvals.view', 'approvals.decide',
   ],
 } as const satisfies Record<string, readonly AccessPermissionKey[]>;
 
@@ -475,6 +535,29 @@ export const SMS_TEMPLATES = {
     return `${urgency}: Hi ${ownerName}, your store "${storeName}" does not have an active subscription. Your store is currently offline and not accepting orders. Visit ${appUrl} to choose a plan and reactivate it. (Reminder ${reminderNumber})`;
   },
 } as const;
+
+// ─────────────────────────────────────────────────────────────
+// Store modules — the toggleable units a superadmin can switch off for a
+// tenant from the admin panel (Store Detail > Modules), independent of what
+// that tenant's own staff permissions allow. `disabled` is stored as a
+// blocklist on `tenants.disabled_modules`, so a module absent from a tenant's
+// list is enabled by default — including any module added after that tenant
+// was created. Dashboard and Administration (Settings/Subscriptions) are core
+// and intentionally not represented here — a store owner always keeps those.
+// ─────────────────────────────────────────────────────────────
+
+export const STORE_MODULES = [
+  { key: 'orders', label: 'Orders', description: 'Order list, status updates, and delivery assignment' },
+  { key: 'finance', label: 'Finance', description: 'Billing/invoicing, POS, and expenses' },
+  { key: 'inventory', label: 'Inventory', description: 'Suppliers, purchase orders, and the stock ledger (Products and Categories always stay reachable — POS and the storefront depend on them)' },
+  { key: 'delivery', label: 'Delivery Team', description: 'Riders and delivery assignments' },
+  { key: 'analytics', label: 'Analytics', description: 'Sales performance and reporting' },
+  { key: 'approvals', label: 'Approvals', description: 'Sensitive-action approval queue' },
+  { key: 'notifications', label: 'Notifications', description: 'SMS/WhatsApp/email delivery log' },
+] as const;
+
+export type StoreModuleKey = typeof STORE_MODULES[number]['key'];
+export const ALL_STORE_MODULE_KEYS: readonly StoreModuleKey[] = STORE_MODULES.map(m => m.key) as StoreModuleKey[];
 
 // ─────────────────────────────────────────────────────────────
 // App-wide constants

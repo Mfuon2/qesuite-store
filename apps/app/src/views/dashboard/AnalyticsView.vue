@@ -27,7 +27,7 @@
     <section class="mb-4">
       <div
         ref="metricScroller"
-        class="scrollbar-hide -mx-3 flex snap-x snap-mandatory gap-3 overflow-x-auto px-3 pb-1 sm:-mx-4 sm:px-4 md:mx-0 md:grid md:grid-cols-4 md:overflow-visible md:px-0 md:pb-0 xl:grid-cols-7"
+        class="scrollbar-hide -mx-3 flex snap-x snap-mandatory gap-3 overflow-x-auto px-3 pb-1 sm:-mx-4 sm:px-4 md:mx-0 md:grid md:grid-cols-4 md:overflow-visible md:px-0 md:pb-0 xl:grid-cols-9"
         role="region"
         aria-label="Analytics metrics"
         @scroll.passive="updateActiveMetric"
@@ -42,6 +42,23 @@
       />
       <KpiCard
         class="w-[82vw] max-w-[19rem] shrink-0 snap-center md:w-auto md:max-w-none"
+        title="Cost of goods sold"
+        :value="financial ? `KES ${financial.cogs.toLocaleString()}` : '-'"
+        :change="financialChange('cogs')"
+        :icon="CubeIcon"
+        :loading="analyticsStore.loading"
+        lower-is-better
+      />
+      <KpiCard
+        class="w-[82vw] max-w-[19rem] shrink-0 snap-center md:w-auto md:max-w-none"
+        title="Gross profit"
+        :value="financial ? formatSignedKes(financial.gross_profit) : '-'"
+        :change="financialChange('gross_profit')"
+        :icon="ChartBarIcon"
+        :loading="analyticsStore.loading"
+      />
+      <KpiCard
+        class="w-[82vw] max-w-[19rem] shrink-0 snap-center md:w-auto md:max-w-none"
         title="Recorded expenses"
         :value="financial ? `KES ${financial.expenses.toLocaleString()}` : '-'"
         :change="financialChange('expenses')"
@@ -51,9 +68,9 @@
       />
       <KpiCard
         class="w-[82vw] max-w-[19rem] shrink-0 snap-center md:w-auto md:max-w-none"
-        title="Estimated result"
-        :value="financial ? formatSignedKes(financial.variance) : '-'"
-        :change="financialChange('variance')"
+        title="Net profit"
+        :value="financial ? formatSignedKes(financial.net_profit) : '-'"
+        :change="financialChange('net_profit')"
         :icon="ScaleIcon"
         :loading="analyticsStore.loading"
       />
@@ -292,7 +309,7 @@ import {
 } from 'chart.js'
 import {
   BanknotesIcon, ShoppingCartIcon, CheckCircleIcon, XCircleIcon,
-  CurrencyDollarIcon, ReceiptRefundIcon, ScaleIcon,
+  CurrencyDollarIcon, ReceiptRefundIcon, ScaleIcon, CubeIcon, ChartBarIcon,
 } from '@heroicons/vue/24/outline'
 import { QeSelect, QeDatePicker } from '@qesuite/ui'
 import KpiCard from '@/components/dashboard/KpiCard.vue'
@@ -382,7 +399,7 @@ const cancelChange = computed(() => {
   return ((curr - prev) / prev) * 100
 })
 
-function financialChange(field: 'expenses' | 'variance') {
+function financialChange(field: 'cogs' | 'gross_profit' | 'expenses' | 'variance' | 'net_profit') {
   const data = financial.value
   if (!data) return undefined
   const current = data[field]

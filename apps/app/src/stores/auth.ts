@@ -7,6 +7,8 @@ import { verifyMagicLinkApi, requestMagicLinkApi, selectRiderStoreApi } from '@/
 import type { VerifyResponse, RiderStoreSelectionData } from '@/api/delivery'
 import { adminLogin, type AdminUser } from '@/api/admin'
 import { beginNetworkActivity, endNetworkActivity } from '@/composables/useNetworkActivity'
+import { ensureDeviceRegistered, getValidDeviceCredential } from '@/offline/deviceIdentity'
+import { initSyncEngine } from '@/offline/syncEngine'
 import type { PublicUser } from '@qesuite/types'
 import type { RegisterRequest } from '@/api/auth'
 import { useAccessStore } from '@/stores/access'
@@ -47,6 +49,13 @@ export const useAuthStore = defineStore('auth', () => {
   const pendingRiderStoreSelection = ref<RiderStoreSelectionData | null>(null)
 
   const isAuthenticated = computed(() => !!token.value)
+  // Set only when a normal session restore fails because the device is
+  // genuinely offline (not because the session is actually invalid) AND
+  // this device holds a valid, previously-registered offline credential.
+  // Deliberately never paired with a real `token` — this only ever
+  // authorizes local UI/navigation (see router/index.ts), never an actual
+  // API call, which always still needs the real thing.
+  const offlineDeviceMode = ref(false)
   const role = computed<UserRole | null>(() => {
     if (!token.value) return null
     const payload = parseJwt(token.value)
@@ -83,10 +92,24 @@ export const useAuthStore = defineStore('auth', () => {
         setTokens(data.data.access_token)
         scheduleRefresh(data.data.access_token)
         await fetchMe()
+        if (role.value === 'owner' || role.value === 'staff') { void ensureDeviceRegistered(); initSyncEngine() }
       } else {
         logout()
       }
-    } catch { /* network error, keep existing token */ }
+    } catch {
+      // A genuine network failure (not a rejected/expired session, which
+      // `!res.ok` above already handles) — before leaving this device
+      // logged out, check whether it holds a valid offline POS credential
+      // and a cached permission grant from a previous online session. If
+      // so, this is a real reload-while-offline, not an invalid session:
+      // enter a narrow offline mode that only ever unlocks local /pos
+      // navigation and the sync engine, never a real API call.
+      const credential = await getValidDeviceCredential()
+      if (credential && await useAccessStore().loadFromCache()) {
+        offlineDeviceMode.value = true
+        initSyncEngine()
+      }
+    }
     finally {
       endNetworkActivity(activity)
     }
@@ -154,6 +177,10 @@ export const useAuthStore = defineStore('auth', () => {
     token.value = access_token
     setTokens(access_token)
     scheduleRefresh(access_token)
+    // POS offline-first foundation (Phase 0): registers/renews this
+    // installation's device identity in the background. Never awaited —
+    // a slow or failed registration must never delay or block login.
+    if (u.role === 'owner' || u.role === 'staff') { void ensureDeviceRegistered(); initSyncEngine() }
     if (u.role === 'owner' && u.tenant_id) {
       try {
         const statusRes = await apiFetch<{ data: { complete: boolean } | null }>('/api/onboarding/status')
@@ -307,8 +334,20 @@ export const useAuthStore = defineStore('auth', () => {
     // Likely a valid refresh cookie exists — rehydrate then mark ready
     refreshOwnerToken().finally(() => _readyResolve())
   } else {
-    // No prior session marker — nothing to restore
-    _readyResolve()
+    // No prior marker in THIS browser session — but that marker lives in
+    // sessionStorage, which does not survive a full browser/OS restart,
+    // while a POS device credential is durably persisted in IndexedDB
+    // regardless. Check for one before concluding there's nothing to
+    // restore, or a genuine "reboots the computer" reload would never
+    // reach offlineDeviceMode at all.
+    void (async () => {
+      const credential = await getValidDeviceCredential()
+      if (credential && await useAccessStore().loadFromCache()) {
+        offlineDeviceMode.value = true
+        initSyncEngine()
+      }
+      _readyResolve()
+    })()
   }
 
   return {
@@ -316,6 +355,7 @@ export const useAuthStore = defineStore('auth', () => {
     token,
     role,
     isAuthenticated,
+    offlineDeviceMode,
     onboardingComplete,
     loading,
     ready,

@@ -3,6 +3,7 @@ import { Env, Variables } from '../types'
 import { authMiddleware } from '../middleware/auth'
 import { tenantGuard } from '../middleware/tenant'
 import { generateId } from '../lib/jwt'
+import { auditEntry } from '../lib/audit'
 
 const products = new Hono<{ Bindings: Env; Variables: Variables }>()
 
@@ -41,6 +42,9 @@ products.get('/', async (c) => {
 
     // Resolve tenant
     let tenantId: string | null = null
+    // Cost price, SKU, supplier, etc. are owner-facing data — never send them
+    // down the public (slug-resolved, no auth) storefront path.
+    let authenticated = false
 
     // Check if caller is authenticated
     const authHeader = c.req.header('Authorization')
@@ -49,6 +53,7 @@ products.get('/', async (c) => {
         const { verifyJWT } = await import('../lib/jwt')
         const payload = await verifyJWT(authHeader.substring(7), c.env.JWT_SECRET)
         tenantId = payload.tenant_id
+        authenticated = true
       } catch {
         // fall through to slug-based resolution
       }
@@ -89,10 +94,14 @@ products.get('/', async (c) => {
       `SELECT COUNT(*) as cnt FROM products p WHERE ${whereClause}`
     ).bind(...params).first<{ cnt: number }>()
 
+    const ownerColumns = authenticated
+      ? ', p.sku, p.barcode, p.cost_price, p.unit_of_measure, p.reorder_level, p.expiry_date, p.supplier_id'
+      : ''
+
     const rows = await c.env.qesuite_db.prepare(
       `SELECT p.id, p.name, p.description, p.price, p.sale_price, p.stock,
               p.image_url, p.featured, p.on_sale, p.category_id,
-              c.name as category_name, p.created_at, p.updated_at
+              c.name as category_name, p.created_at, p.updated_at${ownerColumns}
        FROM products p
        LEFT JOIN categories c ON c.id = p.category_id
        WHERE ${whereClause}
@@ -299,10 +308,20 @@ products.post('/', authMiddleware, tenantGuard, async (c) => {
       image_url?: string
       featured?: number
       on_sale?: number
+      sku?: string
+      barcode?: string
+      cost_price?: number
+      unit_of_measure?: string
+      reorder_level?: number
+      expiry_date?: string
+      supplier_id?: string
     }>()
 
     if (!body.name || body.price === undefined || body.price < 0) {
       return c.json({ error: 'name and price are required', data: null }, 400)
+    }
+    if (body.cost_price !== undefined && body.cost_price < 0) {
+      return c.json({ error: 'cost_price cannot be negative', data: null }, 400)
     }
 
     // Verify category belongs to this tenant
@@ -314,18 +333,39 @@ products.post('/', authMiddleware, tenantGuard, async (c) => {
         return c.json({ error: 'Category not found', data: null }, 404)
       }
     }
+    if (body.supplier_id) {
+      const supplier = await c.env.qesuite_db.prepare(
+        'SELECT id FROM suppliers WHERE id = ? AND tenant_id = ?'
+      ).bind(body.supplier_id, tenantId).first()
+      if (!supplier) return c.json({ error: 'Supplier not found', data: null }, 404)
+    }
 
     const id = generateId()
-    await c.env.qesuite_db.prepare(
-      `INSERT INTO products (id, tenant_id, category_id, name, description, price, sale_price,
-        stock, image_url, featured, on_sale, is_active, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, datetime('now'), datetime('now'))`
-    ).bind(
-      id, tenantId, body.category_id ?? null, body.name, body.description ?? null,
-      body.price, body.sale_price ?? null, body.stock ?? 0,
-      validateImageUrl(body.image_url, new URL(c.req.url).origin),
-      body.featured ?? 0, body.on_sale ?? 0
-    ).run()
+    const initialStock = body.stock ?? 0
+    const statements = [
+      c.env.qesuite_db.prepare(
+        `INSERT INTO products (id, tenant_id, category_id, name, description, price, sale_price,
+          stock, image_url, featured, on_sale, is_active, sku, barcode, cost_price,
+          unit_of_measure, reorder_level, expiry_date, supplier_id, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
+      ).bind(
+        id, tenantId, body.category_id ?? null, body.name, body.description ?? null,
+        body.price, body.sale_price ?? null, initialStock,
+        validateImageUrl(body.image_url, new URL(c.req.url).origin),
+        body.featured ?? 0, body.on_sale ?? 0,
+        body.sku ?? null, body.barcode ?? null, body.cost_price ?? 0,
+        body.unit_of_measure ?? 'unit', body.reorder_level ?? 0, body.expiry_date ?? null, body.supplier_id ?? null,
+      ),
+    ]
+
+    if (initialStock > 0) {
+      statements.push(c.env.qesuite_db.prepare(
+        `INSERT INTO stock_movements (id, tenant_id, product_id, type, quantity_delta, unit_cost, resulting_stock, resulting_avg_cost, recorded_by)
+         VALUES (?, ?, ?, 'initial', ?, ?, ?, ?, ?)`
+      ).bind(generateId(), tenantId, id, initialStock, body.cost_price ?? 0, initialStock, body.cost_price ?? 0, user.sub))
+    }
+
+    await c.env.qesuite_db.batch(statements)
 
     const product = await c.env.qesuite_db.prepare(
       `SELECT p.*, c.name as category_name FROM products p
@@ -335,6 +375,10 @@ products.post('/', authMiddleware, tenantGuard, async (c) => {
     return c.json({ success: true, data: product ? withCategory(product) : null, error: null, message: 'Product created' }, 201)
   } catch (err) {
     console.error('product create error', err)
+    const message = err instanceof Error ? err.message : ''
+    if (message.includes('UNIQUE constraint failed')) {
+      return c.json({ error: 'That SKU or barcode is already used by another product', data: null }, 409)
+    }
     return c.json({ error: 'Failed to create product', data: null }, 500)
   }
 })
@@ -347,8 +391,8 @@ products.put('/:id', authMiddleware, tenantGuard, async (c) => {
     const id = c.req.param('id') as string
 
     const existing = await c.env.qesuite_db.prepare(
-      'SELECT id FROM products WHERE id = ? AND tenant_id = ?'
-    ).bind(id, tenantId).first()
+      'SELECT price, sale_price, cost_price, stock FROM products WHERE id = ? AND tenant_id = ?'
+    ).bind(id, tenantId).first<{ price: number; sale_price: number | null; cost_price: number; stock: number }>()
 
     if (!existing) {
       return c.json({ error: 'Product not found', data: null }, 404)
@@ -364,7 +408,21 @@ products.put('/:id', authMiddleware, tenantGuard, async (c) => {
       image_url?: string
       featured?: number
       on_sale?: number
+      sku?: string
+      barcode?: string
+      cost_price?: number
+      unit_of_measure?: string
+      reorder_level?: number
+      expiry_date?: string
+      supplier_id?: string
     }>()
+
+    if (body.supplier_id) {
+      const supplier = await c.env.qesuite_db.prepare(
+        'SELECT id FROM suppliers WHERE id = ? AND tenant_id = ?'
+      ).bind(body.supplier_id, tenantId).first()
+      if (!supplier) return c.json({ error: 'Supplier not found', data: null }, 404)
+    }
 
     const fields: string[] = []
     const values: (string | number | null)[] = []
@@ -380,6 +438,13 @@ products.put('/:id', authMiddleware, tenantGuard, async (c) => {
       // Convert booleans to SQLite integers (frontend may send true/false)
       featured: body.featured !== undefined ? (body.featured ? 1 : 0) : undefined,
       on_sale: body.on_sale !== undefined ? (body.on_sale ? 1 : 0) : undefined,
+      sku: body.sku,
+      barcode: body.barcode,
+      cost_price: body.cost_price,
+      unit_of_measure: body.unit_of_measure,
+      reorder_level: body.reorder_level,
+      expiry_date: body.expiry_date,
+      supplier_id: body.supplier_id,
     }
 
     for (const [key, val] of Object.entries(mappings)) {
@@ -396,9 +461,48 @@ products.put('/:id', authMiddleware, tenantGuard, async (c) => {
     fields.push("updated_at = datetime('now')")
     values.push(id)
 
-    await c.env.qesuite_db.prepare(
-      `UPDATE products SET ${fields.join(', ')} WHERE id = ?`
-    ).bind(...values).run()
+    const statements = [
+      c.env.qesuite_db.prepare(`UPDATE products SET ${fields.join(', ')} WHERE id = ?`).bind(...values),
+    ]
+
+    // Track cost/selling price changes so margin history and P&L stay
+    // reconstructable — these aren't just column updates, they change what
+    // past-vs-future profit calculations mean.
+    const priceChanges: { field: 'cost_price' | 'price' | 'sale_price'; oldValue: number | null; newValue: number }[] = []
+    if (body.cost_price !== undefined && body.cost_price !== existing.cost_price) {
+      priceChanges.push({ field: 'cost_price', oldValue: existing.cost_price, newValue: body.cost_price })
+    }
+    if (body.price !== undefined && body.price !== existing.price) {
+      priceChanges.push({ field: 'price', oldValue: existing.price, newValue: body.price })
+    }
+    if (body.sale_price !== undefined && body.sale_price !== existing.sale_price) {
+      priceChanges.push({ field: 'sale_price', oldValue: existing.sale_price, newValue: body.sale_price })
+    }
+    for (const change of priceChanges) {
+      statements.push(c.env.qesuite_db.prepare(
+        `INSERT INTO price_history (id, tenant_id, product_id, field, old_value, new_value, changed_by)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`
+      ).bind(generateId(), tenantId, id, change.field, change.oldValue, change.newValue, user.sub))
+    }
+    if (priceChanges.length > 0) {
+      statements.push(auditEntry(c.env.qesuite_db, {
+        actorId: user.sub, actorRole: user.role, action: 'product.price_changed',
+        targetType: 'product', targetId: id, detail: { changes: priceChanges },
+        ip: c.req.header('CF-Connecting-IP'),
+      }))
+    }
+
+    // A direct stock edit here (vs. the dedicated stock-adjustment/receiving
+    // flows) still needs to land in the ledger so the trail stays complete.
+    if (body.stock !== undefined && body.stock !== existing.stock) {
+      const newCostPrice = body.cost_price ?? existing.cost_price
+      statements.push(c.env.qesuite_db.prepare(
+        `INSERT INTO stock_movements (id, tenant_id, product_id, type, quantity_delta, unit_cost, resulting_stock, resulting_avg_cost, reason, recorded_by)
+         VALUES (?, ?, ?, 'adjustment', ?, ?, ?, ?, 'Direct edit on product form', ?)`
+      ).bind(generateId(), tenantId, id, body.stock - existing.stock, newCostPrice, body.stock, newCostPrice, user.sub))
+    }
+
+    await c.env.qesuite_db.batch(statements)
 
     const product = await c.env.qesuite_db.prepare(
       `SELECT p.*, c.name as category_name FROM products p
@@ -408,6 +512,10 @@ products.put('/:id', authMiddleware, tenantGuard, async (c) => {
     return c.json({ success: true, data: product ? withCategory(product) : null, error: null, message: 'Product updated' })
   } catch (err) {
     console.error('product update error', err)
+    const message = err instanceof Error ? err.message : ''
+    if (message.includes('UNIQUE constraint failed')) {
+      return c.json({ error: 'That SKU or barcode is already used by another product', data: null }, 409)
+    }
     return c.json({ error: 'Failed to update product', data: null }, 500)
   }
 })

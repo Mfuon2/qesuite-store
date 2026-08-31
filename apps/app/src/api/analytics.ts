@@ -15,13 +15,23 @@ export interface PaymentMethodBreakdown {
 
 export interface FinancialPeriodSummary {
   revenue: number
+  cogs: number
+  gross_profit: number
+  gross_margin: number | null
   expenses: number
   variance: number
+  net_profit: number
   expense_ratio: number | null
   margin: number | null
   expense_count: number
   online_orders: number
   pos_sales: number
+  total_orders: number
+  avg_order_value: number
+  delivered_orders: number
+  cancelled_orders: number
+  completion_rate: number
+  period_days: number
 }
 
 export interface FinancialPerformance extends FinancialPeriodSummary {
@@ -31,6 +41,8 @@ export interface FinancialPerformance extends FinancialPeriodSummary {
   daily: Array<{
     date: string
     revenue: number
+    cogs: number
+    gross_profit: number
     expenses: number
     variance: number
   }>

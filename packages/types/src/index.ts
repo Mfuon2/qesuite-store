@@ -42,6 +42,7 @@ export interface Tenant {
   trial_ends_at: string | null;
   subscription_status: SubscriptionStatus;
   is_suspended: boolean;
+  disabled_modules: string[];
   created_at: string;
 }
 
@@ -161,6 +162,9 @@ export interface StoreSettings {
   mpesa_payment_type: MpesaPaymentType | null;
   mpesa_payment_number: string | null;
   mpesa_account_ref: string | null;
+  owner_notify_sms: boolean;
+  owner_notify_email: boolean;
+  notification_email: string | null;
   updated_at: string;
 }
 
@@ -180,6 +184,9 @@ export interface StoreSettingsUpdate {
   mpesa_payment_type?: MpesaPaymentType | null;
   mpesa_payment_number?: string | null;
   mpesa_account_ref?: string | null;
+  owner_notify_sms?: boolean;
+  owner_notify_email?: boolean;
+  notification_email?: string | null;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -225,6 +232,13 @@ export interface Product {
   featured: boolean;
   on_sale: boolean;
   is_active: boolean;
+  sku: string | null;
+  barcode: string | null;
+  cost_price: number;
+  unit_of_measure: string;
+  reorder_level: number;
+  expiry_date: string | null;
+  supplier_id: string | null;
   created_at: string;
   updated_at: string;
   // joined
@@ -241,6 +255,13 @@ export interface ProductCreate {
   image_url?: string;
   featured?: boolean;
   on_sale?: boolean;
+  sku?: string;
+  barcode?: string;
+  cost_price?: number;
+  unit_of_measure?: string;
+  reorder_level?: number;
+  expiry_date?: string;
+  supplier_id?: string;
 }
 
 export interface ProductUpdate {
@@ -254,6 +275,262 @@ export interface ProductUpdate {
   featured?: boolean;
   on_sale?: boolean;
   is_active?: boolean;
+  sku?: string | null;
+  barcode?: string | null;
+  cost_price?: number;
+  unit_of_measure?: string;
+  reorder_level?: number;
+  expiry_date?: string | null;
+  supplier_id?: string | null;
+}
+
+// ─────────────────────────────────────────────────────────────
+// Suppliers & purchase orders
+// ─────────────────────────────────────────────────────────────
+
+export interface Supplier {
+  id: string;
+  tenant_id: string;
+  name: string;
+  phone: string | null;
+  email: string | null;
+  address: string | null;
+  notes: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export type PurchaseOrderStatus =
+  | 'draft' | 'pending_approval' | 'approved' | 'rejected'
+  | 'sent' | 'partially_received' | 'received' | 'cancelled';
+
+export interface PurchaseOrderItem {
+  id: string;
+  purchase_order_id: string;
+  product_id: string;
+  product_name?: string;
+  unit_of_measure?: string;
+  quantity_ordered: number;
+  quantity_received: number;
+  unit_cost: number;
+  line_total: number;
+}
+
+export interface PurchaseOrder {
+  id: string;
+  tenant_id: string;
+  supplier_id: string;
+  supplier_name?: string;
+  po_number: string;
+  status: PurchaseOrderStatus;
+  subtotal: number;
+  notes: string | null;
+  created_by: string;
+  approved_by: string | null;
+  approved_at: string | null;
+  sent_at: string | null;
+  received_at: string | null;
+  cancelled_at: string | null;
+  created_at: string;
+  updated_at: string;
+  items?: PurchaseOrderItem[];
+}
+
+// ─────────────────────────────────────────────────────────────
+// Stock ledger & costing
+// ─────────────────────────────────────────────────────────────
+
+export type StockMovementType =
+  | 'purchase_receipt' | 'sale' | 'order_sale' | 'adjustment' | 'transfer_in' | 'transfer_out'
+  | 'damaged' | 'expired' | 'count_correction' | 'initial';
+
+export interface StockMovement {
+  id: string;
+  tenant_id: string;
+  product_id: string;
+  product_name?: string;
+  type: StockMovementType;
+  quantity_delta: number;
+  unit_cost: number | null;
+  resulting_stock: number;
+  resulting_avg_cost: number | null;
+  reference_type: string | null;
+  reference_id: string | null;
+  reason: string | null;
+  recorded_by: string | null;
+  created_at: string;
+}
+
+export interface PriceHistoryEntry {
+  id: string;
+  tenant_id: string;
+  product_id: string;
+  field: 'cost_price' | 'price' | 'sale_price';
+  old_value: number | null;
+  new_value: number;
+  changed_by: string | null;
+  created_at: string;
+}
+
+export type StockTakeStatus = 'open' | 'closed' | 'cancelled';
+
+export interface StockTakeLine {
+  id: string;
+  session_id: string;
+  product_id: string;
+  product_name?: string;
+  unit_of_measure?: string;
+  expected_quantity: number;
+  counted_quantity: number | null;
+  variance: number | null;
+  reason: string | null;
+  counted_by: string | null;
+  counted_at: string | null;
+}
+
+export interface StockTakeSession {
+  id: string;
+  tenant_id: string;
+  status: StockTakeStatus;
+  opened_by: string;
+  closed_by: string | null;
+  notes: string | null;
+  opened_at: string;
+  closed_at: string | null;
+  lines?: StockTakeLine[];
+}
+
+// ─────────────────────────────────────────────────────────────
+// Approvals
+// ─────────────────────────────────────────────────────────────
+
+export type ApprovalActionType = 'refund' | 'stock_adjustment' | 'expense_edit' | 'expense_delete' | 'credit_write_off' | 'credit_limit_override';
+export type ApprovalStatus = 'pending' | 'approved' | 'rejected' | 'cancelled';
+
+// ─────────────────────────────────────────────────────────────
+// Billing & invoicing
+// ─────────────────────────────────────────────────────────────
+
+export type InvoiceType = 'quotation' | 'proforma' | 'invoice' | 'recurring';
+export type InvoiceStatus = 'draft' | 'sent' | 'partially_paid' | 'paid' | 'overdue' | 'void';
+
+export interface InvoiceItem {
+  id: string;
+  invoice_id: string;
+  product_id: string | null;
+  description: string;
+  quantity: number;
+  unit_price: number;
+  line_total: number;
+}
+
+export interface InvoicePayment {
+  id: string;
+  invoice_id: string;
+  tenant_id: string;
+  amount: number;
+  method: string;
+  reference: string | null;
+  note: string | null;
+  recorded_by: string | null;
+  created_at: string;
+}
+
+export interface Invoice {
+  id: string;
+  tenant_id: string;
+  invoice_number: string;
+  customer_id: string | null;
+  customer_name: string;
+  customer_phone: string | null;
+  customer_pin: string | null;
+  pos_sale_id: string | null;
+  type: InvoiceType;
+  status: InvoiceStatus;
+  subtotal: number;
+  discount: number;
+  tax_amount: number;
+  total: number;
+  amount_paid: number;
+  currency: string;
+  payment_terms_days: number;
+  due_date: string | null;
+  recurring_interval: 'weekly' | 'monthly' | null;
+  notes: string | null;
+  created_by: string;
+  voided_by: string | null;
+  voided_at: string | null;
+  void_reason: string | null;
+  created_at: string;
+  updated_at: string;
+  items?: InvoiceItem[];
+  payments?: InvoicePayment[];
+}
+
+export interface Customer {
+  id: string;
+  tenant_id: string;
+  name: string | null;
+  phone: string;
+  email: string | null;
+  credit_limit: number;
+  credit_balance: number;
+  order_count: number;
+  total_spend: number;
+  first_order_at: string;
+  last_order_at: string;
+}
+
+export interface CustomerDetail extends Customer {
+  open_invoices: Array<{
+    id: string;
+    invoice_number: string;
+    total: number;
+    amount_paid: number;
+    due_date: string | null;
+    created_at: string;
+  }>;
+}
+
+export interface CreditNote {
+  id: string;
+  tenant_id: string;
+  credit_note_number: string;
+  invoice_id: string | null;
+  customer_id: string | null;
+  amount: number;
+  reason: string | null;
+  status: 'issued' | 'applied' | 'void';
+  created_by: string;
+  created_at: string;
+}
+
+export interface ArAgingRow {
+  customer_id: string;
+  name: string;
+  phone: string;
+  credit_balance: number;
+  oldest_due_date: string | null;
+  days_overdue: number;
+  bucket: '0-30' | '31-60' | '61-90' | '90+';
+}
+
+export interface ApprovalRequest {
+  id: string;
+  tenant_id: string;
+  action_type: ApprovalActionType;
+  target_type: string | null;
+  target_id: string | null;
+  payload_json: string;
+  reason: string | null;
+  status: ApprovalStatus;
+  requested_by: string;
+  requested_by_name?: string;
+  decided_by: string | null;
+  decision_note: string | null;
+  decided_at: string | null;
+  created_at: string;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -341,8 +618,19 @@ export interface OrderFilters {
 // Restaurant POS (Sales Terminal) — store_category === 'food' only
 // ─────────────────────────────────────────────────────────────
 
-export type PosPaymentMethod = 'cash' | 'mpesa';
+export type PosPaymentMethod = 'cash' | 'mpesa' | 'card' | 'split' | 'credit';
+export type PosSplitLegMethod = 'cash' | 'mpesa' | 'card';
 export type PosSaleStatus = 'completed' | 'voided';
+
+export interface PosSalePayment {
+  id: string;
+  sale_id: string;
+  tenant_id: string;
+  method: PosSplitLegMethod;
+  amount: number;
+  reference: string | null;
+  created_at: string;
+}
 export type PosCashMovementType =
   | 'opening_float'
   | 'cash_sale'
@@ -382,6 +670,8 @@ export interface PosTillSession {
   corrections: number;
   movement_count: number;
   recent_movements?: PosCashMovement[];
+  credit_sales?: Array<{ id: string; receipt_code: string; total: number; created_at: string; customer_id: string; customer_name: string }>;
+  credit_sales_total?: number;
 }
 
 export interface PosSaleItem {
@@ -413,9 +703,11 @@ export interface PosSale {
   created_at: string;
   voided_at: string | null;
   till_session_id: string | null;
+  customer_id: string | null;
   // joined
   items?: PosSaleItem[];
   items_summary?: string;
+  payments?: PosSalePayment[];
 }
 
 export interface PosSaleCreate {
@@ -423,9 +715,11 @@ export interface PosSaleCreate {
   payment_method: PosPaymentMethod;
   amount_tendered?: number;
   mpesa_reference?: string;
+  payments?: { method: PosSplitLegMethod; amount: number; reference?: string }[];
   discount?: number;
   table_label?: string;
   note?: string;
+  customer_id?: string;
 }
 
 export type ExpenseCategory =

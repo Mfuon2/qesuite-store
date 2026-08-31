@@ -1,7 +1,7 @@
 import { Hono } from 'hono'
 import { Env, Variables } from '../types'
 import { authMiddleware } from '../middleware/auth'
-import { tenantGuard } from '../middleware/tenant'
+import { tenantGuard, requireModule } from '../middleware/tenant'
 import { addDays } from '@qesuite/shared'
 import { inclusiveDateRange } from '../lib/time'
 
@@ -94,7 +94,7 @@ function datesBetween(from: string, to: string): string[] {
 }
 
 // GET /api/analytics/summary — KPI cards
-analytics.get('/summary', authMiddleware, tenantGuard, async (c) => {
+analytics.get('/summary', authMiddleware, tenantGuard, requireModule('analytics'), async (c) => {
   try {
     const tenantId = c.get('user').tenant_id!
     const range = parseDateRange(
@@ -146,7 +146,7 @@ analytics.get('/summary', authMiddleware, tenantGuard, async (c) => {
 })
 
 // GET /api/analytics/employees — attributed online and POS performance by staff member
-analytics.get('/employees', authMiddleware, tenantGuard, async (c) => {
+analytics.get('/employees', authMiddleware, tenantGuard, requireModule('analytics'), async (c) => {
   try {
     const tenantId = c.get('user').tenant_id!
     const range = parseDateRange(
@@ -221,7 +221,7 @@ analytics.get('/employees', authMiddleware, tenantGuard, async (c) => {
 })
 
 // GET /api/analytics/revenue — daily revenue series
-analytics.get('/revenue', authMiddleware, tenantGuard, async (c) => {
+analytics.get('/revenue', authMiddleware, tenantGuard, requireModule('analytics'), async (c) => {
   try {
     const tenantId = c.get('user').tenant_id!
     const range = parseDateRange(
@@ -270,21 +270,40 @@ interface ExpenseTotalRow {
   expense_count: number
 }
 
-function financialPeriod(revenueValue: number, expenseValue: number) {
+// Real Gross Profit needs Cost of Goods Sold (COGS), not just Revenue minus
+// Expenses — `variance`/`margin` are kept for the existing dashboard cards,
+// but now correctly account for COGS rather than just operating expenses.
+function financialPeriod(revenueValue: number, cogsValue: number, expenseValue: number) {
   const revenue = Math.round(revenueValue)
+  const cogs = Math.round(cogsValue)
   const expenses = Math.round(expenseValue)
-  const variance = revenue - expenses
+  const grossProfit = revenue - cogs
+  const netProfit = grossProfit - expenses
   return {
     revenue,
+    cogs,
+    gross_profit: grossProfit,
+    gross_margin: revenue > 0 ? Number(((grossProfit / revenue) * 100).toFixed(1)) : null,
     expenses,
-    variance,
+    variance: netProfit,
+    net_profit: netProfit,
     expense_ratio: revenue > 0 ? Number(((expenses / revenue) * 100).toFixed(1)) : null,
-    margin: revenue > 0 ? Number(((variance / revenue) * 100).toFixed(1)) : null,
+    margin: revenue > 0 ? Number(((netProfit / revenue) * 100).toFixed(1)) : null,
   }
 }
 
+async function getCogs(db: D1Database, tenantId: string, dateFrom: string, dateTo: string): Promise<number> {
+  const row = await db.prepare(
+    `SELECT COALESCE(SUM(-quantity_delta * COALESCE(unit_cost, 0)), 0) AS cogs
+     FROM stock_movements
+     WHERE tenant_id = ? AND type IN ('sale', 'order_sale')
+       AND date(created_at, '+3 hours') BETWEEN ? AND ?`
+  ).bind(tenantId, dateFrom, dateTo).first<{ cogs: number }>()
+  return row?.cogs ?? 0
+}
+
 // GET /api/analytics/profit-loss — sales, recorded expenses, and operating variance
-analytics.get('/profit-loss', authMiddleware, tenantGuard, async (c) => {
+analytics.get('/profit-loss', authMiddleware, tenantGuard, requireModule('analytics'), async (c) => {
   try {
     const tenantId = c.get('user').tenant_id!
     const range = parseDateRange(
@@ -303,8 +322,11 @@ analytics.get('/profit-loss', authMiddleware, tenantGuard, async (c) => {
       previousSales,
       currentExpenses,
       previousExpenses,
+      currentCogs,
+      previousCogs,
       salesRows,
       expenseRows,
+      cogsRows,
       categoryRows,
     ] = await Promise.all([
       getSalesSummary(c.env.qesuite_db, tenantId, range.dateFrom, range.dateTo),
@@ -313,6 +335,8 @@ analytics.get('/profit-loss', authMiddleware, tenantGuard, async (c) => {
         .bind(tenantId, range.dateFrom, range.dateTo).first<ExpenseTotalRow>(),
       c.env.qesuite_db.prepare(expenseTotalSql)
         .bind(tenantId, range.prevFrom, range.prevTo).first<ExpenseTotalRow>(),
+      getCogs(c.env.qesuite_db, tenantId, range.dateFrom, range.dateTo),
+      getCogs(c.env.qesuite_db, tenantId, range.prevFrom, range.prevTo),
       c.env.qesuite_db.prepare(
         `WITH sales AS (
            SELECT date(created_at, '+3 hours') AS date, total
@@ -339,6 +363,14 @@ analytics.get('/profit-loss', authMiddleware, tenantGuard, async (c) => {
       ).bind(tenantId, range.dateFrom, range.dateTo)
         .all<{ date: string; expenses: number }>(),
       c.env.qesuite_db.prepare(
+        `SELECT date(created_at, '+3 hours') AS date, COALESCE(SUM(-quantity_delta * COALESCE(unit_cost, 0)), 0) AS cogs
+         FROM stock_movements
+         WHERE tenant_id = ? AND type IN ('sale', 'order_sale')
+           AND date(created_at, '+3 hours') BETWEEN ? AND ?
+         GROUP BY date ORDER BY date`
+      ).bind(tenantId, range.dateFrom, range.dateTo)
+        .all<{ date: string; cogs: number }>(),
+      c.env.qesuite_db.prepare(
         `SELECT category, COALESCE(SUM(amount), 0) AS total, COUNT(*) AS count
          FROM expenses
          WHERE tenant_id = ? AND expense_date BETWEEN ? AND ?
@@ -349,19 +381,37 @@ analytics.get('/profit-loss', authMiddleware, tenantGuard, async (c) => {
 
     const current = financialPeriod(
       currentSales?.total_revenue ?? 0,
+      currentCogs,
       currentExpenses?.expenses ?? 0,
     )
     const previous = financialPeriod(
       previousSales?.total_revenue ?? 0,
+      previousCogs,
       previousExpenses?.expenses ?? 0,
     )
     const salesByDate = new Map(salesRows.results.map(row => [row.date, row.revenue]))
     const expensesByDate = new Map(expenseRows.results.map(row => [row.date, row.expenses]))
+    const cogsByDate = new Map(cogsRows.results.map(row => [row.date, row.cogs]))
     const daily = datesBetween(range.dateFrom, range.dateTo).map(date => {
       const revenue = Math.round(salesByDate.get(date) ?? 0)
       const expenses = Math.round(expensesByDate.get(date) ?? 0)
-      return { date, revenue, expenses, variance: revenue - expenses }
+      const cogs = Math.round(cogsByDate.get(date) ?? 0)
+      const grossProfit = revenue - cogs
+      return { date, revenue, cogs, gross_profit: grossProfit, expenses, variance: grossProfit - expenses }
     })
+
+    // total_orders/avg_order_value/delivered_orders/cancelled_orders/
+    // completion_rate/period_days duplicate what GET /api/analytics/summary
+    // returns — deliberately: currentSales/previousSales already have this
+    // data (same getSalesSummary() calls above), so exposing it here lets
+    // the dashboard fetch summary + P&L in one round trip instead of two,
+    // rather than computing the same UNION ALL query pair twice per load.
+    const totalOrders = currentSales?.total_orders ?? 0
+    const prevTotalOrders = previousSales?.total_orders ?? 0
+    const completionRate = totalOrders > 0
+      ? Math.round(((currentSales?.delivered_orders ?? 0) / totalOrders) * 100) : 0
+    const prevCompletionRate = prevTotalOrders > 0
+      ? Math.round(((previousSales?.delivered_orders ?? 0) / prevTotalOrders) * 100) : 0
 
     return c.json({
       success: true,
@@ -372,11 +422,23 @@ analytics.get('/profit-loss', authMiddleware, tenantGuard, async (c) => {
         expense_count: currentExpenses?.expense_count ?? 0,
         online_orders: currentSales?.online_orders ?? 0,
         pos_sales: currentSales?.pos_sales ?? 0,
+        total_orders: totalOrders,
+        avg_order_value: Math.round(currentSales?.avg_order_value ?? 0),
+        delivered_orders: currentSales?.delivered_orders ?? 0,
+        cancelled_orders: currentSales?.cancelled_orders ?? 0,
+        completion_rate: completionRate,
+        period_days: range.days,
         previous: {
           ...previous,
           expense_count: previousExpenses?.expense_count ?? 0,
           online_orders: previousSales?.online_orders ?? 0,
           pos_sales: previousSales?.pos_sales ?? 0,
+          total_orders: prevTotalOrders,
+          avg_order_value: Math.round(previousSales?.avg_order_value ?? 0),
+          delivered_orders: previousSales?.delivered_orders ?? 0,
+          cancelled_orders: previousSales?.cancelled_orders ?? 0,
+          completion_rate: prevCompletionRate,
+          period_days: range.days,
         },
         daily,
         by_category: categoryRows.results,
@@ -390,7 +452,7 @@ analytics.get('/profit-loss', authMiddleware, tenantGuard, async (c) => {
 })
 
 // GET /api/analytics/top-products — top 5 by revenue and volume
-analytics.get('/top-products', authMiddleware, tenantGuard, async (c) => {
+analytics.get('/top-products', authMiddleware, tenantGuard, requireModule('analytics'), async (c) => {
   try {
     const tenantId = c.get('user').tenant_id!
     const range = parseDateRange(
@@ -451,7 +513,7 @@ analytics.get('/top-products', authMiddleware, tenantGuard, async (c) => {
 })
 
 // GET /api/analytics/peak-hours — hourly order distribution
-analytics.get('/peak-hours', authMiddleware, tenantGuard, async (c) => {
+analytics.get('/peak-hours', authMiddleware, tenantGuard, requireModule('analytics'), async (c) => {
   try {
     const tenantId = c.get('user').tenant_id!
     const range = parseDateRange(
@@ -496,7 +558,7 @@ analytics.get('/peak-hours', authMiddleware, tenantGuard, async (c) => {
 })
 
 // GET /api/analytics/payment-methods — payment method breakdown
-analytics.get('/payment-methods', authMiddleware, tenantGuard, async (c) => {
+analytics.get('/payment-methods', authMiddleware, tenantGuard, requireModule('analytics'), async (c) => {
   try {
     const tenantId = c.get('user').tenant_id!
     const range = parseDateRange(
@@ -544,7 +606,7 @@ analytics.get('/payment-methods', authMiddleware, tenantGuard, async (c) => {
 })
 
 // GET /api/analytics/order-status — per-status counts + unique customer count for the period
-analytics.get('/order-status', authMiddleware, tenantGuard, async (c) => {
+analytics.get('/order-status', authMiddleware, tenantGuard, requireModule('analytics'), async (c) => {
   try {
     const tenantId = c.get('user').tenant_id!
     const range = parseDateRange(

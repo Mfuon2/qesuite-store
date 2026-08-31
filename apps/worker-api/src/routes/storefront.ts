@@ -4,18 +4,9 @@ import { generateId, generateTrackingCode } from '../lib/jwt'
 import { sendSMS, sendWhatsApp, getOrderConfirmedSMS, getNewOrderSMS } from '../lib/notifications'
 import { normalizeKenyaPhone, validatePhone } from '@qesuite/shared'
 import { nairobiCompactTimestamp } from '../lib/time'
+import { checkRateLimit } from '../lib/rateLimit'
 
 const storefront = new Hono<{ Bindings: Env; Variables: Variables }>()
-
-// Simple in-memory rate limiter for order placement (5 per IP per 15 min)
-const _orderBuckets = new Map<string, { count: number; resetAt: number }>()
-function orderRateLimit(key: string): boolean {
-  const now = Date.now()
-  const b = _orderBuckets.get(key)
-  if (!b || now > b.resetAt) { _orderBuckets.set(key, { count: 1, resetAt: now + 900_000 }); return true }
-  if (b.count >= 5) return false
-  b.count++; return true
-}
 
 // GET /api/storefront — list all active stores for the marketplace directory
 storefront.get('/', async (c) => {
@@ -234,9 +225,9 @@ const VALID_PAYMENT_METHODS = ['mpesa'] as const
 // POST /api/storefront/:slug/orders — customer places order (no auth)
 storefront.post('/:slug/orders', async (c) => {
   try {
-    // Rate limit: 5 orders per phone per 15 minutes (per isolate)
+    // Rate limit: 5 orders per IP per 15 minutes (per isolate)
     const ip = c.req.header('CF-Connecting-IP') ?? 'unknown'
-    if (!orderRateLimit(ip)) {
+    if (!checkRateLimit(`order:${ip}`, 5, 900)) {
       return c.json({ success: false, error: 'Too many order attempts. Please wait before trying again.', data: null }, 429)
     }
 
@@ -289,14 +280,17 @@ storefront.post('/:slug/orders', async (c) => {
     }
 
     const tenant = await c.env.qesuite_db.prepare(
-      `SELECT t.id, t.name, t.slug, t.phone, t.whatsapp_number,
-              ss.delivery_fee, ss.min_order_amount, ss.delivery_enabled, ss.currency
+      `SELECT t.id, t.name, t.slug, t.phone, t.whatsapp_number, t.primary_color,
+              ss.delivery_fee, ss.min_order_amount, ss.delivery_enabled, ss.currency,
+              ss.owner_notify_sms, ss.owner_notify_email, ss.notification_email
        FROM tenants t
        LEFT JOIN store_settings ss ON ss.tenant_id = t.id
        WHERE t.slug = ? AND t.is_suspended = 0`
     ).bind(slug).first<{
       id: string; name: string; slug: string; phone: string | null; whatsapp_number: string | null
-      delivery_fee: number; min_order_amount: number; delivery_enabled: number; currency: string
+      primary_color: string | null; delivery_fee: number; min_order_amount: number
+      delivery_enabled: number; currency: string
+      owner_notify_sms: number | null; owner_notify_email: number | null; notification_email: string | null
     }>()
 
     if (!tenant) {
@@ -305,14 +299,14 @@ storefront.post('/:slug/orders', async (c) => {
 
     // Validate and price each item
     let subtotal = 0
-    const itemDetails: { product_id: string; product_name: string; quantity: number; price: number }[] = []
+    const itemDetails: { product_id: string; product_name: string; quantity: number; price: number; cost_price: number; stock_after: number }[] = []
 
     for (const item of body.items) {
       const product = await c.env.qesuite_db.prepare(
-        'SELECT id, name, price, sale_price, on_sale, stock, is_active FROM products WHERE id = ? AND tenant_id = ?'
+        'SELECT id, name, price, sale_price, on_sale, stock, is_active, cost_price FROM products WHERE id = ? AND tenant_id = ?'
       ).bind(item.product_id, tenant.id).first<{
         id: string; name: string; price: number; sale_price: number | null
-        on_sale: number; stock: number; is_active: number
+        on_sale: number; stock: number; is_active: number; cost_price: number
       }>()
 
       if (!product || !product.is_active) {
@@ -329,6 +323,8 @@ storefront.post('/:slug/orders', async (c) => {
         product_name: product.name,
         quantity: item.quantity,
         price: unitPrice,
+        cost_price: product.cost_price,
+        stock_after: product.stock - item.quantity,
       })
     }
 
@@ -386,6 +382,15 @@ storefront.post('/:slug/orders', async (c) => {
         // Roll back is not needed for D1 (no transaction yet) but order won't be fulfilled
         return c.json({ success: false, error: 'Insufficient stock for one or more items', data: null }, 400)
       }
+
+      // Cost of Goods Sold (COGS) for P&L is computed from this ledger, so
+      // every sale needs its own movement row capturing the product's cost
+      // at the moment of sale.
+      await c.env.qesuite_db.prepare(
+        `INSERT INTO stock_movements
+          (id, tenant_id, product_id, type, quantity_delta, unit_cost, resulting_stock, resulting_avg_cost, reference_type, reference_id)
+         VALUES (?, ?, ?, 'order_sale', ?, ?, ?, ?, 'order', ?)`
+      ).bind(generateId(), tenant.id, item.product_id, -item.quantity, item.cost_price, Math.max(0, item.stock_after), item.cost_price, orderId).run()
     }
 
     // Queue notifications asynchronously
@@ -403,6 +408,10 @@ storefront.post('/:slug/orders', async (c) => {
         slug: tenant.slug,
         store_phone: tenant.phone,
         whatsapp_number: tenant.whatsapp_number,
+        primary_color: tenant.primary_color,
+        owner_notify_sms: tenant.owner_notify_sms !== 0,
+        owner_notify_email: tenant.owner_notify_email === 1,
+        notification_email: tenant.notification_email,
       })
     }
 

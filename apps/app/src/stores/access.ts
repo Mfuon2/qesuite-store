@@ -14,6 +14,7 @@ import {
   type PermissionCatalog,
   type StaffAccessInput,
 } from '@/api/access'
+import { offlineDb } from '@/offline/db'
 
 export const useAccessStore = defineStore('access', () => {
   const current = ref<CurrentAccess | null>(null)
@@ -38,7 +39,24 @@ export const useAccessStore = defineStore('access', () => {
     if (!response.success || !response.data) throw new Error(response.error || 'Failed to load access')
     current.value = response.data
     loaded.value = true
+    // Fire-and-forget — lets a later genuinely-offline reload re-enter /pos
+    // with this device's last confirmed permission grant (see stores/auth.ts
+    // offlineDeviceMode). Never used to authorize a real API call.
+    offlineDb.sessionCache.put({
+      id: 'session', role: current.value.role, isOwner: current.value.is_owner,
+      permissions: current.value.permissions, cachedAt: new Date().toISOString(),
+    }).catch(() => {})
     return current.value
+  }
+
+  // Loads the last-known-good permission snapshot without any network call —
+  // used only when entering offlineDeviceMode (stores/auth.ts).
+  async function loadFromCache(): Promise<boolean> {
+    const cached = await offlineDb.sessionCache.get('session')
+    if (!cached) return false
+    current.value = { role: cached.role as CurrentAccess['role'], is_owner: cached.isOwner, permissions: cached.permissions }
+    loaded.value = true
+    return true
   }
 
   async function fetchManagement() {
@@ -100,7 +118,7 @@ export const useAccessStore = defineStore('access', () => {
 
   return {
     current, catalog, members, invitations, loading, loaded,
-    can, canAny, fetchCurrent, fetchManagement, createInvitation,
+    can, canAny, fetchCurrent, loadFromCache, fetchManagement, createInvitation,
     updateMember, setMemberStatus, renewInvitation, revokeInvitation, reset,
   }
 })

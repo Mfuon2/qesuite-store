@@ -137,10 +137,14 @@ orders.post('/', async (c) => {
 
     // Resolve tenant
     const tenant = await c.env.qesuite_db.prepare(
-      'SELECT id, name, slug, phone, whatsapp_number, is_suspended FROM tenants WHERE slug = ?'
+      `SELECT t.id, t.name, t.slug, t.phone, t.whatsapp_number, t.is_suspended, t.primary_color,
+              ss.owner_notify_sms, ss.owner_notify_email, ss.notification_email
+       FROM tenants t LEFT JOIN store_settings ss ON ss.tenant_id = t.id
+       WHERE t.slug = ?`
     ).bind(body.slug).first<{
       id: string; name: string; slug: string; phone: string | null
-      whatsapp_number: string | null; is_suspended: number
+      whatsapp_number: string | null; is_suspended: number; primary_color: string | null
+      owner_notify_sms: number | null; owner_notify_email: number | null; notification_email: string | null
     }>()
 
     if (!tenant) {
@@ -161,6 +165,7 @@ orders.post('/', async (c) => {
     let subtotal = 0
     const resolvedItems: Array<{
       id: string; product_id: string; product_name: string; quantity: number; price: number
+      cost_price: number; stock_after: number
     }> = []
 
     for (const item of body.items) {
@@ -169,10 +174,10 @@ orders.post('/', async (c) => {
       }
 
       const product = await c.env.qesuite_db.prepare(
-        'SELECT id, name, price, sale_price, stock, is_active FROM products WHERE id = ? AND tenant_id = ?'
+        'SELECT id, name, price, sale_price, stock, is_active, cost_price FROM products WHERE id = ? AND tenant_id = ?'
       ).bind(item.product_id, tenant.id).first<{
         id: string; name: string; price: number; sale_price: number | null
-        stock: number; is_active: number
+        stock: number; is_active: number; cost_price: number
       }>()
 
       if (!product || !product.is_active) {
@@ -190,6 +195,8 @@ orders.post('/', async (c) => {
         product_name: product.name,
         quantity: item.quantity,
         price: unitPrice,
+        cost_price: product.cost_price,
+        stock_after: product.stock - item.quantity,
       })
     }
 
@@ -247,6 +254,18 @@ orders.post('/', async (c) => {
       ).bind(item.quantity, item.product_id).run()
     }
 
+    // Cost of Goods Sold (COGS) for P&L is computed from this ledger, so
+    // every sale needs its own movement row capturing the product's cost at
+    // the moment of sale. No `recorded_by` — this order came from an
+    // unauthenticated customer.
+    for (const item of resolvedItems) {
+      await c.env.qesuite_db.prepare(
+        `INSERT INTO stock_movements
+          (id, tenant_id, product_id, type, quantity_delta, unit_cost, resulting_stock, resulting_avg_cost, reference_type, reference_id)
+         VALUES (?, ?, ?, 'order_sale', ?, ?, ?, ?, 'order', ?)`
+      ).bind(generateId(), tenant.id, item.product_id, -item.quantity, item.cost_price, Math.max(0, item.stock_after), item.cost_price, orderId).run()
+    }
+
     // Queue notifications
     try {
       await c.env.NOTIFICATION_QUEUE.send({
@@ -262,6 +281,10 @@ orders.post('/', async (c) => {
         store_name: tenant.name,
         store_phone: tenant.phone,
         whatsapp_number: tenant.whatsapp_number,
+        primary_color: tenant.primary_color,
+        owner_notify_sms: tenant.owner_notify_sms !== 0,
+        owner_notify_email: tenant.owner_notify_email === 1,
+        notification_email: tenant.notification_email,
       })
     } catch (qErr) {
       console.error('Queue enqueue failed:', qErr)

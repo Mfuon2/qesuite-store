@@ -44,13 +44,13 @@
             <button
               type="button"
               class="qs-nav-link owner-brand-hover w-full hover:text-primary"
-              @click="inventoryGroupOpen = !inventoryGroupOpen"
+              @click="openGroups[entry.label] = !openGroups[entry.label]"
             >
               <component :is="entry.icon" class="h-4 w-4 shrink-0" />
               {{ entry.label }}
-              <ChevronDownIcon :class="['ml-auto h-3.5 w-3.5 shrink-0 transition-transform', inventoryGroupOpen ? 'rotate-180' : '']" />
+              <ChevronRightIcon :class="['ml-auto h-3.5 w-3.5 shrink-0 transition-transform', openGroups[entry.label] ? 'rotate-90' : '']" />
             </button>
-            <div v-show="inventoryGroupOpen" class="ml-3 mt-0.5 space-y-0.5 border-l border-[#d0daca]/70 pl-2.5">
+            <div v-show="openGroups[entry.label]" class="ml-3 mt-0.5 space-y-0.5 border-l border-[#d0daca]/70 pl-2.5">
               <router-link
                 v-for="child in entry.children"
                 :key="child.to"
@@ -109,7 +109,7 @@
             <template v-else>Manage your plan and billing history.</template>
           </p>
           <RouterLink
-            to="/billing"
+            to="/subscriptions"
             class="flex w-full items-center justify-center rounded-xl bg-primary px-3 py-2 text-xs font-bold text-white transition hover:brightness-105"
           >
             {{ settingsStore.isTrialing ? 'Upgrade Now' : 'Manage Billing' }}
@@ -274,13 +274,13 @@
                   <button
                     type="button"
                     class="qs-nav-link owner-brand-hover w-full"
-                    @click="inventoryGroupOpen = !inventoryGroupOpen"
+                    @click="openGroups[entry.label] = !openGroups[entry.label]"
                   >
                     <component :is="entry.icon" class="h-5 w-5" />
                     {{ entry.label }}
-                    <ChevronDownIcon :class="['ml-auto h-4 w-4 shrink-0 transition-transform', inventoryGroupOpen ? 'rotate-180' : '']" />
+                    <ChevronRightIcon :class="['ml-auto h-4 w-4 shrink-0 transition-transform', openGroups[entry.label] ? 'rotate-90' : '']" />
                   </button>
-                  <div v-show="inventoryGroupOpen" class="ml-3 mt-0.5 space-y-0.5 border-l border-[#d0daca]/70 pl-2.5">
+                  <div v-show="openGroups[entry.label]" class="ml-3 mt-0.5 space-y-0.5 border-l border-[#d0daca]/70 pl-2.5">
                     <router-link
                       v-for="child in entry.children"
                       :key="child.to"
@@ -309,15 +309,16 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, reactive, computed, watch, onMounted } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import {
   ShoppingCartIcon, CubeIcon, TagIcon, TruckIcon, ChartBarIcon,
   Cog6ToothIcon, CreditCardIcon, BellIcon, Bars3Icon, XMarkIcon,
-  ArrowRightOnRectangleIcon, MoonIcon, SunIcon, UsersIcon,
+  ArrowRightOnRectangleIcon, MoonIcon, SunIcon, UsersIcon, UserGroupIcon, ArrowPathIcon,
   Squares2X2Icon, MagnifyingGlassIcon, EllipsisHorizontalIcon,
   BoltIcon, BuildingStorefrontIcon, RocketLaunchIcon, SparklesIcon, TrophyIcon,
-  BanknotesIcon, ReceiptRefundIcon, ArchiveBoxIcon, ChevronDownIcon
+  BanknotesIcon, ReceiptRefundIcon, ArchiveBoxIcon, ChevronRightIcon,
+  ClipboardDocumentListIcon, CheckCircleIcon, DocumentTextIcon,
 } from '@heroicons/vue/24/outline'
 import { useAuthStore } from '@/stores/auth'
 import { useSettingsStore } from '@/stores/settings'
@@ -343,34 +344,59 @@ const PRIMARY_PATHS = new Set(['/dashboard', '/orders', '/pos', '/products'])
 
 const isRestaurant = computed(() => settingsStore.tenant?.store_category === 'food')
 
+// A superadmin can turn whole modules off for a tenant (apps/admin's Store
+// Detail > Modules tab), independent of what an individual staff member's own
+// permissions allow. Disabled is a blocklist, not an allowlist, so any module
+// added later stays visible by default until a superadmin opts it out.
+const disabledModules = computed(() => new Set(settingsStore.tenant?.disabled_modules ?? []))
+function moduleEnabled(moduleKey?: string) {
+  return !moduleKey || !disabledModules.value.has(moduleKey)
+}
+
 // Declarative source of truth: a flat entry, or a group whose children render
-// nested under a single expandable parent. Only Inventory is a group today —
-// everything else stays a plain link.
+// nested under a single expandable parent.
 const NAV_STRUCTURE = computed(() => [
   { type: 'link' as const, to: '/dashboard', label: 'Dashboard', icon: Squares2X2Icon, permission: 'dashboard.view' },
-  { type: 'link' as const, to: '/orders', label: 'Orders', icon: ShoppingCartIcon, permission: 'orders.view' },
-  ...(isRestaurant.value ? [
-    { type: 'link' as const, to: '/pos', label: 'POS', icon: BanknotesIcon, permission: 'pos.view' },
-    { type: 'link' as const, to: '/expenses', label: 'Expenses', icon: ReceiptRefundIcon, permission: 'expenses.view' },
-  ] : []),
+  { type: 'link' as const, to: '/orders', label: 'Orders', icon: ShoppingCartIcon, permission: 'orders.view', moduleKey: 'orders' },
+  { type: 'link' as const, to: '/customers', label: 'Customers', icon: UserGroupIcon, permission: 'customers.view' },
   {
-    type: 'group' as const, label: 'Inventory', icon: CubeIcon,
+    type: 'group' as const, label: 'Finance', icon: BanknotesIcon, moduleKey: 'finance',
+    children: [
+      { to: '/billing', label: 'Billing', icon: DocumentTextIcon, permission: 'billing.view' },
+      ...(isRestaurant.value ? [
+        { to: '/pos', label: 'POS', icon: BanknotesIcon, permission: 'pos.view' },
+        { to: '/expenses', label: 'Expenses', icon: ReceiptRefundIcon, permission: 'expenses.view' },
+      ] : []),
+    ],
+  },
+  {
+    type: 'group' as const, label: 'Inventory', icon: CubeIcon, moduleKey: 'inventory',
     children: [
       { to: '/products', label: 'Products', icon: CubeIcon, permission: 'products.view' },
       { to: '/categories', label: 'Categories', icon: TagIcon, permission: 'categories.view' },
       { to: '/stock', label: 'Stock Management', icon: ArchiveBoxIcon, permission: 'products.view' },
+      { to: '/suppliers', label: 'Suppliers', icon: TruckIcon, permission: 'suppliers.view' },
+      { to: '/purchase-orders', label: 'Purchase Orders', icon: ClipboardDocumentListIcon, permission: 'purchase_orders.view' },
     ],
   },
-  { type: 'link' as const, to: '/delivery', label: 'Delivery Team', icon: UsersIcon, permission: 'delivery.view' },
-  { type: 'link' as const, to: '/analytics', label: 'Analytics', icon: ChartBarIcon, permission: 'analytics.view' },
-  { type: 'link' as const, to: '/notifications', label: 'Notifications', icon: BellIcon, permission: 'notifications.view' },
-  { type: 'link' as const, to: '/settings', label: 'Settings', icon: Cog6ToothIcon, permission: 'settings.view' },
-  { type: 'link' as const, to: '/billing', label: 'Billing', icon: CreditCardIcon, permission: 'billing.view' },
+  { type: 'link' as const, to: '/delivery', label: 'Delivery Team', icon: UsersIcon, permission: 'delivery.view', moduleKey: 'delivery' },
+  { type: 'link' as const, to: '/analytics', label: 'Analytics', icon: ChartBarIcon, permission: 'analytics.view', moduleKey: 'analytics' },
+  { type: 'link' as const, to: '/approvals', label: 'Approvals', icon: CheckCircleIcon, permission: 'approvals.view', moduleKey: 'approvals' },
+  { type: 'link' as const, to: '/notifications', label: 'Notifications', icon: BellIcon, permission: 'notifications.view', moduleKey: 'notifications' },
+  {
+    type: 'group' as const, label: 'Administration', icon: Cog6ToothIcon,
+    children: [
+      { to: '/settings', label: 'Settings', icon: Cog6ToothIcon, permission: 'settings.view' },
+      { to: '/subscriptions', label: 'Subscriptions', icon: CreditCardIcon, permission: 'subscriptions.view' },
+      { to: '/sync-diagnostics', label: 'Sync Diagnostics', icon: ArrowPathIcon, permission: 'settings.view' },
+    ],
+  },
 ])
 
-// Permission-filtered, grouping intact — what the sidebar and mobile drawer render.
+// Module-gated, then permission-filtered, grouping intact — what the sidebar and mobile drawer render.
 const filteredNavStructure = computed(() =>
   NAV_STRUCTURE.value
+    .filter(entry => moduleEnabled(entry.moduleKey))
     .map(entry => entry.type === 'group'
       ? { ...entry, children: entry.children.filter(child => accessStore.can(child.permission)) }
       : entry
@@ -384,12 +410,16 @@ const navItems = computed(() =>
   filteredNavStructure.value.flatMap(entry => entry.type === 'group' ? entry.children : [entry])
 )
 
-const inventoryGroupOpen = ref(false)
+// Keyed by group label — each expandable nav group (Inventory, Administration, ...)
+// tracks its own open/closed state independently.
+const openGroups = reactive<Record<string, boolean>>({})
 watch(
   () => route.path,
   (path) => {
-    if (path.startsWith('/products') || path.startsWith('/categories') || path.startsWith('/stock')) {
-      inventoryGroupOpen.value = true
+    for (const entry of NAV_STRUCTURE.value) {
+      if (entry.type === 'group' && entry.children.some(child => path.startsWith(child.to))) {
+        openGroups[entry.label] = true
+      }
     }
   },
   { immediate: true }
@@ -456,11 +486,15 @@ const pageTitles: Record<string, string> = {
   '/products': 'Products',
   '/categories': 'Categories',
   '/stock': 'Stock Management',
+  '/suppliers': 'Suppliers',
+  '/purchase-orders': 'Purchase Orders',
   '/delivery': 'Delivery Team',
   '/analytics': 'Analytics',
+  '/approvals': 'Approvals',
+  '/billing': 'Billing',
   '/notifications': 'Notifications',
   '/settings': 'Settings',
-  '/billing': 'Billing',
+  '/subscriptions': 'Subscriptions',
 }
 
 function isActiveNav(path: string) {

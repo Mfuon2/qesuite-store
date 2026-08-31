@@ -156,8 +156,9 @@ const AccessEditor = defineComponent({
         h('div', [h('p', { class: 'text-xs font-black text-slate-900' }, 'Menus and operations'), h('p', { class: 'text-[10px] text-slate-500' }, `${props.modelValue.permissions.length} permissions selected`)]),
         h('select', { value: props.modelValue.preset, class: 'owner-input !min-h-8 max-w-40 !rounded-lg !py-1.5 !text-xs', onChange: (e: Event) => { const value = (e.target as HTMLSelectElement).value; update('preset', value); emit('preset', value) } }, [
           h('option', { value: '' }, 'Apply preset…'),
-          h('option', { value: 'manager' }, 'Manager'), h('option', { value: 'sales' }, 'Sales'),
-          h('option', { value: 'inventory' }, 'Inventory'), h('option', { value: 'accountant' }, 'Accountant'),
+          h('option', { value: 'owner' }, 'Owner'), h('option', { value: 'manager' }, 'Manager'),
+          h('option', { value: 'cashier' }, 'Cashier'), h('option', { value: 'stock_controller' }, 'Stock Controller'),
+          h('option', { value: 'accountant' }, 'Accountant'),
         ]),
       ]),
       h('div', { class: 'grid min-h-0 flex-1 auto-rows-max gap-2 overflow-y-auto p-3 lg:grid-cols-2 2xl:grid-cols-3' }, props.catalog?.groups.map(group =>

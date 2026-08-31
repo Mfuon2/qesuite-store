@@ -85,6 +85,12 @@ export async function updateStoreProfile(id: string, payload: StoreProfileUpdate
   if (!res.success) throw new Error((res as ApiResponse<null>).error ?? 'Failed to update profile')
 }
 
+export async function updateStoreModules(id: string, disabledModules: string[]): Promise<string[]> {
+  const res = await api.put<ApiResponse<{ disabled_modules: string[] }>>(`/api/admin/stores/${id}/modules`, { disabled_modules: disabledModules })
+  if (!res.success || !res.data) throw new Error(res.error ?? 'Failed to update modules')
+  return res.data.disabled_modules
+}
+
 export async function deleteStore(id: string): Promise<void> {
   const res = await api.delete<ApiResponse<null>>(`/api/admin/stores/${id}`)
   if (res && !res.success) throw new Error((res as ApiResponse<null>).error ?? 'Failed to delete store')

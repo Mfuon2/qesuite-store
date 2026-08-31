@@ -4,7 +4,7 @@ import { apiGetProducts } from '@/api/products'
 import {
   apiGetPosSales, apiGetPosSale, apiCreatePosSale, apiVoidPosSale, apiGetPosReport,
   apiGetCurrentTill, apiGetTillHistory, apiOpenTill, apiRecordCashMovement, apiCloseTill,
-  type PosSaleResult, type PosReport, type PosTillCloseResult
+  type PosSaleResult, type PosSalePendingApproval, type PosReport, type PosTillCloseResult
 } from '@/api/pos'
 import type {
   Product,
@@ -66,10 +66,14 @@ export const usePosStore = defineStore('pos', () => {
     }
   }
 
-  async function createSale(payload: PosSaleCreate): Promise<PosSaleResult | null> {
+  async function createSale(payload: PosSaleCreate): Promise<PosSaleResult | PosSalePendingApproval | null> {
     saving.value = true
     try {
       const res = await apiCreatePosSale(payload)
+      if (res.data && 'pending_approval' in res.data) {
+        showToast(res.error ?? `Sent for manager approval — exceeds ${res.data.customer_name}'s credit limit`, 'warning')
+        return res.data
+      }
       if (res.data) {
         await fetchTill()
         showToast(`Sale ${res.data.receipt_code} recorded`, 'success')

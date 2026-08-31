@@ -1,16 +1,17 @@
 import { Hono } from 'hono'
 import { Env, Variables } from '../types'
 import { authMiddleware } from '../middleware/auth'
-import { tenantGuard, restaurantGuard } from '../middleware/tenant'
-import { generateId, generateTrackingCode } from '../lib/jwt'
+import { tenantGuard, restaurantGuard, requireModule } from '../middleware/tenant'
+import { generateId } from '../lib/jwt'
 import { EXPENSE_CATEGORIES } from '@qesuite/shared'
 import { businessDate, inclusiveDateRange } from '../lib/time'
+import { buildDocumentPdf } from '../lib/pdf'
+import { resolvePosSale, buildCreditBookingStatements, buildVoidStatements, type PosPaymentMethod, type PosSplitLeg } from '../lib/posSale'
+import { auditEntry } from '../lib/audit'
 
 const pos = new Hono<{ Bindings: Env; Variables: Variables }>()
 
-pos.use('*', authMiddleware, tenantGuard, restaurantGuard)
-
-type PosPaymentMethod = 'cash' | 'mpesa'
+pos.use('*', authMiddleware, tenantGuard, restaurantGuard, requireModule('finance'))
 
 function parseDateRange(period?: string | null, from?: string | null, to?: string | null): { dateFrom: string; dateTo: string } {
   return inclusiveDateRange(period ?? 'today', from, to)
@@ -44,7 +45,7 @@ function validKesAmount(value: unknown, options: { allowZero?: boolean; signed?:
   return options.allowZero ? (value as number) >= 0 : (value as number) > 0
 }
 
-async function getOpenTill(db: D1Database, tenantId: string): Promise<PosTillSummary | null> {
+export async function getOpenTill(db: D1Database, tenantId: string): Promise<PosTillSummary | null> {
   return db.prepare(
     `SELECT ts.id, ts.tenant_id, ts.business_date, ts.opening_float, ts.status,
             ts.opened_by, ts.opened_at, ts.closed_by, ts.closed_at,
@@ -80,7 +81,27 @@ pos.get('/till/current', async (c) => {
     const till = await getOpenTill(c.env.qesuite_db, tenantId)
     if (!till) return c.json({ success: true, data: null, error: null })
     const movements = await getRecentTillMovements(c.env.qesuite_db, tenantId, till.id)
-    return c.json({ success: true, data: { ...till, recent_movements: movements.results }, error: null })
+
+    // Credit sales don't move the cash float, so they're invisible to the
+    // usual cash-count reconciliation — surfaced separately here so whoever
+    // closes this till sees what was given out on credit before they do.
+    const creditSales = await c.env.qesuite_db.prepare(
+      `SELECT ps.id, ps.receipt_code, ps.total, ps.created_at, cu.id AS customer_id, cu.name AS customer_name
+       FROM pos_sales ps JOIN customers cu ON cu.id = ps.customer_id
+       WHERE ps.tenant_id = ? AND ps.till_session_id = ? AND ps.payment_method = 'credit' AND ps.status = 'completed'
+       ORDER BY ps.created_at DESC`
+    ).bind(tenantId, till.id).all()
+
+    return c.json({
+      success: true,
+      data: {
+        ...till,
+        recent_movements: movements.results,
+        credit_sales: creditSales.results,
+        credit_sales_total: creditSales.results.reduce((sum, row) => sum + (row as { total: number }).total, 0),
+      },
+      error: null,
+    })
   } catch (err) {
     console.error('pos till current error', err)
     return c.json({ success: false, error: 'Failed to load the current till', data: null }, 500)
@@ -326,142 +347,71 @@ pos.post('/', async (c) => {
   try {
     const user = c.get('user')
     const tenantId = user.tenant_id!
+    const db = c.env.qesuite_db
 
     const body = await c.req.json<{
       items: Array<{ product_id: string; quantity: number }>
       payment_method: PosPaymentMethod
       amount_tendered?: number
       mpesa_reference?: string
+      payments?: PosSplitLeg[]
       discount?: number
       table_label?: string
       note?: string
+      customer_id?: string
     }>()
 
-    if (!body.items?.length) {
-      return c.json({ success: false, error: 'items is required', data: null }, 400)
-    }
-    if (body.items.length > 50) {
-      return c.json({ success: false, error: 'Too many items', data: null }, 400)
-    }
-    if (!['cash', 'mpesa'].includes(body.payment_method)) {
-      return c.json({ success: false, error: 'Invalid payment method', data: null }, 400)
-    }
-    if (body.payment_method === 'mpesa' && !body.mpesa_reference?.trim()) {
-      return c.json({ success: false, error: 'mpesa_reference is required for M-Pesa sales', data: null }, 400)
-    }
-    if (body.table_label && body.table_label.length > 60) {
-      return c.json({ success: false, error: 'Table label too long', data: null }, 400)
-    }
-    if (body.note && body.note.length > 500) {
-      return c.json({ success: false, error: 'Note too long', data: null }, 400)
-    }
-
-    const till = await getOpenTill(c.env.qesuite_db, tenantId)
+    const till = await getOpenTill(db, tenantId)
     if (!till) {
       return c.json({ success: false, error: 'Open the POS till before recording a sale', data: null }, 409)
     }
 
-    let subtotal = 0
-    const resolvedItems: Array<{
-      id: string; product_id: string; product_name: string; quantity: number; unit_price: number; line_total: number
-    }> = []
+    const resolved = await resolvePosSale(db, tenantId, user.sub, till, body)
+    if (!resolved.ok) {
+      return c.json({ success: false, error: resolved.error, data: null }, resolved.status)
+    }
+    const { saleId, receiptCode, subtotal, discount, total, amountTendered, changeDue, cashLegTotal, resolvedItems, statements } = resolved
 
-    for (const item of body.items) {
-      if (!item.product_id || !Number.isSafeInteger(item.quantity) || item.quantity < 1) {
-        return c.json({ success: false, error: 'Each item needs product_id and a whole quantity of at least 1', data: null }, 400)
+    // A credit sale books to accounts receivable, so it needs an identified,
+    // pre-registered credit customer — not the walk-in default of every other
+    // payment method — and must stay within whatever limit that customer has
+    // been given (see apps/app's Customers page).
+    if (body.payment_method === 'credit') {
+      const customer = await db.prepare(
+        'SELECT id, name, phone, credit_limit, credit_balance FROM customers WHERE id = ? AND tenant_id = ?'
+      ).bind(body.customer_id, tenantId).first<{ id: string; name: string; phone: string | null; credit_limit: number; credit_balance: number }>()
+      if (!customer) return c.json({ success: false, error: 'Customer not found', data: null }, 404)
+
+      if (customer.credit_balance + total > customer.credit_limit) {
+        const approvalId = generateId()
+        await db.batch([
+          db.prepare(
+            `INSERT INTO approval_requests (id, tenant_id, action_type, target_type, target_id, payload_json, reason, requested_by)
+             VALUES (?, ?, 'credit_limit_override', 'customer', ?, ?, ?, ?)`
+          ).bind(
+            approvalId, tenantId, customer.id,
+            JSON.stringify({ ...body, till_session_id: till.id }),
+            `Credit sale of ${total} would put ${customer.name} at ${customer.credit_balance + total}, over their ${customer.credit_limit} limit`,
+            user.sub,
+          ),
+          auditEntry(db, {
+            actorId: user.sub, actorRole: user.role, action: 'pos.credit_limit_override_requested',
+            targetType: 'customer', targetId: customer.id, detail: { total, credit_balance: customer.credit_balance, credit_limit: customer.credit_limit },
+            ip: c.req.header('CF-Connecting-IP'),
+          }),
+        ])
+        return c.json({
+          success: true,
+          data: { pending_approval: true, approval_id: approvalId, customer_name: customer.name, total },
+          error: null,
+          message: `This exceeds ${customer.name}'s credit limit — a manager needs to approve it before the sale completes`,
+        }, 202)
       }
 
-      const product = await c.env.qesuite_db.prepare(
-        'SELECT id, name, price, sale_price, stock, is_active FROM products WHERE id = ? AND tenant_id = ?'
-      ).bind(item.product_id, tenantId).first<{
-        id: string; name: string; price: number; sale_price: number | null
-        stock: number; is_active: number
-      }>()
-
-      if (!product || !product.is_active) {
-        return c.json({ success: false, error: `Product ${item.product_id} not available`, data: null }, 400)
-      }
-      if (product.stock < item.quantity) {
-        return c.json({ success: false, error: `Insufficient stock for ${product.name}`, data: null }, 400)
-      }
-
-      const unitPrice = product.sale_price ?? product.price
-      const lineTotal = unitPrice * item.quantity
-      subtotal += lineTotal
-      resolvedItems.push({
-        id: generateId(),
-        product_id: product.id,
-        product_name: product.name,
-        quantity: item.quantity,
-        unit_price: unitPrice,
-        line_total: lineTotal,
-      })
+      statements.push(...await buildCreditBookingStatements(db, tenantId, user.sub, customer, { saleId, receiptCode, total }, resolvedItems))
     }
 
-    if (body.discount !== undefined && !validKesAmount(body.discount, { allowZero: true })) {
-      return c.json({ success: false, error: 'Discount must be a non-negative whole KES amount', data: null }, 400)
-    }
-    const discount = Math.max(0, body.discount ?? 0)
-    if (discount > subtotal) {
-      return c.json({ success: false, error: 'Discount cannot exceed the subtotal', data: null }, 400)
-    }
-    const total = Math.max(0, subtotal - discount)
-
-    let amountTendered: number | null = null
-    let changeDue: number | null = null
-    if (body.payment_method === 'cash' && body.amount_tendered !== undefined) {
-      if (!validKesAmount(body.amount_tendered, { allowZero: true })) {
-        return c.json({ success: false, error: 'Amount tendered must be a non-negative whole KES amount', data: null }, 400)
-      }
-      if (body.amount_tendered < total) {
-        return c.json({ success: false, error: 'Amount tendered is less than the total', data: null }, 400)
-      }
-      amountTendered = body.amount_tendered
-      changeDue = body.amount_tendered - total
-    }
-
-    // Generate a unique receipt code (retry on collision, same pattern as order tracking codes)
-    let receiptCode = generateTrackingCode()
-    while (true) {
-      const exists = await c.env.qesuite_db.prepare(
-        'SELECT id FROM pos_sales WHERE tenant_id = ? AND receipt_code = ?'
-      ).bind(tenantId, receiptCode).first()
-      if (!exists) break
-      receiptCode = generateTrackingCode()
-    }
-
-    const saleId = generateId()
-
-    const statements = [
-      c.env.qesuite_db.prepare(
-        `INSERT INTO pos_sales (id, tenant_id, receipt_code, subtotal, discount, total, payment_method,
-          amount_tendered, change_due, mpesa_reference, status, table_label, note, served_by,
-          served_by_user_id, created_at, till_session_id)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'completed', ?, ?, ?, ?, datetime('now'), ?)`
-      ).bind(
-        saleId, tenantId, receiptCode, subtotal, discount, total, body.payment_method,
-        amountTendered, changeDue, body.mpesa_reference?.trim() ?? null,
-        body.table_label ?? null, body.note ?? null, user.sub, user.sub, till.id
-      ),
-      ...resolvedItems.map(item =>
-        c.env.qesuite_db.prepare(
-          'INSERT INTO pos_sale_items (id, sale_id, product_id, product_name, quantity, unit_price, line_total) VALUES (?, ?, ?, ?, ?, ?, ?)'
-        ).bind(item.id, saleId, item.product_id, item.product_name, item.quantity, item.unit_price, item.line_total)
-      ),
-      ...resolvedItems.map(item =>
-        c.env.qesuite_db.prepare('UPDATE products SET stock = MAX(0, stock - ?) WHERE id = ?')
-          .bind(item.quantity, item.product_id)
-      ),
-      ...(body.payment_method === 'cash' && total > 0 ? [
-        c.env.qesuite_db.prepare(
-          `INSERT INTO pos_cash_movements
-            (id, tenant_id, till_session_id, movement_type, amount, reason, reference_id, recorded_by, created_at)
-           VALUES (?, ?, ?, 'cash_sale', ?, ?, ?, ?, datetime('now'))`
-        ).bind(generateId(), tenantId, till.id, total, `Cash sale ${receiptCode}`, saleId, user.sub),
-      ] : []),
-    ]
-
-    await c.env.qesuite_db.batch(statements)
+    await db.batch(statements)
 
     return c.json({
       success: true,
@@ -474,8 +424,9 @@ pos.post('/', async (c) => {
         payment_method: body.payment_method,
         amount_tendered: amountTendered,
         change_due: changeDue,
+        payments: body.payment_method === 'split' ? body.payments : undefined,
         till_session_id: till.id,
-        running_float: till.running_float + (body.payment_method === 'cash' ? total : 0),
+        running_float: till.running_float + cashLegTotal,
         items: resolvedItems,
       },
       error: null,
@@ -643,6 +594,69 @@ pos.get('/:id', async (c) => {
   }
 })
 
+// GET /api/pos/:id/receipt — a downloadable/printable/shareable PDF copy,
+// reprintable at any time since it's generated fresh from stored data.
+pos.get('/:id/receipt', async (c) => {
+  try {
+    const tenantId = c.get('user').tenant_id!
+    const id = c.req.param('id')
+
+    const sale = await c.env.qesuite_db.prepare(
+      'SELECT * FROM pos_sales WHERE id = ? AND tenant_id = ?'
+    ).bind(id, tenantId).first<{
+      receipt_code: string; subtotal: number; discount: number; total: number
+      payment_method: string; amount_tendered: number | null; change_due: number | null
+      mpesa_reference: string | null; status: string; table_label: string | null; created_at: string
+    }>()
+    if (!sale) return c.json({ success: false, error: 'Sale not found', data: null }, 404)
+
+    const items = await c.env.qesuite_db.prepare(
+      'SELECT product_name, quantity, unit_price, line_total FROM pos_sale_items WHERE sale_id = ?'
+    ).bind(id).all<{ product_name: string; quantity: number; unit_price: number; line_total: number }>()
+
+    const tenant = await c.env.qesuite_db.prepare(
+      'SELECT name, phone, address, primary_color FROM tenants WHERE id = ?'
+    ).bind(tenantId).first<{ name: string; phone: string | null; address: string | null; primary_color: string | null }>()
+
+    let paymentNote: string
+    if (sale.payment_method === 'split') {
+      const legs = await c.env.qesuite_db.prepare(
+        'SELECT method, amount, reference FROM pos_sale_payments WHERE sale_id = ?'
+      ).bind(id).all<{ method: string; amount: number; reference: string | null }>()
+      paymentNote = `Split — ${legs.results.map(leg =>
+        `${leg.method}${leg.reference ? ` (${leg.reference})` : ''}: ${leg.amount}`
+      ).join(', ')}`
+    } else if (sale.payment_method === 'mpesa') {
+      paymentNote = `M-Pesa${sale.mpesa_reference ? ` — ${sale.mpesa_reference}` : ''}`
+    } else if (sale.payment_method === 'card') {
+      paymentNote = 'Card'
+    } else {
+      paymentNote = sale.amount_tendered !== null
+        ? `Cash — tendered ${sale.amount_tendered}, change ${sale.change_due ?? 0}`
+        : 'Cash'
+    }
+
+    const pdfBytes = await buildDocumentPdf({
+      documentTitle: sale.status === 'voided' ? 'VOIDED RECEIPT' : 'SALES RECEIPT',
+      documentNumber: sale.receipt_code,
+      issuedDate: new Date(sale.created_at).toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' }),
+      store: { name: tenant?.name ?? 'Store', phone: tenant?.phone, address: tenant?.address, primaryColorHex: tenant?.primary_color },
+      billTo: sale.table_label ? { name: `Table: ${sale.table_label}` } : null,
+      items: items.results.map(item => ({ description: item.product_name, quantity: item.quantity, unitPrice: item.unit_price, lineTotal: item.line_total })),
+      subtotal: sale.subtotal, discount: sale.discount, total: sale.total,
+      notes: paymentNote,
+      footerNote: sale.status === 'voided' ? 'This sale was voided.' : 'Thank you for your business.',
+    })
+
+    return new Response(pdfBytes, {
+      headers: { 'Content-Type': 'application/pdf', 'Content-Disposition': `inline; filename="${sale.receipt_code}.pdf"` },
+    })
+  } catch (err) {
+    console.error('pos receipt pdf error', err)
+    return c.json({ success: false, error: 'Failed to generate receipt', data: null }, 500)
+  }
+})
+
 // POST /api/pos/:id/void — void a completed sale and restock its items
 pos.post('/:id/void', async (c) => {
   try {
@@ -651,65 +665,21 @@ pos.post('/:id/void', async (c) => {
     const id = c.req.param('id')
 
     const { reason } = await c.req.json<{ reason?: string }>()
-    if (!reason?.trim() || reason.trim().length > 300) {
-      return c.json({ success: false, error: 'reason is required', data: null }, 400)
-    }
 
     const sale = await c.env.qesuite_db.prepare(
-      'SELECT id, receipt_code, status, payment_method, total FROM pos_sales WHERE id = ? AND tenant_id = ?'
-    ).bind(id, tenantId).first<{
-      id: string; receipt_code: string; status: string; payment_method: PosPaymentMethod; total: number
-    }>()
+      'SELECT payment_method FROM pos_sales WHERE id = ? AND tenant_id = ?'
+    ).bind(id, tenantId).first<{ payment_method: PosPaymentMethod }>()
+    if (!sale) return c.json({ success: false, error: 'Sale not found', data: null }, 404)
 
-    if (!sale) {
-      return c.json({ success: false, error: 'Sale not found', data: null }, 404)
-    }
-    if (sale.status === 'voided') {
-      return c.json({ success: false, error: 'Sale is already voided', data: null }, 400)
-    }
+    const till = sale.payment_method === 'cash' ? await getOpenTill(c.env.qesuite_db, tenantId) : null
+    const result = await buildVoidStatements(c.env.qesuite_db, tenantId, user.sub, id, reason ?? '', till)
+    if (!result.ok) return c.json({ success: false, error: result.error, data: null }, result.status)
 
-    const till = sale.payment_method === 'cash'
-      ? await getOpenTill(c.env.qesuite_db, tenantId)
-      : null
-    if (sale.payment_method === 'cash' && !till) {
-      return c.json({ success: false, error: 'Open the POS till before refunding a cash sale', data: null }, 409)
-    }
-
-    const items = await c.env.qesuite_db.prepare(
-      'SELECT product_id, quantity FROM pos_sale_items WHERE sale_id = ?'
-    ).bind(id).all<{ product_id: string | null; quantity: number }>()
-
-    await c.env.qesuite_db.batch([
-      c.env.qesuite_db.prepare(
-        `UPDATE pos_sales
-         SET status = 'voided', void_reason = ?, voided_by_user_id = ?, voided_at = datetime('now')
-         WHERE id = ? AND tenant_id = ?`
-      ).bind(reason.trim(), user.sub, id, tenantId),
-      ...items.results
-        .filter(item => item.product_id)
-        .map(item =>
-          c.env.qesuite_db.prepare('UPDATE products SET stock = stock + ? WHERE id = ?')
-            .bind(item.quantity, item.product_id)
-        ),
-      ...(sale.payment_method === 'cash' && till && sale.total > 0 ? [
-        c.env.qesuite_db.prepare(
-          `INSERT INTO pos_cash_movements
-            (id, tenant_id, till_session_id, movement_type, amount, reason, reference_id, recorded_by, created_at)
-           VALUES (?, ?, ?, 'cash_void', ?, ?, ?, ?, datetime('now'))`
-        ).bind(
-          generateId(), tenantId, till.id, -sale.total,
-          `Void ${sale.receipt_code}: ${reason.trim()}`, sale.id, user.sub
-        ),
-      ] : []),
-    ])
+    await c.env.qesuite_db.batch(result.statements)
 
     return c.json({
       success: true,
-      data: {
-        id,
-        status: 'voided',
-        running_float: till ? till.running_float - sale.total : undefined,
-      },
+      data: { id, status: 'voided', running_float: till ? till.running_float + result.runningFloatDelta : undefined },
       error: null,
       message: 'Sale voided',
     })

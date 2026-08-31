@@ -1,7 +1,7 @@
 import { Hono } from 'hono'
 import { Env, Variables } from '../types'
 import { authMiddleware } from '../middleware/auth'
-import { tenantGuard } from '../middleware/tenant'
+import { tenantGuard, parseDisabledModules } from '../middleware/tenant'
 import { sendSMS } from '../lib/notifications'
 import { validatePhone, normalizeKenyaPhone } from '@qesuite/shared'
 
@@ -13,8 +13,8 @@ settings.use('*', authMiddleware)
 settings.get('/tenant', tenantGuard, async (c) => {
   const tenantId = c.get('user').tenant_id!
   const tenant = await c.env.qesuite_db.prepare('SELECT * FROM tenants WHERE id = ?')
-    .bind(tenantId).first()
-  return c.json({ success: true, data: tenant, error: null })
+    .bind(tenantId).first<{ disabled_modules: string | null }>()
+  return c.json({ success: true, data: tenant && { ...tenant, disabled_modules: parseDisabledModules(tenant.disabled_modules) }, error: null })
 })
 
 // PUT /api/settings/tenant
@@ -62,8 +62,8 @@ settings.put('/tenant', tenantGuard, async (c) => {
     if (!fields.length) return c.json({ success: false, error: 'No fields to update', data: null }, 400)
     values.push(tenantId)
     await c.env.qesuite_db.prepare(`UPDATE tenants SET ${fields.join(', ')} WHERE id = ?`).bind(...values).run()
-    const tenant = await c.env.qesuite_db.prepare('SELECT * FROM tenants WHERE id = ?').bind(tenantId).first()
-    return c.json({ success: true, data: tenant, error: null, message: 'Store updated' })
+    const tenant = await c.env.qesuite_db.prepare('SELECT * FROM tenants WHERE id = ?').bind(tenantId).first<{ disabled_modules: string | null }>()
+    return c.json({ success: true, data: tenant && { ...tenant, disabled_modules: parseDisabledModules(tenant.disabled_modules) }, error: null, message: 'Store updated' })
   } catch (err) {
     console.error('settings/tenant put error', err)
     return c.json({ success: false, error: 'Failed to update tenant', data: null }, 500)
@@ -84,7 +84,8 @@ settings.put('/store', tenantGuard, async (c) => {
     const body = await c.req.json<Record<string, unknown>>()
     const allowed = ['delivery_enabled', 'pickup_enabled', 'delivery_fee', 'delivery_radius_km',
       'estimated_delivery_minutes', 'min_order_amount', 'currency', 'language', 'dark_mode_enabled', 'order_view',
-      'mpesa_payment_type', 'mpesa_payment_number', 'mpesa_account_ref']
+      'mpesa_payment_type', 'mpesa_payment_number', 'mpesa_account_ref',
+      'owner_notify_sms', 'owner_notify_email', 'notification_email']
     const fields: string[] = []
     const values: unknown[] = []
     for (const key of allowed) {
@@ -94,6 +95,16 @@ settings.put('/store', tenantGuard, async (c) => {
     if ('mpesa_payment_type' in body && body.mpesa_payment_type !== null &&
         !['till', 'paybill', 'send_money'].includes(String(body.mpesa_payment_type))) {
       return c.json({ success: false, error: 'Invalid mpesa_payment_type', data: null }, 400)
+    }
+    if ('notification_email' in body && body.notification_email &&
+        !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(body.notification_email))) {
+      return c.json({ success: false, error: 'Enter a valid notification email address', data: null }, 400)
+    }
+    if ('owner_notify_email' in body && body.owner_notify_email && !('notification_email' in body)) {
+      const existing = await c.env.qesuite_db.prepare('SELECT notification_email FROM store_settings WHERE tenant_id = ?').bind(tenantId).first<{ notification_email: string | null }>()
+      if (!existing?.notification_email) {
+        return c.json({ success: false, error: 'Add a notification email address before enabling email alerts', data: null }, 400)
+      }
     }
     if (!fields.length) return c.json({ success: false, error: 'No fields to update', data: null }, 400)
     fields.push("updated_at = datetime('now')")

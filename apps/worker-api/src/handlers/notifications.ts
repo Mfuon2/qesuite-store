@@ -7,6 +7,7 @@ import {
   getDeliveredSMS,
   getNewOrderSMS,
 } from '../lib/notifications'
+import { sendEmail, renderOwnerAlertEmail } from '../lib/email'
 import { generateId } from '../lib/jwt'
 
 interface NotificationMessage {
@@ -24,13 +25,17 @@ interface NotificationMessage {
   whatsapp_number?: string | null
   rider_name?: string
   rider_phone?: string
+  primary_color?: string | null
+  owner_notify_sms?: boolean
+  owner_notify_email?: boolean
+  notification_email?: string | null
 }
 
 async function logNotification(
   env: Env,
   tenantId: string,
   orderId: string | null,
-  channel: 'sms' | 'whatsapp',
+  channel: 'sms' | 'whatsapp' | 'email',
   recipient: string,
   message: string,
   status: 'queued' | 'sent' | 'failed'
@@ -107,8 +112,8 @@ async function processNotification(data: NotificationMessage, env: Env): Promise
         }
       }
 
-      // SMS to owner
-      if (data.store_phone) {
+      // SMS to owner — owner_notify_sms defaults to true (undefined = not yet configured)
+      if (data.store_phone && data.owner_notify_sms !== false) {
         const ownerMsg = getNewOrderSMS(
           data.tracking_code,
           data.customer_name ?? 'Customer',
@@ -121,6 +126,25 @@ async function processNotification(data: NotificationMessage, env: Env): Promise
           await logNotification(env, data.tenant_id, data.order_id, 'sms', data.store_phone, ownerMsg, 'sent')
         } catch {
           await logNotification(env, data.tenant_id, data.order_id, 'sms', data.store_phone, ownerMsg, 'failed')
+        }
+      }
+
+      // Email to owner — opt-in, only once a notification email is configured
+      if (data.owner_notify_email && data.notification_email) {
+        const storeName = data.store_name ?? 'Your store'
+        const total = (data.total ?? 0).toLocaleString()
+        const lead = `A new order #${data.tracking_code} was just placed by ${data.customer_name ?? 'a customer'} for KES ${total}. Open the dashboard to confirm and start preparing it.`
+        const html = renderOwnerAlertEmail({
+          storeName, primaryColorHex: data.primary_color,
+          heading: 'New order received', lead, actionUrl: dashboardUrl, actionLabel: 'View order',
+        })
+        const text = `${lead}\n\n${dashboardUrl}`
+        try {
+          await sendEmail(env, { to: data.notification_email, subject: `New order #${data.tracking_code} — ${storeName}`, text, html })
+          await logNotification(env, data.tenant_id, data.order_id, 'email', data.notification_email, text, 'sent')
+        } catch (err) {
+          console.error('Owner notification email failed:', err)
+          await logNotification(env, data.tenant_id, data.order_id, 'email', data.notification_email, text, 'failed')
         }
       }
       break

@@ -114,6 +114,33 @@ export async function apiFetch<T = unknown>(
   }
 }
 
+// For binary responses (PDF receipts/invoices) — same auth/retry handling as
+// apiFetch, but resolves the body as a Blob instead of parsing JSON.
+export async function apiFetchBlob(path: string, retry = true): Promise<Blob> {
+  const activity = beginNetworkActivity('Preparing document')
+  const headers: Record<string, string> = {}
+  if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`
+
+  try {
+    const res = await fetch(`${BASE_URL}${path}`, { headers, credentials: 'include' })
+
+    if (res.status === 401 && retry && accessToken) {
+      const newToken = await refreshAccessToken()
+      if (!newToken) { clearTokens(); window.location.href = '/login'; throw new Error('Session expired') }
+      return await apiFetchBlob(path, false)
+    }
+
+    if (!res.ok) {
+      const errBody = await res.json().catch(() => ({ error: `HTTP ${res.status}` }))
+      throw new Error((errBody as { error?: string }).error || `HTTP ${res.status}`)
+    }
+
+    return res.blob()
+  } finally {
+    endNetworkActivity(activity)
+  }
+}
+
 export async function apiUpload(path: string, file: File, onProgress?: (pct: number) => void): Promise<ApiResponse<{ url: string }>> {
   const activity = beginNetworkActivity('Uploading image')
   try {

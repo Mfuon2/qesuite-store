@@ -5,6 +5,7 @@ import { signJWT, verifyJWT, generateOTP, generateId, generateTrackingCode } fro
 import { hashPassword, verifyPassword, hashToken } from '../lib/password'
 import { sendSMS } from '../lib/notifications'
 import { validatePhone, normalizeKenyaPhone } from '@qesuite/shared'
+import { checkRateLimit } from '../lib/rateLimit'
 
 const auth = new Hono<{ Bindings: Env; Variables: Variables }>()
 
@@ -12,22 +13,6 @@ const ACCESS_TOKEN_TTL = 900        // 15 minutes
 const REFRESH_TOKEN_TTL = 604800    // 7 days
 const OTP_TTL_SECONDS = 600         // 10 minutes
 const OTP_MAX_ATTEMPTS = 5
-
-// ── In-memory sliding-window rate limiter (per Workers isolate) ─────────────
-// For production, back with KV for cross-isolate coordination.
-const rateBuckets = new Map<string, { count: number; resetAt: number }>()
-
-function checkRateLimit(key: string, maxRequests: number, windowSeconds: number): boolean {
-  const now = Date.now()
-  const bucket = rateBuckets.get(key)
-  if (!bucket || now > bucket.resetAt) {
-    rateBuckets.set(key, { count: 1, resetAt: now + windowSeconds * 1000 })
-    return true  // allowed
-  }
-  if (bucket.count >= maxRequests) return false  // blocked
-  bucket.count++
-  return true  // allowed
-}
 
 // Input length guards
 const MAX_IDENTIFIER = 320   // max email length per RFC
@@ -743,6 +728,12 @@ auth.post('/rider/magic-link', async (c) => {
     }
     const phone = normalizeKenyaPhone(rawPhone)
 
+    // Sends a real SMS on success — cap attempts so a known rider phone
+    // number can't be used to drain SMS credit or spam the rider.
+    if (!checkRateLimit(`magic-link:${phone}`, 3, 900)) {
+      return c.json({ error: 'Too many requests. Please try again later.', data: null }, 429)
+    }
+
     const token = generateTrackingCode() + generateTrackingCode()
     const expiresAt = new Date(Date.now() + 30 * 60 * 1000).toISOString() // 30 min
 
@@ -983,6 +974,13 @@ auth.post('/rider/request', async (c) => {
     const { phone: rawPhone } = await c.req.json<{ phone: string }>()
     if (!rawPhone) return c.json({ error: 'phone is required', data: null }, 400)
     const phone = normalizeKenyaPhone(rawPhone)
+
+    // Sends a real SMS on success and needs nothing but a phone number —
+    // cap attempts so any known rider number can't be used to drain SMS
+    // credit or spam the rider.
+    if (!checkRateLimit(`rider-request:${phone}`, 3, 900)) {
+      return c.json({ error: 'Too many requests. Please try again later.', data: null }, 429)
+    }
 
     const { sendSMS } = await import('../lib/notifications')
     const staff = await c.env.qesuite_db.prepare(

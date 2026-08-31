@@ -12,3 +12,4 @@ dist/
 package-lock.json
 work.md
 verify-admin-ui.mjs
+graphify-out/

@@ -1,14 +1,14 @@
 import { Hono } from 'hono'
 import { Env, Variables } from '../types'
 import { authMiddleware } from '../middleware/auth'
-import { tenantGuard, restaurantGuard, requireModule } from '../middleware/tenant'
+import { tenantGuard, requireModule } from '../middleware/tenant'
 import { generateId } from '../lib/jwt'
 import { inclusiveDateRange } from '../lib/time'
 import { auditEntry } from '../lib/audit'
 
 const expenses = new Hono<{ Bindings: Env; Variables: Variables }>()
 
-expenses.use('*', authMiddleware, tenantGuard, restaurantGuard, requireModule('finance'))
+expenses.use('*', authMiddleware, tenantGuard, requireModule('finance'))
 
 const CATEGORIES = ['supplies', 'rent', 'utilities', 'staff_wages', 'maintenance', 'other']
 

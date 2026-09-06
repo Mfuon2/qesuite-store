@@ -40,24 +40,6 @@ export async function tenantGuard(
   await next()
 }
 
-// Restricts a route to tenants registered under the 'food' (restaurant) category —
-// gates the Sales Terminal (POS) and Expenses features.
-export function categoryGuard(...allowed: string[]) {
-  return async (c: Context<{ Bindings: Env; Variables: Variables }>, next: Next) => {
-    const user = c.get('user')
-    const tenant = await c.env.qesuite_db.prepare('SELECT store_category FROM tenants WHERE id = ?')
-      .bind(user.tenant_id)
-      .first<{ store_category: string }>()
-
-    if (!tenant || !allowed.includes(tenant.store_category)) {
-      return c.json({ error: `This feature is only available for ${allowed.join('/')} stores`, data: null }, 403)
-    }
-
-    await next()
-  }
-}
-export const restaurantGuard = categoryGuard('food')
-
 // Blocks a route when a superadmin has switched the owning module off for this
 // tenant (Store Detail > Modules). Must run after tenantGuard, which populates
 // `disabledModules` on the request context.

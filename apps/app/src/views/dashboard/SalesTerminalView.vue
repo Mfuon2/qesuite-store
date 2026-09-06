@@ -1250,17 +1250,7 @@ let unsubscribeOutbox: (() => void) | undefined
 let localSalesPoll: ReturnType<typeof setInterval> | undefined
 
 onMounted(async () => {
-  // A genuinely-offline reload skips the live tenant-category check
-  // entirely — this device already passed that gate the last time it
-  // reached /pos normally, and there's no server to ask right now anyway.
-  if (!authStore.offlineDeviceMode) {
-    if (!settingsStore.tenant) await settingsStore.fetchTenant()
-    if (settingsStore.tenant?.store_category !== 'food') {
-      showToast('POS is only available for restaurant stores', 'error')
-      router.replace('/dashboard')
-      return
-    }
-  }
+  if (!authStore.offlineDeviceMode && !settingsStore.tenant) await settingsStore.fetchTenant()
   if (!accessStore.can('pos.create_sale')) tab.value = 'history'
 
   if (authStore.offlineDeviceMode) {

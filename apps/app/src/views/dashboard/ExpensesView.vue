@@ -131,16 +131,12 @@ import { useExpensesStore } from '@/stores/expenses'
 import { useSettingsStore } from '@/stores/settings'
 import { useAccessStore } from '@/stores/access'
 import { useConfirm } from '@/composables/useConfirm'
-import { useToast } from '@/composables/useToast'
-import { useRouter } from 'vue-router'
 import type { ExpenseCategory } from '@qesuite/types'
 
-const router = useRouter()
 const expensesStore = useExpensesStore()
 const settingsStore = useSettingsStore()
 const accessStore = useAccessStore()
 const { confirm } = useConfirm()
-const { showToast } = useToast()
 const showExpenseDialog = ref(false)
 
 const form = ref<{ category: ExpenseCategory; description: string; amount: number | null; expense_date: string }>({
@@ -205,11 +201,6 @@ async function confirmDelete(id: string) {
 
 onMounted(async () => {
   if (!settingsStore.tenant) await settingsStore.fetchTenant()
-  if (settingsStore.tenant?.store_category !== 'food') {
-    showToast('Expenses are only available for restaurant stores', 'error')
-    router.replace('/dashboard')
-    return
-  }
   await Promise.all([
     expensesStore.fetchExpenses(),
     expensesStore.fetchSummary({ period: 'month' }),

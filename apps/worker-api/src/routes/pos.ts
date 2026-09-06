@@ -1,7 +1,7 @@
 import { Hono } from 'hono'
 import { Env, Variables } from '../types'
 import { authMiddleware } from '../middleware/auth'
-import { tenantGuard, restaurantGuard, requireModule } from '../middleware/tenant'
+import { tenantGuard, requireModule } from '../middleware/tenant'
 import { generateId } from '../lib/jwt'
 import { EXPENSE_CATEGORIES } from '@qesuite/shared'
 import { businessDate, inclusiveDateRange } from '../lib/time'
@@ -11,7 +11,7 @@ import { auditEntry } from '../lib/audit'
 
 const pos = new Hono<{ Bindings: Env; Variables: Variables }>()
 
-pos.use('*', authMiddleware, tenantGuard, restaurantGuard, requireModule('finance'))
+pos.use('*', authMiddleware, tenantGuard, requireModule('finance'))
 
 function parseDateRange(period?: string | null, from?: string | null, to?: string | null): { dateFrom: string; dateTo: string } {
   return inclusiveDateRange(period ?? 'today', from, to)

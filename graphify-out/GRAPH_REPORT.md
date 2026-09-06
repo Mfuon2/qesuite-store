@@ -1,16 +1,16 @@
-# Graph Report - store  (2026-08-28)
+# Graph Report - store  (2026-09-06)
 
 ## Corpus Check
-- 308 files · ~1,058,003 words
+- 308 files · ~968,855 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 2937 nodes · 5366 edges · 165 communities (149 shown, 16 thin omitted)
+- 2936 nodes · 5365 edges · 160 communities (148 shown, 12 thin omitted)
 - Extraction: 98% EXTRACTED · 2% INFERRED · 0% AMBIGUOUS · INFERRED: 132 edges (avg confidence: 0.85)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `7c0a8230`
+- Built from commit: `31e99ec8`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -68,8 +68,8 @@
 - api/settings.ts
 - api/analytics.ts
 - SubscriptionsView.vue
-- ApiResponse
-- generateId
+- ApprovalsView.vue
+- routes/pos.ts
 - ExpensesView.vue
 - dashboard/OrderCard.vue
 - CheckoutView.vue
@@ -88,31 +88,31 @@
 - RegisterView.vue
 - MetricsView.vue
 - ImageUpload.vue
-- routes/auth.ts
+- jwt.ts
 - MpesaManualEntry.vue
-- views/HomeView.vue
+- StorefrontFooter.vue
 - deploy.sh
 - Pharmacy compliance features: P1–P5
 - ProductsView.vue
 - HeroBanner.vue
 - app/src/api/index.ts
-- dexie
+- time.ts
 - routes/access.ts
-- validatePhone
+- QePhoneInput.vue
 - Areas requiring refinement
 - stores/categories.ts
 - capability.ts
-- DeliveryStep.vue
+- useCart.ts
 - ui/package.json
 - scripts
-- AdminLayout.vue
 - useToast
+- api/expenses.ts
 - compilerOptions
 - CLAUDE.md
 - ResetPasswordModal.vue
 - PaymentReferenceModal.vue
 - compilerOptions
-- VerifyView.vue
+- DeliveryStep.vue
 - PackingSlipModal.vue
 - SuppliersView.vue
 - app/src/router/index.ts
@@ -121,7 +121,7 @@
 - delivery/HomeView.vue
 - API Load and Stress Test Report
 - CategoryTabs.vue
-- ColorPicker.vue
+- StoreIdentityStep.vue
 - useRealtime
 - loadAll
 - pointsFor
@@ -139,12 +139,12 @@
 - styles/package.json
 - types/package.json
 - admin/KpiCard.vue
-- delivery/OrderCard.vue
+- metrics.ts
 - LoadingSpinner.vue
-- useSnapCarousel
-- deviceIdentity.ts
+- EmptyState.vue
+- ApiResponse
 - db.ts
-- Pagination.vue
+- confirm
 - PageHeader.vue
 - dashboard/KpiCard.vue
 - recentActivity
@@ -152,8 +152,8 @@
 - storefront/src/vite-env.d.ts
 - @supabase/supabase-js
 - DeliveryConfigStep.vue
-- deliveryOrders.ts
-- paymentChartData
+- api/delivery.ts
+- chart.js
 - vue-router
 - app/src/shims-vue.d.ts
 - storefront/src/composables/useToast.ts
@@ -165,12 +165,7 @@
 - ConfirmationStep.vue
 - app/src/App.vue
 - stores/stock.ts
-- storeFontStack
 - ModulesTab.vue
-- LeafletMarker
-- emit
-- LeafletMap
-- trackOrder
 - pinia
 - vue-chartjs
 
@@ -201,7 +196,7 @@
 ## Import Cycles
 - None detected.
 
-## Communities (165 total, 16 thin omitted)
+## Communities (160 total, 12 thin omitted)
 
 ### Community 0 - "CatalogShareModal.vue"
 Cohesion: 0.06
@@ -237,27 +232,27 @@ Nodes (31): accessStore, advance(), advancing, currentPage, hasFilters, isListVi
 
 ### Community 8 - "TrackView.vue"
 Cohesion: 0.06
-Nodes (32): cart, code, currentStatusDescription, currentStatusIndex, currentStatusTitle, deliveryAddress, error, estimatedMinutes (+24 more)
+Nodes (36): trackOrder(), cart, code, currentStatusDescription, currentStatusIndex, currentStatusTitle, deliveryAddress, error (+28 more)
 
 ### Community 9 - "types.ts"
 Cohesion: 0.17
-Nodes (20): signJWT(), verifyJWT(), nairobiCompactTimestamp(), authMiddleware(), deviceSessionMiddleware(), riderMiddleware(), superadminMiddleware(), parseDisabledModules() (+12 more)
+Nodes (20): auditEntry, authMiddleware(), deviceSessionMiddleware(), riderMiddleware(), parseDisabledModules(), requireModule(), tenantGuard(), ApprovalRequestRow (+12 more)
 
 ### Community 10 - "AnalyticsView.vue"
 Cohesion: 0.06
-Nodes (27): DateRange, accessStore, analyticsStore, barOptions, baseChartOptions, cancelChange, customFrom, customTo (+19 more)
+Nodes (28): accessStore, analyticsStore, barOptions, baseChartOptions, cancelChange, customFrom, customTo, doughnutOptions (+20 more)
 
 ### Community 11 - "shared/src/index.ts"
-Cohesion: 0.06
-Nodes (22): BUSINESS_TIME_ZONE, businessDate(), businessDateDaysAgo(), D1_NAIROBI_MODIFIER, inclusiveDateRange(), restaurantGuard, analytics, DateRange (+14 more)
+Cohesion: 0.07
+Nodes (8): analytics, DateRange, datesBetween(), ExpenseTotalRow, parseDateRange(), SalesSummaryRow, addDays(), APP_TIME_ZONE_OFFSET
 
 ### Community 12 - "StoreDetailView.vue"
-Cohesion: 0.07
-Nodes (29): updateStoreProfile(), run(), activeTab, editingProfile, handleExtend(), handleImpersonate(), handleResetPassword(), handleSuspend() (+21 more)
+Cohesion: 0.06
+Nodes (26): updateStoreProfile(), dayOptions, selected, badgeClass, label, props, reason, activeTab (+18 more)
 
 ### Community 13 - "stores/auth.ts"
 Cohesion: 0.11
-Nodes (33): adminLogin(), apiGetMe(), apiLogin(), apiLogout(), apiRegister(), apiResolveIdentifier(), apiSelectStore(), apiUpdateMe() (+25 more)
+Nodes (32): adminLogin(), apiGetMe(), apiLogin(), apiLogout(), apiRegister(), apiResolveIdentifier(), apiSelectStore(), apiUpdateMe() (+24 more)
 
 ### Community 14 - "ProductCatalogStep.vue"
 Cohesion: 0.15
@@ -265,11 +260,11 @@ Nodes (10): cancelForm(), editingIdx, emit, imageUploading, imageUploadRef, loca
 
 ### Community 15 - "MarketplaceView.vue"
 Cohesion: 0.08
-Nodes (27): getStores(), ProductPreview, adStyle, enabled, props, activeCategory, categoryFilters, categoryIcon() (+19 more)
+Nodes (26): getStores(), adStyle, enabled, props, activeCategory, categoryFilters, categoryIcon(), categoryLabel() (+18 more)
 
 ### Community 16 - "api/admin.ts"
-Cohesion: 0.12
-Nodes (29): AdminLoginResponse, AdminUser, deleteStore(), extendTrial(), getGMVChart(), getImpersonationToken(), getPlatformMetrics(), getStore() (+21 more)
+Cohesion: 0.13
+Nodes (25): AdminLoginResponse, AdminUser, deleteStore(), extendTrial(), getImpersonationToken(), getStore(), getStoreBillingHistory(), getStores() (+17 more)
 
 ### Community 17 - "AddressSearch.vue"
 Cohesion: 0.08
@@ -285,11 +280,11 @@ Nodes (17): apiCreateInvitation(), apiGetAccessCatalog(), apiGetCurrentAccess(),
 
 ### Community 20 - "SettingsView.vue"
 Cohesion: 0.06
-Nodes (26): accessStore, activeTab, activeTabMeta, authStore, bannerRef, brandingComplete, brandingProgress, businessTypes (+18 more)
+Nodes (31): fontOptions, fontOptions, accessStore, activeTab, activeTabMeta, applyPreview(), authStore, bannerRef (+23 more)
 
 ### Community 21 - "UsersAccessPanel.vue"
-Cohesion: 0.06
-Nodes (34): copyMessage(), AccessEditor, accessStore, activeCount, closeDraft(), copyInvite(), createInvitation(), Draft (+26 more)
+Cohesion: 0.07
+Nodes (26): AccessEditor, accessStore, activeCount, closeDraft(), createInvitation(), Draft, draftActive, filteredInvitations (+18 more)
 
 ### Community 22 - "NotificationsView.vue"
 Cohesion: 0.07
@@ -300,28 +295,28 @@ Cohesion: 0.07
 Nodes (9): D1Database, D1ExecResult, D1PreparedStatement, D1Result, Queue, R2Bucket, R2Object, R2ObjectBody (+1 more)
 
 ### Community 24 - "PlatformBillingView.vue"
-Cohesion: 0.10
-Nodes (25): getPlatformBilling(), PlatformBillingRecord, verifyBillingReference(), iconPath, ICONS, iconSizeClass, props, sizeClass (+17 more)
+Cohesion: 0.08
+Nodes (27): getPlatformBilling(), PlatformBillingRecord, verifyBillingReference(), endItem, pageNumbers, props, startItem, useDebounce() (+19 more)
 
 ### Community 25 - "DeliveryTeamView.vue"
-Cohesion: 0.08
-Nodes (31): apiCreateDeliveryStaff(), apiDeleteDeliveryStaff(), apiGetActiveAssignments(), apiGetDeliveryStaff(), apiSendMagicLink(), apiUpdateDeliveryStaff(), RiderStoreSelectionData, VerifyResponse (+23 more)
+Cohesion: 0.09
+Nodes (25): apiCreateDeliveryStaff(), apiGetDeliveryStaff(), apiSendMagicLink(), apiUpdateDeliveryStaff(), accessStore, activeRiders, addingRider, addRider() (+17 more)
 
 ### Community 26 - "StoresView.vue"
 Cohesion: 0.08
-Nodes (17): dayOptions, selected, reason, useDebounce(), debounce(), StoreFilter, { debounce }, deleteTarget (+9 more)
+Nodes (22): useAdminAction(), run(), StoreFilter, handleExtend(), handleImpersonate(), handleResetPassword(), handleSuspend(), handleUnsuspend() (+14 more)
 
 ### Community 27 - "components/LiveMap.vue"
-Cohesion: 0.15
-Nodes (9): destIcon(), initMap(), LeafletPolyline, map(), mapEl, mapReady, props, riderIcon() (+1 more)
+Cohesion: 0.11
+Nodes (12): destIcon(), initMap(), LeafletMap, LeafletMarker, LeafletPolyline, map(), mapEl, mapReady (+4 more)
 
 ### Community 28 - "PurchaseOrdersView.vue"
 Cohesion: 0.06
 Nodes (38): apiApprovePurchaseOrder(), apiCancelPurchaseOrder(), apiCreatePurchaseOrder(), apiGetPurchaseOrder(), apiGetPurchaseOrders(), apiReceivePurchaseOrder(), apiRejectPurchaseOrder(), apiSendPurchaseOrder() (+30 more)
 
 ### Community 29 - "DashboardLayout.vue"
-Cohesion: 0.07
-Nodes (27): accessStore, authStore, currentPageTitle, disabledModules, filteredNavStructure, isActiveNav(), isRestaurant, mobileMenuOpen (+19 more)
+Cohesion: 0.08
+Nodes (26): accessStore, authStore, currentPageTitle, disabledModules, filteredNavStructure, isActiveNav(), mobileMenuOpen, moduleEnabled() (+18 more)
 
 ### Community 30 - "dashboard/OrderDetailView.vue"
 Cohesion: 0.08
@@ -332,8 +327,8 @@ Cohesion: 0.07
 Nodes (27): compilerOptions, allowImportingTsExtensions, isolatedModules, jsx, lib, module, moduleResolution, noEmit (+19 more)
 
 ### Community 32 - "stores/store.ts"
-Cohesion: 0.14
-Nodes (23): checkMpesaStatus(), getCategories(), getProducts(), getStore(), initiateMpesa(), MpesaCodeResponse, MpesaInitResponse, MpesaStatusResponse (+15 more)
+Cohesion: 0.13
+Nodes (24): checkMpesaStatus(), getCategories(), getProducts(), getStore(), initiateMpesa(), MpesaCodeResponse, MpesaInitResponse, MpesaStatusResponse (+16 more)
 
 ### Community 33 - "compilerOptions"
 Cohesion: 0.08
@@ -344,8 +339,8 @@ Cohesion: 0.08
 Nodes (25): 1. Prerequisites, 2. Install dependencies, 3. Set up Cloudflare resources, 4. Run migrations, 5. Configure environment, 6. Start development, 7. Deploy, Apps (+17 more)
 
 ### Community 35 - "parseAppTimestamp"
-Cohesion: 0.11
-Nodes (24): getStoreBillingHistory(), StoreBillingHistory, loading, props, records, badgeClass, label, props (+16 more)
+Cohesion: 0.19
+Nodes (16): isExpiringSoon(), daysRemaining, previewEnd(), trialDaysLeft, daysSinceActive, formatDate(), formatDateTime(), formatTime() (+8 more)
 
 ### Community 36 - "dashboard/LiveMap.vue"
 Cohesion: 0.11
@@ -356,8 +351,8 @@ Cohesion: 0.16
 Nodes (21): apiAssignRider(), apiGetOrder(), apiGetOrders(), apiGetPackingSlip(), apiUpdateOrderStatus(), RawOrderDetailResponse, RawOrdersResponse, RawPackingSlipResponse (+13 more)
 
 ### Community 38 - "views/OnboardingView.vue"
-Cohesion: 0.09
-Nodes (20): apiCompleteOnboarding(), nextStep(), authStore, canProceed, currentStep, deliveryConfig, isComplete, nextStep() (+12 more)
+Cohesion: 0.10
+Nodes (17): authStore, canProceed, currentStep, deliveryConfig, isComplete, prefilling, products, progressPct (+9 more)
 
 ### Community 39 - "stores/pos.ts"
 Cohesion: 0.21
@@ -368,8 +363,8 @@ Cohesion: 0.05
 Nodes (50): apiCreateInvoice(), apiGetArAging(), apiGetInvoice(), apiGetInvoices(), apiIssueCreditNote(), apiRecordInvoicePayment(), apiRequestWriteOff(), apiSendInvoice() (+42 more)
 
 ### Community 41 - "LocationSearch.vue"
-Cohesion: 0.11
-Nodes (19): close(), confirmedAddress, googleMode, GooglePrediction, googleResults, highlighted, inputRef, loading (+11 more)
+Cohesion: 0.09
+Nodes (26): clear(), close(), confirmedAddress, emit, googleMode, GooglePrediction, googleResults, highlighted (+18 more)
 
 ### Community 42 - "constants.ts"
 Cohesion: 0.12
@@ -380,8 +375,8 @@ Cohesion: 0.10
 Nodes (17): dismissed, status, store, visible, applySEO(), cartStore, goToMarketplace(), redirectCountdown (+9 more)
 
 ### Community 44 - "OrderSuccessView.vue"
-Cohesion: 0.10
-Nodes (14): app, i18n, router, isRoot, route, cachedProducts, cart, store (+6 more)
+Cohesion: 0.08
+Nodes (17): app, i18n, router, activeCategory, productsSection, store, isRoot, route (+9 more)
 
 ### Community 45 - "overrides"
 Cohesion: 0.09
@@ -392,8 +387,8 @@ Cohesion: 0.08
 Nodes (23): dependencies, hono, pdf-lib, @qesuite/shared, @qesuite/types, devDependencies, @cloudflare/workers-types, typescript (+15 more)
 
 ### Community 47 - "layouts/OnboardingView.vue"
-Cohesion: 0.10
-Nodes (17): authStore, canProceed, currentStep, deliveryConfig, isComplete, prefilling, products, progressPct (+9 more)
+Cohesion: 0.09
+Nodes (20): apiCompleteOnboarding(), authStore, canProceed, currentStep, deliveryConfig, isComplete, nextStep(), prefilling (+12 more)
 
 ### Community 48 - "CategoriesView.vue"
 Cohesion: 0.10
@@ -408,20 +403,20 @@ Cohesion: 0.29
 Nodes (13): apiGetStoreSettings(), apiGetSubscription(), apiGetTenant(), apiUpdateStoreSettings(), apiUpdateTenant(), OnboardingPayload, OnboardingProductRow, TenantUpdate (+5 more)
 
 ### Community 51 - "api/analytics.ts"
-Cohesion: 0.23
-Nodes (18): AnalyticsParams, apiGetAnalyticsSummary(), apiGetEmployeePerformance(), apiGetFinancialPerformance(), apiGetPaymentMethods(), apiGetPeakHours(), apiGetRevenueChart(), apiGetTopProducts() (+10 more)
+Cohesion: 0.21
+Nodes (19): AnalyticsParams, apiGetAnalyticsSummary(), apiGetEmployeePerformance(), apiGetFinancialPerformance(), apiGetPaymentMethods(), apiGetPeakHours(), apiGetRevenueChart(), apiGetTopProducts() (+11 more)
 
 ### Community 52 - "SubscriptionsView.vue"
 Cohesion: 0.10
 Nodes (17): apiGetBillingHistory(), apiSubmitMpesaReference(), accessStore, canSubmitReference, history, loading, monthlyAmount, mpesaReference (+9 more)
 
-### Community 53 - "ApiResponse"
+### Community 53 - "ApprovalsView.vue"
 Cohesion: 0.24
-Nodes (10): apiApproveRequest(), apiGetApprovals(), apiRejectRequest(), useApprovalsStore, ACTION_ICON, approvalsStore, notes, ApiResponse (+2 more)
+Nodes (10): apiApproveRequest(), apiGetApprovals(), apiRejectRequest(), api, useApprovalsStore, ACTION_ICON, approvalsStore, notes (+2 more)
 
-### Community 54 - "generateId"
-Cohesion: 0.10
-Nodes (31): fib(), handleCron(), maybeSendReminder(), runDailyAnalyticsSnapshot(), runSubscriptionReminders(), snapshotTenantDay(), generateId(), generateTrackingCode() (+23 more)
+### Community 54 - "routes/pos.ts"
+Cohesion: 0.12
+Nodes (25): generateId(), buildCreditBookingStatements(), buildVoidStatements(), OpenTill, PosPaymentMethod, PosSaleInput, PosSaleOutcome, PosSplitLeg (+17 more)
 
 ### Community 55 - "ExpensesView.vue"
 Cohesion: 0.12
@@ -437,7 +432,7 @@ Nodes (13): props, steps, { t }, cart, cartStore, checkout, deliveryFeeLabel, is
 
 ### Community 58 - "dependencies"
 Cohesion: 0.11
-Nodes (19): dependencies, chart.js, @heroicons/vue, @qesuite/shared, @qesuite/styles, @qesuite/types, @qesuite/ui, vue (+11 more)
+Nodes (19): dependencies, dexie, @heroicons/vue, @qesuite/shared, @qesuite/styles, @qesuite/types, @qesuite/ui, vue (+11 more)
 
 ### Community 59 - "devDependencies"
 Cohesion: 0.10
@@ -448,16 +443,16 @@ Cohesion: 0.12
 Nodes (13): actionLoading, assignment, assignmentId, googleMapsUrl, navTarget(), ordersStore, osmUrl, route (+5 more)
 
 ### Community 61 - "syncEngine.ts"
-Cohesion: 0.15
-Nodes (17): reportReachable(), reportUnreachable(), notifyOutboxChanged(), onOutboxChanged(), authedFetch(), doSyncCycle(), initSyncEngine(), isSyncing (+9 more)
+Cohesion: 0.21
+Nodes (12): ensureDeviceRegistered(), onOutboxChanged(), doSyncCycle(), initSyncEngine(), isSyncing, lastSyncAttemptAt, lastSyncError, lastSyncSuccessAt (+4 more)
 
 ### Community 62 - "routes/storefront.ts"
-Cohesion: 0.21
-Nodes (17): handleQueue(), logNotification(), NotificationMessage, processNotification(), b64(), enc, escapeHtml(), renderOwnerAlertEmail() (+9 more)
+Cohesion: 0.17
+Nodes (19): handleQueue(), logNotification(), NotificationMessage, processNotification(), b64(), enc, escapeHtml(), renderOwnerAlertEmail() (+11 more)
 
 ### Community 63 - "localPos.ts"
-Cohesion: 0.21
-Nodes (9): offlineDb, generateReceiptCode(), LocalSaleCartItem, LocalSaleInput, LocalSaleOutcome, ringSaleOffline(), voidSaleOffline(), uuid7() (+1 more)
+Cohesion: 0.16
+Nodes (10): offlineDb, generateReceiptCode(), LocalSaleCartItem, LocalSaleInput, LocalSaleOutcome, ringSaleOffline(), voidSaleOffline(), notifyOutboxChanged() (+2 more)
 
 ### Community 64 - "ProductFormModal.vue"
 Cohesion: 0.12
@@ -488,24 +483,24 @@ Cohesion: 0.14
 Nodes (13): apiCheckStoreName(), acceptedTerms, authStore, error, form, handleStoreNameInput(), loading, router (+5 more)
 
 ### Community 71 - "MetricsView.vue"
-Cohesion: 0.15
-Nodes (14): barChartOptions, baseChartOptions, donutData, donutOptions, formatMoney(), gmvChartData, growthChartData, kpiCards (+6 more)
+Cohesion: 0.12
+Nodes (15): useSnapCarousel(), barChartOptions, baseChartOptions, donutData, donutOptions, formatMoney(), gmvChartData, growthChartData (+7 more)
 
 ### Community 72 - "ImageUpload.vue"
 Cohesion: 0.19
 Nodes (12): emit, fileInput, handleChange(), handleDrop(), isDragging, preview, processFile(), progress (+4 more)
 
-### Community 73 - "routes/auth.ts"
-Cohesion: 0.16
-Nodes (15): generateOTP(), deriveKey(), enc, fromHex(), hashPassword(), hashToken(), toHex(), verifyPassword() (+7 more)
+### Community 73 - "jwt.ts"
+Cohesion: 0.13
+Nodes (20): generateOTP(), generateTrackingCode(), signJWT(), verifyJWT(), deriveKey(), enc, fromHex(), hashPassword() (+12 more)
 
 ### Community 74 - "MpesaManualEntry.vue"
 Cohesion: 0.08
 Nodes (24): checkout, errors, handleNext(), onPhoneInput(), phoneValid, { t }, validateName(), validatePhone() (+16 more)
 
-### Community 75 - "views/HomeView.vue"
-Cohesion: 0.14
-Nodes (10): address, phone, slug, store, storeName, whatsappNumber, whatsappUrl, activeCategory (+2 more)
+### Community 75 - "StorefrontFooter.vue"
+Cohesion: 0.25
+Nodes (7): address, phone, slug, store, storeName, whatsappNumber, whatsappUrl
 
 ### Community 76 - "deploy.sh"
 Cohesion: 0.26
@@ -524,16 +519,20 @@ Cohesion: 0.17
 Nodes (12): deliveryEnabled, distanceLabel, estimatedMinutes, hasOwnerBanner, haversineKm(), heroImage, loading, logoUrl (+4 more)
 
 ### Community 80 - "app/src/api/index.ts"
-Cohesion: 0.09
-Nodes (32): apiFetchBlob(), apiUpload(), clearTokens(), doRefresh(), getRoleFromToken(), labelForRequest(), refreshAccessToken(), setTokens() (+24 more)
+Cohesion: 0.18
+Nodes (18): apiFetchBlob(), apiUpload(), clearTokens(), doRefresh(), getAccessToken(), getRoleFromToken(), labelForRequest(), refreshAccessToken() (+10 more)
+
+### Community 81 - "time.ts"
+Cohesion: 0.12
+Nodes (21): fib(), handleCron(), maybeSendReminder(), runDailyAnalyticsSnapshot(), runSubscriptionReminders(), snapshotTenantDay(), BUSINESS_TIME_ZONE, businessDate() (+13 more)
 
 ### Community 82 - "routes/access.ts"
 Cohesion: 0.16
 Nodes (14): AccessRule, accessRules, enforceAccessPolicy(), normalizePermissions(), ownerOnly(), PermissionKey, requirePermissions(), rulesByMethod (+6 more)
 
-### Community 83 - "validatePhone"
-Cohesion: 0.21
-Nodes (9): validatePhone(), displayValue, emit, focused, inputRef, onInput(), props, showError (+1 more)
+### Community 83 - "QePhoneInput.vue"
+Cohesion: 0.20
+Nodes (8): displayValue, emit, focused, inputRef, onInput(), props, showError, touched
 
 ### Community 84 - "Areas requiring refinement"
 Cohesion: 0.10
@@ -544,12 +543,12 @@ Cohesion: 0.42
 Nodes (9): apiCreateCategory(), apiDeleteCategory(), apiGetCategories(), apiReorderCategories(), apiUpdateCategory(), useCategoriesStore, Category, CategoryCreate (+1 more)
 
 ### Community 86 - "capability.ts"
-Cohesion: 0.22
-Nodes (11): TillForm, canProceed(), Capability, capabilityForPaymentMethod(), capabilityMessage(), PAYMENT_METHOD_CAPABILITY, isReachable, handleCharge() (+3 more)
+Cohesion: 0.18
+Nodes (16): TillForm, canProceed(), Capability, capabilityForPaymentMethod(), capabilityMessage(), PAYMENT_METHOD_CAPABILITY, isReachable, reportReachable() (+8 more)
 
-### Community 87 - "DeliveryStep.vue"
-Cohesion: 0.05
-Nodes (39): cart, cartStore, deliveryFeeDisplay, slug, storefrontStore, addressError, cart, cartStore (+31 more)
+### Community 87 - "useCart.ts"
+Cohesion: 0.08
+Nodes (27): cart, cartStore, deliveryFeeDisplay, slug, storefrontStore, discountPct, displayPrice, { formatPrice, addToCart, increment, decrement, getQuantity } (+19 more)
 
 ### Community 88 - "ui/package.json"
 Cohesion: 0.18
@@ -559,13 +558,13 @@ Nodes (10): dependencies, @qesuite/shared, @qesuite/shared, vue, main, name, pee
 Cohesion: 0.33
 Nodes (6): scripts, build, dev, preview, test, type-check
 
-### Community 90 - "AdminLayout.vue"
-Cohesion: 0.20
-Nodes (7): auth, bottomNavItems, navItems, route, router, sidebarOpen, userInitial
+### Community 90 - "useToast"
+Cohesion: 0.14
+Nodes (16): { toasts, remove }, copyMessage(), copyInvite(), saveMember(), useDocumentPdf(), openPdf(), removeToast(), showToast() (+8 more)
 
-### Community 91 - "useToast"
-Cohesion: 0.17
-Nodes (16): apiCreateExpense(), apiDeleteExpense(), apiGetExpenses(), apiGetExpenseSummary(), ExpenseSummary, RawExpensesListResponse, { toasts, remove }, useAdminAction() (+8 more)
+### Community 91 - "api/expenses.ts"
+Cohesion: 0.40
+Nodes (9): apiCreateExpense(), apiDeleteExpense(), apiGetExpenses(), apiGetExpenseSummary(), ExpenseSummary, RawExpensesListResponse, useExpensesStore, Expense (+1 more)
 
 ### Community 92 - "compilerOptions"
 Cohesion: 0.20
@@ -587,9 +586,9 @@ Nodes (8): confirm(), emit, loading, method, methods, note, props, reference
 Cohesion: 0.22
 Nodes (8): compilerOptions, allowSyntheticDefaultImports, composite, module, moduleResolution, skipLibCheck, include, vite.config.ts
 
-### Community 97 - "VerifyView.vue"
-Cohesion: 0.20
-Nodes (8): auth, route, router, selectError, selecting, storeChoices, verifyError, verifying
+### Community 97 - "DeliveryStep.vue"
+Cohesion: 0.12
+Nodes (12): addressError, cart, cartStore, checkout, deliveryEnabled, deliveryFeeDisplay, deliveryFeeLabel, estimatedMinutes (+4 more)
 
 ### Community 98 - "PackingSlipModal.vue"
 Cohesion: 0.25
@@ -600,20 +599,20 @@ Cohesion: 0.18
 Nodes (12): accessStore, cancelForm(), editingId, filteredSuppliers, form, openAddForm(), resetForm(), saveSupplier() (+4 more)
 
 ### Community 100 - "app/src/router/index.ts"
-Cohesion: 0.18
-Nodes (8): app, i18n, router, adminEmail, adminPassword, auth, error, router
+Cohesion: 0.07
+Nodes (23): auth, bottomNavItems, navItems, route, router, sidebarOpen, userInitial, app (+15 more)
 
 ### Community 101 - "worker-api/src/index.ts"
 Cohesion: 0.09
-Nodes (26): ALLOWED_ORIGINS, app, auditEntry, requireModule(), admin, ApprovalRequestRow, approvals, billing (+18 more)
+Nodes (19): ALLOWED_ORIGINS, app, billing, categories, customers, delivery, notifications, onboarding (+11 more)
 
 ### Community 102 - "shared/package.json"
 Cohesion: 0.25
 Nodes (7): dependencies, @qesuite/types, @qesuite/types, main, name, types, version
 
 ### Community 103 - "delivery/HomeView.vue"
-Cohesion: 0.20
-Nodes (6): label, props, auth, geo, ordersStore, router
+Cohesion: 0.14
+Nodes (9): label, props, badgeClass, props, statusLabel, auth, geo, ordersStore (+1 more)
 
 ### Community 104 - "API Load and Stress Test Report"
 Cohesion: 0.22
@@ -623,9 +622,9 @@ Nodes (8): API Load and Stress Test Report, Cloudflare Workers + D1 expectation,
 Cohesion: 0.32
 Nodes (6): emit, props, scrollContainer, scrollToActive(), selectCategory(), tabRefs
 
-### Community 106 - "ColorPicker.vue"
-Cohesion: 0.67
-Nodes (3): emit, handleHexInput(), props
+### Community 106 - "StoreIdentityStep.vue"
+Cohesion: 0.13
+Nodes (16): apiCheckSlug(), emit, handleHexInput(), props, bannerUploadRef, categories, checkSlug(), form (+8 more)
 
 ### Community 107 - "useRealtime"
 Cohesion: 0.33
@@ -695,25 +694,29 @@ Nodes (4): main, name, types, version
 Cohesion: 0.50
 Nodes (3): iconBgClass, iconColorClass, props
 
-### Community 124 - "delivery/OrderCard.vue"
-Cohesion: 0.33
-Nodes (5): AssignedOrder, badgeClass, props, statusLabel, AssignmentWithDistance
+### Community 124 - "metrics.ts"
+Cohesion: 0.31
+Nodes (8): getGMVChart(), getPlatformMetrics(), getStoreGrowthChart(), ChartDataPoint, PlatformMetrics, StatusBreakdown, StoreGrowthPoint, useMetricsStore
 
 ### Community 125 - "LoadingSpinner.vue"
 Cohesion: 0.50
 Nodes (3): heightClass, props, sizeClass
 
-### Community 127 - "deviceIdentity.ts"
-Cohesion: 0.31
-Nodes (8): api, AES_ALGO, decryptCredential(), DeviceSessionResponse, encryptCredential(), ensureDeviceRegistered(), getValidDeviceCredential(), storeSession()
+### Community 126 - "EmptyState.vue"
+Cohesion: 0.33
+Nodes (5): iconPath, ICONS, iconSizeClass, props, sizeClass
+
+### Community 127 - "ApiResponse"
+Cohesion: 0.32
+Nodes (7): AES_ALGO, decryptCredential(), DeviceSessionResponse, encryptCredential(), getValidDeviceCredential(), storeSession(), ApiResponse
 
 ### Community 128 - "db.ts"
 Cohesion: 0.14
 Nodes (12): CustomerCacheRecord, DeviceMetaRecord, LocalSaleItem, LocalSaleRecord, OfflineDatabase, OutboxEntityType, OutboxMutationRecord, OutboxState (+4 more)
 
-### Community 129 - "Pagination.vue"
-Cohesion: 0.40
-Nodes (4): endItem, pageNumbers, props, startItem
+### Community 129 - "confirm"
+Cohesion: 0.50
+Nodes (4): confirm(), confirmDelete(), confirmDelete(), confirmDelete()
 
 ### Community 132 - "recentActivity"
 Cohesion: 0.67
@@ -723,9 +726,9 @@ Nodes (3): recentActivity, statusLabel(), timeAgo()
 Cohesion: 0.38
 Nodes (6): addRider(), emit, form, removeRider(), riderPhone, riderPhones
 
-### Community 137 - "deliveryOrders.ts"
-Cohesion: 0.43
-Nodes (6): getMyOrders(), pingLocation(), updateAssignmentStatus(), updateStatus(), haversineKm(), useOrdersStore
+### Community 137 - "api/delivery.ts"
+Cohesion: 0.19
+Nodes (14): apiDeleteDeliveryStaff(), apiGetActiveAssignments(), AssignedOrder, getMyOrders(), pingLocation(), RiderStoreSelectionData, updateAssignmentStatus(), VerifyResponse (+6 more)
 
 ### Community 141 - "storefront/src/composables/useToast.ts"
 Cohesion: 0.18
@@ -748,43 +751,31 @@ Cohesion: 0.14
 Nodes (8): cart, checkout, copied, order, slug, store, displayPhone, props
 
 ### Community 155 - "app/src/App.vue"
-Cohesion: 0.20
-Nodes (9): { state: confirm }, { toasts, removeToast }, ConfirmState, state, useConfirm(), confirm(), confirmDelete(), confirmDelete() (+1 more)
+Cohesion: 0.33
+Nodes (5): { state: confirm }, { toasts, removeToast }, ConfirmState, state, useConfirm()
 
 ### Community 156 - "stores/stock.ts"
 Cohesion: 0.41
 Nodes (10): apiCloseStockTake(), apiGetStockMovements(), apiGetStockTakeSession(), apiGetStockTakeSessions(), apiOpenStockTake(), apiRecordStockTakeCounts(), apiRequestStockAdjustment(), useStockStore (+2 more)
 
-### Community 157 - "storeFontStack"
-Cohesion: 0.40
-Nodes (5): fontOptions, fontOptions, applyPreview(), fontOptions, storeFontStack()
-
 ### Community 158 - "ModulesTab.vue"
 Cohesion: 0.25
 Nodes (7): updateStoreModules(), { loading: saving, run }, pending, props, stores, toggle(), STORE_MODULES
 
-### Community 161 - "emit"
-Cohesion: 0.29
-Nodes (7): clear(), emit, onInput(), search(), selectGoogle(), useAsTyped(), fetch()
-
-### Community 165 - "trackOrder"
-Cohesion: 0.50
-Nodes (4): trackOrder(), fetchTrackData(), manualRefresh(), submitTrackLookup()
-
 ## Knowledge Gaps
-- **1376 isolated node(s):** `name`, `version`, `private`, `dev`, `build` (+1371 more)
+- **1375 isolated node(s):** `name`, `version`, `private`, `dev`, `build` (+1370 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **16 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **12 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `router` connect `app/src/router/index.ts` to `SalesTerminalView.vue`, `DashboardView.vue`, `OrdersView.vue`, `AnalyticsView.vue`, `StoreDetailView.vue`, `stores/auth.ts`, `PosTill.vue`, `SettingsView.vue`, `NotificationsView.vue`, `PlatformBillingView.vue`, `DeliveryTeamView.vue`, `StoresView.vue`, `PurchaseOrdersView.vue`, `DashboardLayout.vue`, `dashboard/OrderDetailView.vue`, `views/OnboardingView.vue`, `BillingView.vue`, `CategoriesView.vue`, `SubscriptionsView.vue`, `ApiResponse`, `ExpensesView.vue`, `delivery/OrderDetailView.vue`, `syncEngine.ts`, `StockManagementView.vue`, `LoginView.vue`, `RegisterView.vue`, `MetricsView.vue`, `ProductsView.vue`, `AdminLayout.vue`, `VerifyView.vue`, `SuppliersView.vue`, `delivery/HomeView.vue`, `AcceptInviteView.vue`?**
-  _High betweenness centrality (0.052) - this node is a cross-community bridge._
-- **Why does `apiFetch()` connect `apiFetch` to `DashboardView.vue`, `OrdersView.vue`, `stores/auth.ts`, `NotificationsView.vue`, `DeliveryTeamView.vue`, `dashboard/OrderDetailView.vue`, `api/orders.ts`, `views/OnboardingView.vue`, `stores/pos.ts`, `api/settings.ts`, `api/analytics.ts`, `SubscriptionsView.vue`, `ProductFormModal.vue`, `SubscriptionWall.vue`, `RegisterView.vue`, `app/src/api/index.ts`, `stores/categories.ts`, `useToast`, `AcceptInviteView.vue`?**
+- **Why does `router` connect `app/src/router/index.ts` to `SalesTerminalView.vue`, `DashboardView.vue`, `OrdersView.vue`, `AnalyticsView.vue`, `StoreDetailView.vue`, `stores/auth.ts`, `PosTill.vue`, `SettingsView.vue`, `NotificationsView.vue`, `PlatformBillingView.vue`, `DeliveryTeamView.vue`, `StoresView.vue`, `PurchaseOrdersView.vue`, `DashboardLayout.vue`, `dashboard/OrderDetailView.vue`, `views/OnboardingView.vue`, `BillingView.vue`, `CategoriesView.vue`, `SubscriptionsView.vue`, `ApprovalsView.vue`, `ExpensesView.vue`, `delivery/OrderDetailView.vue`, `syncEngine.ts`, `StockManagementView.vue`, `LoginView.vue`, `RegisterView.vue`, `MetricsView.vue`, `ProductsView.vue`, `SuppliersView.vue`, `delivery/HomeView.vue`, `AcceptInviteView.vue`?**
+  _High betweenness centrality (0.051) - this node is a cross-community bridge._
+- **Why does `useToast()` connect `useToast` to `CatalogShareModal.vue`, `SalesTerminalView.vue`, `PosTill.vue`, `SettingsView.vue`, `UsersAccessPanel.vue`, `PlatformBillingView.vue`, `stores/suppliers.ts`, `StoresView.vue`, `app/src/App.vue`, `stores/stock.ts`, `PurchaseOrdersView.vue`, `DeliveryTeamView.vue`, `api/orders.ts`, `views/OnboardingView.vue`, `stores/pos.ts`, `BillingView.vue`, `layouts/OnboardingView.vue`, `api/settings.ts`, `api/analytics.ts`, `SubscriptionsView.vue`, `ApprovalsView.vue`, `ExpensesView.vue`, `ProductFormModal.vue`, `StockManagementView.vue`, `stores/categories.ts`, `api/expenses.ts`?**
   _High betweenness centrality (0.017) - this node is a cross-community bridge._
-- **Why does `useToast()` connect `useToast` to `CatalogShareModal.vue`, `SalesTerminalView.vue`, `PosTill.vue`, `SettingsView.vue`, `UsersAccessPanel.vue`, `PlatformBillingView.vue`, `stores/suppliers.ts`, `DeliveryTeamView.vue`, `app/src/App.vue`, `stores/stock.ts`, `PurchaseOrdersView.vue`, `api/orders.ts`, `views/OnboardingView.vue`, `stores/pos.ts`, `BillingView.vue`, `layouts/OnboardingView.vue`, `api/settings.ts`, `api/analytics.ts`, `SubscriptionsView.vue`, `ApiResponse`, `ExpensesView.vue`, `ProductFormModal.vue`, `StockManagementView.vue`, `app/src/api/index.ts`, `stores/categories.ts`?**
-  _High betweenness centrality (0.016) - this node is a cross-community bridge._
+- **Why does `apiFetch()` connect `apiFetch` to `DashboardView.vue`, `OrdersView.vue`, `api/delivery.ts`, `stores/auth.ts`, `NotificationsView.vue`, `DeliveryTeamView.vue`, `dashboard/OrderDetailView.vue`, `api/orders.ts`, `stores/pos.ts`, `layouts/OnboardingView.vue`, `api/settings.ts`, `api/analytics.ts`, `SubscriptionsView.vue`, `ProductFormModal.vue`, `SubscriptionWall.vue`, `RegisterView.vue`, `app/src/api/index.ts`, `stores/categories.ts`, `api/expenses.ts`, `StoreIdentityStep.vue`, `AcceptInviteView.vue`?**
+  _High betweenness centrality (0.017) - this node is a cross-community bridge._
 - **Are the 2 inferred relationships involving `useToast()` (e.g. with `removeToast()` and `showToast()`) actually correct?**
   _`useToast()` has 2 INFERRED edges - model-reasoned connections that need verification._
 - **Are the 4 inferred relationships involving `useAccessStore` (e.g. with `reset()` and `createInvitation()`) actually correct?**
@@ -792,4 +783,4 @@ _Questions this graph is uniquely positioned to answer:_
 - **Are the 2 inferred relationships involving `useAuthStore` (e.g. with `getAccessToken()` and `logout()`) actually correct?**
   _`useAuthStore` has 2 INFERRED edges - model-reasoned connections that need verification._
 - **What connects `name`, `version`, `private` to the rest of the system?**
-  _1376 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _1375 weakly-connected nodes found - possible documentation gaps or missing edges._

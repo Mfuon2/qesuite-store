@@ -336,9 +336,9 @@
     "semantic_hash": ""
   },
   "apps/app/src/components/dashboard/onboarding/StoreIdentityStep.vue": {
-    "mtime": 1787740233.7978837,
-    "seen": 1787772340.759379,
-    "ast_hash": "3f662c19f1141d8c7756dbfed927c16d",
+    "mtime": 1788695364.639422,
+    "seen": 1788695385.26781,
+    "ast_hash": "7bb2c28ae44dbdc5c9be27cabbb8159a",
     "semantic_hash": ""
   },
   "apps/app/src/components/delivery/FailureReasonModal.vue": {
@@ -438,9 +438,9 @@
     "semantic_hash": ""
   },
   "apps/app/src/layouts/DashboardLayout.vue": {
-    "mtime": 1787908613.5518627,
-    "seen": 1787908810.024364,
-    "ast_hash": "545236d04d1453d91c5135ec647fd978",
+    "mtime": 1788695340.3328795,
+    "seen": 1788695385.268081,
+    "ast_hash": "81119c5f4692ee22407db242d9f672dd",
     "semantic_hash": ""
   },
   "apps/app/src/layouts/DeliveryLayout.vue": {
@@ -564,9 +564,9 @@
     "semantic_hash": ""
   },
   "apps/app/src/views/OnboardingView.vue": {
-    "mtime": 1787603187.5708919,
-    "seen": 1787772340.759393,
-    "ast_hash": "7ac04179c7e8da82e0a29e8cf687aa64",
+    "mtime": 1788695350.6185756,
+    "seen": 1788695385.268696,
+    "ast_hash": "b0b5506f45a539a514b318e55fcbc8f3",
     "semantic_hash": ""
   },
   "apps/app/src/views/RegisterView.vue": {
@@ -726,9 +726,9 @@
     "semantic_hash": ""
   },
   "apps/app/vite.config.ts": {
-    "mtime": 1787898815.3903947,
-    "seen": 1787899007.3851352,
-    "ast_hash": "0104acb64f7960e1e324782d188ec680",
+    "mtime": 1788693935.195449,
+    "seen": 1788695385.269225,
+    "ast_hash": "2a448719c0f8acc62c591119a56bae63",
     "semantic_hash": ""
   },
   "apps/storefront/locales/en.json": {
@@ -1038,9 +1038,9 @@
     "semantic_hash": ""
   },
   "apps/storefront/vite.config.ts": {
-    "mtime": 1780471163.0,
-    "seen": 1787772340.7594209,
-    "ast_hash": "430e2c2d47636caaa95bf1b02a00b119",
+    "mtime": 1788693935.1957476,
+    "seen": 1788695385.270026,
+    "ast_hash": "4b3f8fb00f4c6a0b1623c444ee8468da",
     "semantic_hash": ""
   },
   "apps/worker-api/package.json": {
@@ -1355,12 +1355,6 @@
     "ast_hash": "886308708cca98f635d38316117dc472",
     "semantic_hash": ""
   },
-  "apps/ChatGPT Image May 25, 2026, 09_54_30 AM.png": {
-    "mtime": 1779692070.0,
-    "seen": 1787772340.75944,
-    "ast_hash": "bc128574495f6939297c8944eb33bae6",
-    "semantic_hash": ""
-  },
   "apps/app/public/apple-touch-icon.png": {
     "mtime": 1784442513.0,
     "seen": 1787772340.759441,
@@ -1419,12 +1413,6 @@
     "mtime": 1779782184.0,
     "seen": 1787772340.759444,
     "ast_hash": "af8678cb70588b64ecf1bf16823eec92",
-    "semantic_hash": ""
-  },
-  "apps/pngtree-supermarket-grocery-store-aisle-and-shelves-blurred-background-image_15896050.jpg": {
-    "mtime": 1779690705.0,
-    "seen": 1787772340.759444,
-    "ast_hash": "894d6edc97243bfb71654e87d51327e1",
     "semantic_hash": ""
   },
   "apps/storefront/public/apple-touch-icon.png": {

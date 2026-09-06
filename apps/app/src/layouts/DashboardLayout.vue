@@ -342,8 +342,6 @@ const moreOpen = ref(false)
 // always-visible primary set plus a "More" sheet that holds everything else.
 const PRIMARY_PATHS = new Set(['/dashboard', '/orders', '/pos', '/products'])
 
-const isRestaurant = computed(() => settingsStore.tenant?.store_category === 'food')
-
 // A superadmin can turn whole modules off for a tenant (apps/admin's Store
 // Detail > Modules tab), independent of what an individual staff member's own
 // permissions allow. Disabled is a blocklist, not an allowlist, so any module
@@ -363,10 +361,8 @@ const NAV_STRUCTURE = computed(() => [
     type: 'group' as const, label: 'Finance', icon: BanknotesIcon, moduleKey: 'finance',
     children: [
       { to: '/billing', label: 'Billing', icon: DocumentTextIcon, permission: 'billing.view' },
-      ...(isRestaurant.value ? [
-        { to: '/pos', label: 'POS', icon: BanknotesIcon, permission: 'pos.view' },
-        { to: '/expenses', label: 'Expenses', icon: ReceiptRefundIcon, permission: 'expenses.view' },
-      ] : []),
+      { to: '/pos', label: 'POS', icon: BanknotesIcon, permission: 'pos.view' },
+      { to: '/expenses', label: 'Expenses', icon: ReceiptRefundIcon, permission: 'expenses.view' },
     ],
   },
   {

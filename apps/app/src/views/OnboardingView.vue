@@ -141,7 +141,7 @@ const progressPct = computed(() => (currentStep.value / stepLabels.length) * 100
 const storeIdentity = ref({
   name: '',
   slug: '',
-  store_category: 'other' as StoreCategory,
+  store_category: '' as StoreCategory,
   logo_url: null as string | null,
   banner_url: null as string | null,
   primary_color: '#10b981',
@@ -168,7 +168,7 @@ const deliveryConfig = ref({
 const riderPhones = ref<string[]>([])
 
 const canProceed = computed(() => {
-  if (currentStep.value === 1) return !!(storeIdentity.value.name && storeIdentity.value.slug)
+  if (currentStep.value === 1) return !!(storeIdentity.value.name && storeIdentity.value.slug && storeIdentity.value.store_category)
   if (currentStep.value === 2) return products.value.length > 0
   return true
 })

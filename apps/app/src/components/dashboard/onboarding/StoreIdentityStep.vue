@@ -44,8 +44,9 @@
           </div>
 
           <div class="sm:col-span-2">
-            <label class="admin-label">Store Category</label>
-            <QeSelect v-model="form.store_category" :options="categories" />
+            <label class="admin-label">Store Category *</label>
+            <QeSelect v-model="form.store_category" :options="categories" placeholder="Select your business type…" />
+            <p class="mt-1 text-xs font-medium text-slate-400">Shown to customers browsing the marketplace to help them find your store.</p>
           </div>
         </div>
       </section>

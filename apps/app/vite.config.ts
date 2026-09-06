@@ -30,7 +30,14 @@ export default defineConfig({
         skipWaiting: true,
         clientsClaim: true,
         maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
+        // No 'html' here: the document carries security headers (CSP) that
+        // must always come fresh from the network, never from a precached
+        // response frozen at whatever the headers were when the SW installed.
+        globPatterns: ['**/*.{js,css,ico,png,svg,woff,woff2}'],
+        // Precaching JS/CSS/icons (content-hashed, safe to serve offline) is
+        // enough for POS to run offline once already loaded. Navigations
+        // (page loads/reloads) must never be answered from the SW cache.
+        navigateFallback: null,
       }
     })
   ],

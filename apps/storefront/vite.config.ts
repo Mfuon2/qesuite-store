@@ -23,7 +23,12 @@ export default defineConfig({
         skipWaiting: true,       // activate new SW immediately, no second reload needed
         clientsClaim: true,      // take control of all open tabs instantly
         maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
-        globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
+        // No 'html': the document carries security headers that must always
+        // come fresh from the network, never a response frozen at whatever
+        // the headers were when the SW last installed.
+        globPatterns: ['**/*.{js,css,ico,png,svg}'],
+        // Never let the SW answer a navigation (page load/reload) from cache.
+        navigateFallback: null,
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/.*\/api\/products/,
